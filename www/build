@@ -1,0 +1,87 @@
+#!/bin/sh
+
+SCRIPT=`python -c "import os; print(os.path.realpath('$0'))"`
+WWW_ROOT=`dirname "$SCRIPT"`
+SWANSON_ROOT=`dirname "$WWW_ROOT"`
+OUTPUT_PATH="$WWW_ROOT/.output"
+VIRTUALENV_PATH="$WWW_ROOT/.venv"
+
+clean () {
+    rm -rf "$OUTPUT_PATH"
+    if [ "$1" = "--all" ]; then
+        rm -rf "$VIRTUALENV_PATH"
+    fi
+}
+
+create () {
+    VIRTUALENV=`which virtualenv`
+    if [ ! -x "$VIRTUALENV" ]; then
+        echo "Cannot find virtualenv" >&2
+        exit 1
+    fi
+
+    PYTHON3=`which python3`
+    if [ ! -x "$PYTHON3" ]; then
+        echo "Cannot find python3" >&2
+        exit 1
+    fi
+
+    "$VIRTUALENV" --system-site-packages -p "$PYTHON3" "$VIRTUALENV_PATH"
+}
+
+upgrade () {
+    if [ ! -e "$VIRTUALENV_PATH" ]; then
+        create
+    fi
+
+    "$VIRTUALENV_PATH"/bin/pip install --upgrade "Nikola[extras]"
+}
+
+ensure_virtualenv_present () {
+    if [ ! -e "$VIRTUALENV_PATH" ]; then
+        upgrade
+    fi
+}
+
+nikola () {
+    ensure_virtualenv_present
+    cd "$WWW_ROOT" && \
+        PYTHONDONTWRITEBYTECODE=1 "$VIRTUALENV_PATH/bin/nikola" "$@"
+}
+
+build () {
+    ensure_virtualenv_present
+    nikola build
+}
+
+deploy () {
+    gsutil rsync -R "$OUTPUT_PATH" gs://www.swanson-lang.org
+}
+
+usage () {
+    echo "Usage: www/build [build]" >&2
+    echo "       www/build clean" >&2
+    echo "       www/build create" >&2
+    echo "       www/build deploy" >&2
+    echo "       www/build nikola [args]" >&2
+    echo "       www/build upgrade" >&2
+}
+
+COMMAND="$1"; shift
+if [ -z "$COMMAND" ]; then
+    COMMAND="build"
+fi
+
+case "$COMMAND" in
+    build)    build;;
+    clean)    clean;;
+    create)   create;;
+    deploy)   deploy;;
+    nikola)   nikola "$@";;
+    upgrade)  upgrade;;
+    *)
+        echo "Unknown command $COMMAND" >&2
+        usage
+        exit 1
+        ;;
+esac
