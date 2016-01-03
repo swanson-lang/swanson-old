@@ -55,8 +55,7 @@ build () {
 }
 
 deploy () {
-    echo "No deployment rules yet!" >&2
-    exit 1
+    gsutil rsync -R "$OUTPUT_PATH" gs://www.swanson-lang.org
 }
 
 usage () {
