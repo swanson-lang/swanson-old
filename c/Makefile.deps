@@ -1,0 +1,7 @@
+$(BUILD_ROOT)/objs/libswanson/s0.o: \
+ $(SOURCE_ROOT)/libswanson/s0.c \
+ $(SOURCE_ROOT)/include/swanson.h \
+ $(SOURCE_ROOT)/ccan/likely/likely.h \
+ $(SOURCE_ROOT)/include/config.h
+$(BUILD_ROOT)/objs/swanson/swanson.o: \
+ $(SOURCE_ROOT)/swanson/swanson.c
