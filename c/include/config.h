@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+#define _GNU_SOURCE
+
 /* Just assume this for now */
 #define HAVE_BUILTIN_EXPECT  1
 

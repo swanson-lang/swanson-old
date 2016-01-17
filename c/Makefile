@@ -80,6 +80,12 @@ SWANSON_C = \
 SWANSON_O = $(SWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 SWANSON_D = $(SWANSON_O:.o=.d)
 
+TEST_SWANSON_C = \
+    $(SOURCE_ROOT)/ccan/tap/tap.c \
+    $(SOURCE_ROOT)/test-swanson/test-swanson.c
+TEST_SWANSON_O = $(TEST_SWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
+TEST_SWANSON_D = $(TEST_SWANSON_O:.o=.d)
+
 #------------------------------------------------------------------------------
 # Compiling
 
@@ -116,7 +122,7 @@ $(BUILD_ROOT)/objs/%.o: $(SOURCE_ROOT)/%.c $(BUILD)
 #------------------------------------------------------------------------------
 # Dependency post-processing
 
-depends: $(LIBSWANSON_O) $(SWANSON_O)
+depends: $(LIBSWANSON_O) $(SWANSON_O) $(TEST_SWANSON_O)
 	@echo "DEPS  Makefile.deps"
 	@$(SED) \
 	    -e 's+'"$(BUILD_ROOT)"'+$$(BUILD_ROOT)+g' \
@@ -161,6 +167,25 @@ $(SWANSON_EXE): $(SWANSON_O) $(LIBSWANSON_SO) $(BUILD)
 	    -lswanson
 
 #------------------------------------------------------------------------------
+# Tests
+
+TEST_SWANSON_EXE = $(BUILD_ROOT)/test-swanson
+
+test-swanson: $(TEST_SWANSON_EXE) $(TEST_SWANSON_WRAPPER)
+$(TEST_SWANSON_EXE): $(TEST_SWANSON_O) $(LIBSWANSON_SO_X) $(BUILD)
+	@echo "LD   $(patsubst $(BUILD_ROOT)/%, %, $@)"
+	@mkdir -p $(dir $@)
+	@$(CC) \
+	    $(INCLUDE_LDFLAGS) \
+	    -o $@ $(filter %.o, $^) \
+	    -Wl,-rpath,$(BUILD_ROOT) \
+	    -lswanson
+
+check: $(TEST_SWANSON_EXE)
+	@echo "TEST"
+	@$(TEST_SWANSON_EXE)
+
+#------------------------------------------------------------------------------
 # Cleaning up
 
 clean:
@@ -171,6 +196,9 @@ clean:
 	@rm -f $(SWANSON_D)
 	@rm -f $(SWANSON_O)
 	@rm -f $(SWANSON_EXE)
+	@rm -f $(TEST_SWANSON_D)
+	@rm -f $(TEST_SWANSON_O)
+	@rm -f $(TEST_SWANSON_EXE)
 
 distclean:
 	@rm -rf $(BUILD_ROOT)
