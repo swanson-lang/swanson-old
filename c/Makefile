@@ -5,8 +5,8 @@
 .PHONY: clean depends distclean libswanson swanson
 all: depends libswanson swanson
 
-LN = ln
-SED = sed
+LN ?= ln
+SED ?= sed
 ifeq ($(origin VALGRIND), undefined)
     VALGRIND := $(shell sh -c 'command -v valgrind')
 endif
@@ -24,8 +24,8 @@ endif
 
 # In all of the rules below, we must preface every source file with
 # $(SOURCE_ROOT), and every build result with $(BUILD_ROOT).
-BUILD_ROOT=$(CURDIR)/.build
-SOURCE_ROOT=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+BUILD_ROOT ?= $(CURDIR)/.build
+SOURCE_ROOT = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # A special rule that ensures that the build output directory exists.
 BUILD_STAMP = $(BUILD_ROOT)/.stamp
@@ -94,22 +94,22 @@ TEST_SWANSON_D = $(TEST_SWANSON_O:.o=.d)
 
 # You can override CFLAGS if you want to control things like optimizations,
 # warnings, and debug symbols.  We provide a suitable default if you don't care.
-CFLAGS = -g -O3 -Wall -Werror
+CFLAGS ?= -g -O3 -Wall -Werror
 
 # Whatever we need to pass in to the C compiler to have it produce something
 # that can be included in a shared library.
-SHARED_CFLAGS = -fPIC
+SHARED_CFLAGS ?= -fPIC
 
 # If your compiler supports it, these options tell it to output make-style
 # dependency information in .d that live alongside the .o files that it
 # produces.
-DEPENDENCY_CFLAGS = -MMD
+DEPENDENCY_CFLAGS ?= -MMD
 include $(SOURCE_ROOT)/Makefile.deps
 
 # You probably shouldn't override this part; this is how we tell the compiler
 # where all of our include files live.  If $(SOURCE_ROOT) has been set
 # correctly, then you don't need to touch this.
-INCLUDE_CPPFLAGS = -I$(SOURCE_ROOT)/include -I$(SOURCE_ROOT)
+INCLUDE_CPPFLAGS ?= -I$(SOURCE_ROOT)/include -I$(SOURCE_ROOT)
 
 # A pattern rule for compiling .c files into .o files.
 $(BUILD_ROOT)/objs/%.o: $(SOURCE_ROOT)/%.c $(BUILD)
@@ -137,12 +137,12 @@ depends: $(LIBSWANSON_O) $(SWANSON_O) $(TEST_SWANSON_O)
 # Linking
 
 # Whatever we need to pass in to the linker to have it produce a shared library.
-SHARED_LDFLAGS = -shared
+SHARED_LDFLAGS ?= -shared
 
 # You probably shouldn't override this part; this is how we tell the linker
 # where all of our shared libraries live.  If $(BUILD_ROOT) has been set
 # correctly, then you don't need to touch this.
-INCLUDE_LDFLAGS = -L$(BUILD_ROOT)
+INCLUDE_LDFLAGS ?= -L$(BUILD_ROOT)
 
 LIBSWANSON_SO = $(BUILD_ROOT)/libswanson.so
 LIBSWANSON_SO_X = $(LIBSWANSON_SO).$(LIBSWANSON_SOVERSION)
