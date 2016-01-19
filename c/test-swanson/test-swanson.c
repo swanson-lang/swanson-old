@@ -58,16 +58,54 @@ test_s0_names(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Atoms
+ */
+
+#define TEST_COUNT_S0_ATOMS  12
+
+static void
+test_s0_atoms(void)
+{
+    struct s0_entity  *a1;
+    struct s0_entity  *a2;
+    struct s0_entity  *a3;
+
+    diag("S₀ atoms");
+
+    ok_alloc(a1, s0_atom_new());
+    ok_alloc(a2, s0_atom_new());
+    ok_alloc(a3, s0_atom_new());
+
+    ok(s0_entity_type(a1) == S0_ENTITY_TYPE_ATOM, "type(atom1) == atom");
+    ok(s0_entity_type(a2) == S0_ENTITY_TYPE_ATOM, "type(atom2) == atom");
+    ok(s0_entity_type(a3) == S0_ENTITY_TYPE_ATOM, "type(atom3) == atom");
+
+    ok(s0_atom_eq(a1, a1),  "atom1 == atom1");
+    ok(s0_atom_eq(a2, a2),  "atom2 == atom2");
+    ok(s0_atom_eq(a3, a3),  "atom3 == atom3");
+
+    ok(!s0_atom_eq(a1, a2),  "atom1 != atom2");
+    ok(!s0_atom_eq(a1, a3),  "atom1 != atom3");
+    ok(!s0_atom_eq(a2, a3),  "atom2 != atom3");
+
+    s0_entity_free(a1);
+    s0_entity_free(a2);
+    s0_entity_free(a3);
+}
+
+/*-----------------------------------------------------------------------------
  * Harness
  */
 
 #define TEST_COUNT_TOTAL \
     TEST_COUNT_S0_NAMES + \
+    TEST_COUNT_S0_ATOMS + \
     0
 
 int main(void)
 {
     plan_tests(TEST_COUNT_TOTAL);
     test_s0_names();
+    test_s0_atoms();
     return exit_status();
 }

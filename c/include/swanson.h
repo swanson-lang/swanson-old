@@ -40,6 +40,31 @@ bool
 s0_name_eq(const struct s0_name *, const struct s0_name *);
 
 
+/*-----------------------------------------------------------------------------
+ * S₀: Entities
+ */
+
+struct s0_entity;
+
+enum s0_entity_type {
+    S0_ENTITY_TYPE_ATOM
+};
+
+void
+s0_entity_free(struct s0_entity *);
+
+enum s0_entity_type
+s0_entity_type(const struct s0_entity *);
+
+
+struct s0_entity *
+s0_atom_new(void);
+
+/* Both entities MUST be atoms */
+bool
+s0_atom_eq(const struct s0_entity *, const struct s0_entity *);
+
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
