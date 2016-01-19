@@ -14,4 +14,5 @@ $(BUILD_ROOT)/objs/test-swanson/test-swanson.o: \
  $(SOURCE_ROOT)/test-swanson/test-swanson.c \
  $(SOURCE_ROOT)/ccan/tap/tap.h \
  $(SOURCE_ROOT)/ccan/compiler/compiler.h \
- $(SOURCE_ROOT)/include/config.h
+ $(SOURCE_ROOT)/include/config.h \
+ $(SOURCE_ROOT)/include/swanson.h

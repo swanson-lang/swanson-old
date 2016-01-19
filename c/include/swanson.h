@@ -9,8 +9,13 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stdlib.h>
 
+
+/*-----------------------------------------------------------------------------
+ * S₀: Names
+ */
 
 struct s0_name;
 
@@ -18,8 +23,21 @@ struct s0_name;
 struct s0_name *
 s0_name_new(size_t size, const void *content);
 
+/* Size is calculated via strlen(3) */
+struct s0_name *
+s0_name_new_str(const void *content);
+
 void
 s0_name_free(struct s0_name *);
+
+const char *
+s0_name_content(const struct s0_name *);
+
+size_t
+s0_name_size(const struct s0_name *);
+
+bool
+s0_name_eq(const struct s0_name *, const struct s0_name *);
 
 
 #ifdef __cplusplus

@@ -164,6 +164,7 @@ swanson: $(SWANSON_EXE)
 $(SWANSON_EXE): $(SWANSON_O) $(LIBSWANSON_SO) $(BUILD)
 	@echo "LD   $(patsubst $(BUILD_ROOT)/%, %, $@)"
 	@$(CC) \
+	    $(CFLAGS) \
 	    $(INCLUDE_LDFLAGS) \
 	    -o $@ $(filter %.o, $^) \
 	    -Wl,-rpath,$(BUILD_ROOT) \
@@ -179,6 +180,7 @@ $(TEST_SWANSON_EXE): $(TEST_SWANSON_O) $(LIBSWANSON_SO_X) $(BUILD)
 	@echo "LD   $(patsubst $(BUILD_ROOT)/%, %, $@)"
 	@mkdir -p $(dir $@)
 	@$(CC) \
+	    $(CFLAGS) \
 	    $(INCLUDE_LDFLAGS) \
 	    -o $@ $(filter %.o, $^) \
 	    -Wl,-rpath,$(BUILD_ROOT) \
