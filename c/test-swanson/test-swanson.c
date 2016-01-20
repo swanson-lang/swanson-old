@@ -18,6 +18,11 @@
         ok(var != NULL, #call " != NULL"); \
     } while (0)
 
+#define ok0(call, desc) \
+    do { \
+        ok((call) == 0, desc); \
+    } while (0)
+
 /*-----------------------------------------------------------------------------
  * S₀: Names
  */
@@ -94,12 +99,90 @@ test_s0_atoms(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Environments
+ */
+
+#define TEST_COUNT_S0_ENVIRONMENTS  28
+
+static void
+test_s0_environments(void)
+{
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+
+    diag("S₀ environments");
+
+#define check_size(expected) \
+    ok(s0_environment_size(env) == expected, \
+       "s0_environment_size(env) == " #expected);
+
+    ok_alloc(env, s0_environment_new());
+    check_size(0);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok_alloc(atom1, s0_atom_new());
+    ok0(s0_environment_add(env, name, atom1),
+        "s0_environment_add(\"a\", atom1)");
+    check_size(1);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok_alloc(atom2, s0_atom_new());
+    ok0(s0_environment_add(env, name, atom2),
+        "s0_environment_add(\"b\", atom2)");
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_environment_get(env, name) == atom1,
+       "s0_environment_get(env, \"a\") == atom1");
+    s0_name_free(name);
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_environment_get(env, name) == atom2,
+       "s0_environment_get(env, \"b\") == atom2");
+    s0_name_free(name);
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_environment_delete(env, name) == atom1,
+       "s0_environment_delete(env, \"a\") == atom1");
+    s0_name_free(name);
+    s0_entity_free(atom1);
+    check_size(1);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_environment_get(env, name) == NULL,
+       "s0_environment_get(env, \"a\") == NULL");
+    s0_name_free(name);
+    check_size(1);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_environment_delete(env, name) == atom2,
+       "s0_environment_delete(env, \"b\") == atom2");
+    s0_name_free(name);
+    s0_entity_free(atom2);
+    check_size(0);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_environment_get(env, name) == NULL,
+       "s0_environment_get(env, \"b\") == NULL");
+    s0_name_free(name);
+    check_size(0);
+
+    s0_environment_free(env);
+#undef check_size
+}
+
+/*-----------------------------------------------------------------------------
  * Harness
  */
 
 #define TEST_COUNT_TOTAL \
     TEST_COUNT_S0_NAMES + \
     TEST_COUNT_S0_ATOMS + \
+    TEST_COUNT_S0_ENVIRONMENTS + \
     0
 
 int main(void)
@@ -107,5 +190,6 @@ int main(void)
     plan_tests(TEST_COUNT_TOTAL);
     test_s0_names();
     test_s0_atoms();
+    test_s0_environments();
     return exit_status();
 }

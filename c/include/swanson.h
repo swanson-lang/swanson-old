@@ -41,10 +41,40 @@ s0_name_eq(const struct s0_name *, const struct s0_name *);
 
 
 /*-----------------------------------------------------------------------------
- * S₀: Entities
+ * S₀: Environments
  */
 
 struct s0_entity;
+struct s0_environment;
+
+struct s0_environment *
+s0_environment_new(void);
+
+void
+s0_environment_free(struct s0_environment *);
+
+size_t
+s0_environment_size(const struct s0_environment *);
+
+/* Takes ownership of name and entity.  name MUST not already be present in
+ * environment.  Returns 0 if entity was added; -1 if we couldn't allocate space
+ * for the new entry. */
+int
+s0_environment_add(struct s0_environment *,
+                   struct s0_name *name, struct s0_entity *entity);
+
+/* Returns NULL if name is not in environment. */
+struct s0_entity *
+s0_environment_get(const struct s0_environment *, const struct s0_name *name);
+
+/* name MUST already be present in environment. */
+struct s0_entity *
+s0_environment_delete(struct s0_environment *, const struct s0_name *name);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entities
+ */
 
 enum s0_entity_type {
     S0_ENTITY_TYPE_ATOM
