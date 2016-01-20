@@ -7,6 +7,9 @@ all: depends libswanson swanson
 
 LN = ln
 SED = sed
+ifeq ($(origin VALGRIND), undefined)
+    VALGRIND := $(shell sh -c 'command -v valgrind')
+endif
 
 #------------------------------------------------------------------------------
 # Out-of-tree builds
@@ -182,8 +185,17 @@ $(TEST_SWANSON_EXE): $(TEST_SWANSON_O) $(LIBSWANSON_SO_X) $(BUILD)
 	    -lswanson
 
 check: $(TEST_SWANSON_EXE)
+ifdef VALGRIND
+	@echo "TEST (valgrind)"
+	@$(VALGRIND) \
+	    --error-exitcode=1 \
+	    --leak-check=full \
+	    --log-file=$(BUILD_ROOT)/valgrind.out \
+	    $(TEST_SWANSON_EXE)
+else
 	@echo "TEST"
 	@$(TEST_SWANSON_EXE)
+endif
 
 #------------------------------------------------------------------------------
 # Cleaning up
