@@ -99,6 +99,49 @@ test_s0_atoms(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Literals
+ */
+
+#define TEST_COUNT_S0_LITERALS  12
+
+static void
+test_s0_literals(void)
+{
+    struct s0_entity  *l1;
+    struct s0_entity  *l2;
+    struct s0_entity  *l3;
+
+    diag("S₀ literals");
+
+    ok_alloc(l1, s0_literal_new_str("hello"));
+    ok_alloc(l2, s0_literal_new(5, "hello"));
+    /* content includes NUL terminator */
+    ok_alloc(l3, s0_literal_new(6, "hello"));
+
+    ok(s0_entity_type(l1) == S0_ENTITY_TYPE_LITERAL,
+       "type(literal1) == literal");
+    ok(s0_entity_type(l2) == S0_ENTITY_TYPE_LITERAL,
+       "type(literal2) == literal");
+    ok(s0_entity_type(l3) == S0_ENTITY_TYPE_LITERAL,
+       "type(literal3) == literal");
+
+    ok(s0_literal_size(l1) == 5, "[literal(5, \"hello\")] == 5");
+    ok(s0_literal_size(l2) == 5, "[literal(5, \"hello\")] == 5");
+    ok(s0_literal_size(l3) == 6, "[literal(6, \"hello\\x00\")] == 6");
+
+    ok(memcmp(s0_literal_content(l1), "hello", 5) == 0,
+       "literal(5, \"hello\") == \"hello\"");
+    ok(memcmp(s0_literal_content(l2), "hello", 5) == 0,
+       "literal(5, \"hello\") == \"hello\"");
+    ok(memcmp(s0_literal_content(l3), "hello\x00", 6) == 0,
+       "literal(6, \"hello\\x00\") == \"hello\\x00\"");
+
+    s0_entity_free(l1);
+    s0_entity_free(l2);
+    s0_entity_free(l3);
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Environments
  */
 
@@ -182,6 +225,7 @@ test_s0_environments(void)
 #define TEST_COUNT_TOTAL \
     TEST_COUNT_S0_NAMES + \
     TEST_COUNT_S0_ATOMS + \
+    TEST_COUNT_S0_LITERALS + \
     TEST_COUNT_S0_ENVIRONMENTS + \
     0
 
@@ -190,6 +234,7 @@ int main(void)
     plan_tests(TEST_COUNT_TOTAL);
     test_s0_names();
     test_s0_atoms();
+    test_s0_literals();
     test_s0_environments();
     return exit_status();
 }

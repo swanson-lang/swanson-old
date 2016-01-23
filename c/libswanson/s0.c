@@ -193,7 +193,14 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
 
 struct s0_entity {
     enum s0_entity_type  type;
+    union {
+        struct {
+            size_t  size;
+            const void  *content;
+        } literal;
+    } _;
 };
+
 
 struct s0_entity *
 s0_atom_new(void)
@@ -206,16 +213,10 @@ s0_atom_new(void)
     return atom;
 }
 
-void
-s0_entity_free(struct s0_entity *entity)
+static void
+s0_atom_free(struct s0_entity *atom)
 {
-    free(entity);
-}
-
-enum s0_entity_type
-s0_entity_type(const struct s0_entity *entity)
-{
-    return entity->type;
+    /* Nothing to do */
 }
 
 bool
@@ -224,4 +225,73 @@ s0_atom_eq(const struct s0_entity *a1, const struct s0_entity *a2)
     assert(a1->type == S0_ENTITY_TYPE_ATOM);
     assert(a2->type == S0_ENTITY_TYPE_ATOM);
     return (a1 == a2);
+}
+
+
+struct s0_entity *
+s0_literal_new(size_t size, const void *content)
+{
+    struct s0_entity  *literal = malloc(sizeof(struct s0_entity));
+    if (unlikely(literal == NULL)) {
+        return NULL;
+    }
+    literal->type = S0_ENTITY_TYPE_LITERAL;
+    literal->_.literal.size = size;
+    literal->_.literal.content = malloc(size);
+    if (unlikely(literal->_.literal.content == NULL)) {
+        free(literal);
+        return NULL;
+    }
+    memcpy((void *) literal->_.literal.content, content, size);
+    return literal;
+}
+
+struct s0_entity *
+s0_literal_new_str(const void *content)
+{
+    return s0_literal_new(strlen(content), content);
+}
+
+static void
+s0_literal_free(struct s0_entity *literal)
+{
+    free((void *) literal->_.literal.content);
+}
+
+const char *
+s0_literal_content(const struct s0_entity *literal)
+{
+    assert(literal->type == S0_ENTITY_TYPE_LITERAL);
+    return literal->_.literal.content;
+}
+
+size_t
+s0_literal_size(const struct s0_entity *literal)
+{
+    assert(literal->type == S0_ENTITY_TYPE_LITERAL);
+    return literal->_.literal.size;
+}
+
+
+void
+s0_entity_free(struct s0_entity *entity)
+{
+    switch (entity->type) {
+        case S0_ENTITY_TYPE_ATOM:
+            s0_atom_free(entity);
+            break;
+        case S0_ENTITY_TYPE_LITERAL:
+            s0_literal_free(entity);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    free(entity);
+}
+
+enum s0_entity_type
+s0_entity_type(const struct s0_entity *entity)
+{
+    return entity->type;
 }

@@ -77,7 +77,8 @@ s0_environment_delete(struct s0_environment *, const struct s0_name *name);
  */
 
 enum s0_entity_type {
-    S0_ENTITY_TYPE_ATOM
+    S0_ENTITY_TYPE_ATOM,
+    S0_ENTITY_TYPE_LITERAL
 };
 
 void
@@ -93,6 +94,23 @@ s0_atom_new(void);
 /* Both entities MUST be atoms */
 bool
 s0_atom_eq(const struct s0_entity *, const struct s0_entity *);
+
+
+/* Makes a copy of content */
+struct s0_entity *
+s0_literal_new(size_t size, const void *content);
+
+/* Size is calculated via strlen(3) */
+struct s0_entity *
+s0_literal_new_str(const void *content);
+
+/* Entity MUST be a literal */
+const char *
+s0_literal_content(const struct s0_entity *);
+
+/* Entity MUST be a literal */
+size_t
+s0_literal_size(const struct s0_entity *);
 
 
 #ifdef __cplusplus
