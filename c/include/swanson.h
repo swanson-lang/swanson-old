@@ -78,7 +78,8 @@ s0_environment_delete(struct s0_environment *, const struct s0_name *name);
 
 enum s0_entity_type {
     S0_ENTITY_TYPE_ATOM,
-    S0_ENTITY_TYPE_LITERAL
+    S0_ENTITY_TYPE_LITERAL,
+    S0_ENTITY_TYPE_OBJECT
 };
 
 void
@@ -111,6 +112,35 @@ s0_literal_content(const struct s0_entity *);
 /* Entity MUST be a literal */
 size_t
 s0_literal_size(const struct s0_entity *);
+
+
+struct s0_object_entry {
+    struct s0_name  *name;
+    struct s0_entity  *entity;
+};
+
+struct s0_entity *
+s0_object_new(void);
+
+/* Takes ownership of name and entity.  name MUST not already be present in
+ * object.  Returns 0 if entity was added; -1 if we couldn't allocate space
+ * for the new entry.  Entity MUST be an object. */
+int
+s0_object_add(struct s0_entity *,
+              struct s0_name *name, struct s0_entity *entity);
+
+/* Entity MUST be an object */
+size_t
+s0_object_size(const struct s0_entity *);
+
+/* Returns entries in order that they were added to object.  Entity MUST be an
+ * object; index MUST be < size of object. */
+struct s0_object_entry
+s0_object_at(const struct s0_entity *, size_t index);
+
+/* Entity MUST be an object.  Returns NULL if name is not in object. */
+struct s0_entity *
+s0_object_get(const struct s0_entity *, const struct s0_name *name);
 
 
 #ifdef __cplusplus

@@ -142,6 +142,73 @@ test_s0_literals(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Objects
+ */
+
+#define TEST_COUNT_S0_OBJECTS  25
+
+static void
+test_s0_objects(void)
+{
+    struct s0_entity  *obj;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_object_entry  entry;
+
+    diag("S₀ objects");
+
+#define check_size(expected) \
+    ok(s0_object_size(obj) == expected, \
+       "s0_object_size(obj) == " #expected);
+
+    ok_alloc(obj, s0_object_new());
+    check_size(0);
+    ok(s0_entity_type(obj) == S0_ENTITY_TYPE_OBJECT, "type(obj) == object");
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok_alloc(atom1, s0_atom_new());
+    ok0(s0_object_add(obj, name, atom1),
+        "s0_object_add(\"a\", atom1)");
+    check_size(1);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok_alloc(atom2, s0_atom_new());
+    ok0(s0_object_add(obj, name, atom2),
+        "s0_object_add(\"b\", atom2)");
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_object_get(obj, name) == atom1,
+       "s0_object_get(obj, \"a\") == atom1");
+    s0_name_free(name);
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_object_get(obj, name) == atom2,
+       "s0_object_get(obj, \"b\") == atom2");
+    s0_name_free(name);
+    check_size(2);
+
+    entry = s0_object_at(obj, 0);
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_name_eq(entry.name, name), "s0_object_at(obj, 0) == \"a\"");
+    s0_name_free(name);
+    ok(entry.entity == atom1, "s0_object_at(obj, 0) == atom1");
+    check_size(2);
+
+    entry = s0_object_at(obj, 1);
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_name_eq(entry.name, name), "s0_object_at(obj, 1) == \"b\"");
+    s0_name_free(name);
+    ok(entry.entity == atom2, "s0_object_at(obj, 1) == atom2");
+    check_size(2);
+
+    s0_entity_free(obj);
+#undef check_size
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Environments
  */
 
@@ -226,6 +293,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_NAMES + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_LITERALS + \
+    TEST_COUNT_S0_OBJECTS + \
     TEST_COUNT_S0_ENVIRONMENTS + \
     0
 
@@ -235,6 +303,7 @@ int main(void)
     test_s0_names();
     test_s0_atoms();
     test_s0_literals();
+    test_s0_objects();
     test_s0_environments();
     return exit_status();
 }

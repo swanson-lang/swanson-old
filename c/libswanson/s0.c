@@ -198,6 +198,11 @@ struct s0_entity {
             size_t  size;
             const void  *content;
         } literal;
+        struct {
+            size_t  size;
+            size_t  allocated_size;
+            struct s0_object_entry  *entries;
+        } obj;
     } _;
 };
 
@@ -273,6 +278,93 @@ s0_literal_size(const struct s0_entity *literal)
 }
 
 
+#define DEFAULT_INITIAL_OBJECT_SIZE  4
+
+struct s0_entity *
+s0_object_new(void)
+{
+    struct s0_entity  *obj = malloc(sizeof(struct s0_entity));
+    if (unlikely(obj == NULL)) {
+        return NULL;
+    }
+    obj->type = S0_ENTITY_TYPE_OBJECT;
+    obj->_.obj.size = 0;
+    obj->_.obj.allocated_size = DEFAULT_INITIAL_OBJECT_SIZE;
+    obj->_.obj.entries =
+        malloc(DEFAULT_INITIAL_OBJECT_SIZE * sizeof(struct s0_object_entry));
+    if (unlikely(obj->_.obj.entries == NULL)) {
+        free(obj);
+        return NULL;
+    }
+    return obj;
+}
+
+static void
+s0_object_free(struct s0_entity *obj)
+{
+    size_t  i;
+    for (i = 0; i < obj->_.obj.size; i++) {
+        s0_name_free(obj->_.obj.entries[i].name);
+        s0_entity_free(obj->_.obj.entries[i].entity);
+    }
+    free(obj->_.obj.entries);
+}
+
+int
+s0_object_add(struct s0_entity *obj,
+              struct s0_name *name, struct s0_entity *entity)
+{
+    struct s0_object_entry  *new_entry;
+
+    if (unlikely(obj->_.obj.size == obj->_.obj.allocated_size)) {
+        size_t  new_size = obj->_.obj.allocated_size * 2;
+        struct s0_object_entry  *new_entries =
+            realloc(obj->_.obj.entries,
+                    new_size * sizeof(struct s0_object_entry));
+        if (unlikely(new_entries == NULL)) {
+            s0_name_free(name);
+            s0_entity_free(entity);
+            return -1;
+        }
+        obj->_.obj.entries = new_entries;
+        obj->_.obj.allocated_size = new_size;
+    }
+
+    new_entry = &obj->_.obj.entries[obj->_.obj.size++];
+    new_entry->name = name;
+    new_entry->entity = entity;
+    return 0;
+}
+
+size_t
+s0_object_size(const struct s0_entity *obj)
+{
+    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    return obj->_.obj.size;
+}
+
+struct s0_object_entry
+s0_object_at(const struct s0_entity *obj, size_t index)
+{
+    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(index < obj->_.obj.size);
+    return obj->_.obj.entries[index];
+}
+
+struct s0_entity *
+s0_object_get(const struct s0_entity *obj, const struct s0_name *name)
+{
+    size_t  i;
+    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    for (i = 0; i < obj->_.obj.size; i++) {
+        if (s0_name_eq(obj->_.obj.entries[i].name, name)) {
+            return obj->_.obj.entries[i].entity;
+        }
+    }
+    return NULL;
+}
+
+
 void
 s0_entity_free(struct s0_entity *entity)
 {
@@ -282,6 +374,9 @@ s0_entity_free(struct s0_entity *entity)
             break;
         case S0_ENTITY_TYPE_LITERAL:
             s0_literal_free(entity);
+            break;
+        case S0_ENTITY_TYPE_OBJECT:
+            s0_object_free(entity);
             break;
         default:
             assert(false);
