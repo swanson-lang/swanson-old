@@ -63,6 +63,53 @@ test_s0_names(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Name sets
+ */
+
+#define TEST_COUNT_S0_NAME_SETS  14
+
+static void
+test_s0_name_sets(void)
+{
+    struct s0_name_set  *set;
+    struct s0_name  *name;
+
+    diag("S₀ name sets");
+
+#define check_size(expected) \
+    ok(s0_name_set_size(set) == expected, \
+       "s0_name_set_size(set) == " #expected);
+
+    ok_alloc(set, s0_name_set_new());
+    check_size(0);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok0(s0_name_set_add(set, name),
+        "s0_name_set_add(set, \"a\")");
+    check_size(1);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok0(s0_name_set_add(set, name),
+        "s0_name_set_add(set, \"b\")");
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_name_eq(name, s0_name_set_at(set, 0)),
+       "s0_name_set_at(set, 0) == \"a\"");
+    s0_name_free(name);
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_name_eq(name, s0_name_set_at(set, 1)),
+       "s0_name_set_at(set, 1) == \"b\"");
+    s0_name_free(name);
+    check_size(2);
+
+    s0_name_set_free(set);
+#undef check_size
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Atoms
  */
 
@@ -291,6 +338,7 @@ test_s0_environments(void)
 
 #define TEST_COUNT_TOTAL \
     TEST_COUNT_S0_NAMES + \
+    TEST_COUNT_S0_NAME_SETS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_LITERALS + \
     TEST_COUNT_S0_OBJECTS + \
@@ -301,6 +349,7 @@ int main(void)
 {
     plan_tests(TEST_COUNT_TOTAL);
     test_s0_names();
+    test_s0_name_sets();
     test_s0_atoms();
     test_s0_literals();
     test_s0_objects();

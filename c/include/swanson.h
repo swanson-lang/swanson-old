@@ -41,6 +41,32 @@ s0_name_eq(const struct s0_name *, const struct s0_name *);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Name sets
+ */
+
+struct s0_name_set;
+
+struct s0_name_set *
+s0_name_set_new(void);
+
+void
+s0_name_set_free(struct s0_name_set *);
+
+/* Takes ownership of name.  name MUST not already be present in set.  Returns 0
+ * if name was added; -1 if we couldn't allocate space for the new entry. */
+int
+s0_name_set_add(struct s0_name_set *, struct s0_name *name);
+
+size_t
+s0_name_set_size(const struct s0_name_set *);
+
+/* Returns entries in order that they were added to the set.  index MUST be <
+ * size of name_set.  Set still owns the name; you must not free it. */
+struct s0_name *
+s0_name_set_at(const struct s0_name_set *, size_t index);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: Environments
  */
 

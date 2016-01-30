@@ -71,6 +71,89 @@ s0_name_eq(const struct s0_name *n1, const struct s0_name *n2)
 
 
 /*-----------------------------------------------------------------------------
+ * Name sets
+ */
+
+struct s0_name_set {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_name  **names;
+};
+
+#define DEFAULT_INITIAL_NAME_SET_SIZE  4
+
+struct s0_name_set *
+s0_name_set_new(void)
+{
+    struct s0_name_set  *set = malloc(sizeof(struct s0_name_set));
+    if (unlikely(set == NULL)) {
+        return NULL;
+    }
+    set->size = 0;
+    set->allocated_size = DEFAULT_INITIAL_NAME_SET_SIZE;
+    set->names =
+        malloc(DEFAULT_INITIAL_NAME_SET_SIZE * sizeof(struct s0_name *));
+    if (unlikely(set->names == NULL)) {
+        free(set);
+        return NULL;
+    }
+    return set;
+}
+
+void
+s0_name_set_free(struct s0_name_set *set)
+{
+    size_t  i;
+    for (i = 0; i < set->size; i++) {
+        s0_name_free(set->names[i]);
+    }
+    free(set->names);
+    free(set);
+}
+
+int
+s0_name_set_add(struct s0_name_set *set, struct s0_name *name)
+{
+#if !defined(NDEBUG)
+    {
+        size_t  i;
+        for (i = 0; i < set->size; i++) {
+            assert(!s0_name_eq(name, set->names[i]));
+        }
+    }
+#endif
+
+    if (unlikely(set->size == set->allocated_size)) {
+        size_t  new_size = set->allocated_size * 2;
+        struct s0_name  **new_names =
+            realloc(set->names, new_size * sizeof(struct s0_name *));
+        if (unlikely(new_names == NULL)) {
+            s0_name_free(name);
+            return -1;
+        }
+        set->names = new_names;
+        set->allocated_size = new_size;
+    }
+
+    set->names[set->size++] = name;
+    return 0;
+}
+
+size_t
+s0_name_set_size(const struct s0_name_set *set)
+{
+    return set->size;
+}
+
+struct s0_name *
+s0_name_set_at(const struct s0_name_set *set, size_t index)
+{
+    assert(index < set->size);
+    return set->names[index];
+}
+
+
+/*-----------------------------------------------------------------------------
  * Environments
  */
 
