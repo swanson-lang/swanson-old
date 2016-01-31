@@ -110,6 +110,57 @@ test_s0_name_sets(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Named blocks
+ */
+
+#define TEST_COUNT_S0_NAMED_BLOCKS  16
+
+static void
+test_s0_named_blocks(void)
+{
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block1;
+    struct s0_block  *block2;
+
+    diag("S₀ named blocks");
+
+#define check_size(expected) \
+    ok(s0_named_blocks_size(blocks) == expected, \
+       "s0_named_blocks_size(blocks) == " #expected);
+
+    ok_alloc(blocks, s0_named_blocks_new());
+    check_size(0);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok_alloc(block1, s0_block_new());
+    ok0(s0_named_blocks_add(blocks, name, block1),
+        "s0_named_blocks_add(\"a\", block1)");
+    check_size(1);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok_alloc(block2, s0_block_new());
+    ok0(s0_named_blocks_add(blocks, name, block2),
+        "s0_named_blocks_add(\"b\", block2)");
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_named_blocks_get(blocks, name) == block1,
+       "s0_named_blocks_get(blocks, \"a\") == block1");
+    s0_name_free(name);
+    check_size(2);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_named_blocks_get(blocks, name) == block2,
+       "s0_named_blocks_get(blocks, \"b\") == block2");
+    s0_name_free(name);
+    check_size(2);
+
+    s0_named_blocks_free(blocks);
+#undef check_size
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Atoms
  */
 
@@ -339,6 +390,7 @@ test_s0_environments(void)
 #define TEST_COUNT_TOTAL \
     TEST_COUNT_S0_NAMES + \
     TEST_COUNT_S0_NAME_SETS + \
+    TEST_COUNT_S0_NAMED_BLOCKS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_LITERALS + \
     TEST_COUNT_S0_OBJECTS + \
@@ -350,6 +402,7 @@ int main(void)
     plan_tests(TEST_COUNT_TOTAL);
     test_s0_names();
     test_s0_name_sets();
+    test_s0_named_blocks();
     test_s0_atoms();
     test_s0_literals();
     test_s0_objects();

@@ -271,6 +271,123 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Blocks
+ */
+
+struct s0_block {
+};
+
+struct s0_block *
+s0_block_new(void)
+{
+    struct s0_block  *block = malloc(sizeof(struct s0_block));
+    if (unlikely(block == NULL)) {
+        return NULL;
+    }
+    return block;
+}
+
+void
+s0_block_free(struct s0_block *block)
+{
+    free(block);
+}
+
+
+/*-----------------------------------------------------------------------------
+ * Named blocks
+ */
+
+struct s0_named_blocks_entry {
+    struct s0_named_blocks_entry  *next;
+    struct s0_name  *name;
+    struct s0_block  *block;
+};
+
+struct s0_named_blocks {
+    struct s0_named_blocks_entry  *head;
+};
+
+struct s0_named_blocks *
+s0_named_blocks_new(void)
+{
+    struct s0_named_blocks  *blocks = malloc(sizeof(struct s0_named_blocks));
+    if (unlikely(blocks == NULL)) {
+        return NULL;
+    }
+    blocks->head = NULL;
+    return blocks;
+}
+
+void
+s0_named_blocks_free(struct s0_named_blocks *blocks)
+{
+    struct s0_named_blocks_entry  *curr;
+    struct s0_named_blocks_entry  *next;
+    for (curr = blocks->head; curr != NULL; curr = next) {
+        next = curr->next;
+        s0_name_free(curr->name);
+        s0_block_free(curr->block);
+        free(curr);
+    }
+    free(blocks);
+}
+
+size_t
+s0_named_blocks_size(const struct s0_named_blocks *blocks)
+{
+    size_t  size = 0;
+    struct s0_named_blocks_entry  *curr;
+    for (curr = blocks->head; curr != NULL; curr = curr->next) {
+        size++;
+    }
+    return size;
+}
+
+int
+s0_named_blocks_add(struct s0_named_blocks *blocks,
+                    struct s0_name *name, struct s0_block *block)
+{
+    struct s0_named_blocks_entry  *entry;
+
+#if !defined(NDEBUG)
+    {
+        struct s0_named_blocks_entry  *curr;
+        for (curr = blocks->head; curr != NULL; curr = curr->next) {
+            assert(!s0_name_eq(curr->name, name));
+        }
+    }
+#endif
+
+    entry = malloc(sizeof(struct s0_named_blocks_entry));
+    if (unlikely(entry == NULL)) {
+        s0_name_free(name);
+        s0_block_free(block);
+        return -1;
+    }
+
+    entry->name = name;
+    entry->block = block;
+    entry->next = blocks->head;
+    blocks->head = entry;
+    return 0;
+}
+
+struct s0_block *
+s0_named_blocks_get(const struct s0_named_blocks *blocks,
+                    const struct s0_name *name)
+{
+    struct s0_named_blocks_entry  *curr;
+    for (curr = blocks->head; curr != NULL; curr = curr->next) {
+        if (s0_name_eq(curr->name, name)) {
+            return curr->block;
+        }
+    }
+    return NULL;
+}
+
+
+/*-----------------------------------------------------------------------------
  * Entities
  */
 

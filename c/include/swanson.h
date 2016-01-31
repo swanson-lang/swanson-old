@@ -99,6 +99,46 @@ s0_environment_delete(struct s0_environment *, const struct s0_name *name);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Blocks
+ */
+
+struct s0_block;
+
+struct s0_block *
+s0_block_new(void);
+
+void
+s0_block_free(struct s0_block *);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Named blocks
+ */
+
+struct s0_named_blocks;
+
+struct s0_named_blocks *
+s0_named_blocks_new(void);
+
+void
+s0_named_blocks_free(struct s0_named_blocks *);
+
+size_t
+s0_named_blocks_size(const struct s0_named_blocks *);
+
+/* Takes ownership of name and block.  name MUST not already be present in
+ * collection.  Returns 0 if block was added; -1 if we couldn't allocate space
+ * for the new entry. */
+int
+s0_named_blocks_add(struct s0_named_blocks *,
+                    struct s0_name *name, struct s0_block *block);
+
+/* Returns NULL if name is not in named_blocks. */
+struct s0_block *
+s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: Entities
  */
 
