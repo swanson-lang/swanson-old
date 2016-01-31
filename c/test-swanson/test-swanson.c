@@ -197,6 +197,34 @@ test_s0_atoms(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Closures
+ */
+
+#define TEST_COUNT_S0_CLOSURES  6
+
+static void
+test_s0_closures(void)
+{
+    struct s0_entity  *closure;
+    struct s0_environment  *env;
+    struct s0_named_blocks  *blocks;
+
+    diag("S₀ closures");
+
+    ok_alloc(env, s0_environment_new());
+    ok_alloc(blocks, s0_named_blocks_new());
+    ok_alloc(closure, s0_closure_new(env, blocks));
+
+    ok(s0_entity_type(closure) == S0_ENTITY_TYPE_CLOSURE,
+       "type(closure) == closure");
+
+    ok(s0_closure_environment(closure) == env, "env(closure) == env");
+    ok(s0_closure_named_blocks(closure) == blocks, "blocks(closure) == blocks");
+
+    s0_entity_free(closure);
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Literals
  */
 
@@ -392,6 +420,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_NAME_SETS + \
     TEST_COUNT_S0_NAMED_BLOCKS + \
     TEST_COUNT_S0_ATOMS + \
+    TEST_COUNT_S0_CLOSURES + \
     TEST_COUNT_S0_LITERALS + \
     TEST_COUNT_S0_OBJECTS + \
     TEST_COUNT_S0_ENVIRONMENTS + \
@@ -404,6 +433,7 @@ int main(void)
     test_s0_name_sets();
     test_s0_named_blocks();
     test_s0_atoms();
+    test_s0_closures();
     test_s0_literals();
     test_s0_objects();
     test_s0_environments();

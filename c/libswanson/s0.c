@@ -395,6 +395,10 @@ struct s0_entity {
     enum s0_entity_type  type;
     union {
         struct {
+            struct s0_environment  *env;
+            struct s0_named_blocks  *blocks;
+        } closure;
+        struct {
             size_t  size;
             const void  *content;
         } literal;
@@ -430,6 +434,43 @@ s0_atom_eq(const struct s0_entity *a1, const struct s0_entity *a2)
     assert(a1->type == S0_ENTITY_TYPE_ATOM);
     assert(a2->type == S0_ENTITY_TYPE_ATOM);
     return (a1 == a2);
+}
+
+
+struct s0_entity *
+s0_closure_new(struct s0_environment *env, struct s0_named_blocks *blocks)
+{
+    struct s0_entity  *closure = malloc(sizeof(struct s0_entity));
+    if (unlikely(closure == NULL)) {
+        s0_environment_free(env);
+        s0_named_blocks_free(blocks);
+        return NULL;
+    }
+    closure->type = S0_ENTITY_TYPE_CLOSURE;
+    closure->_.closure.env = env;
+    closure->_.closure.blocks = blocks;
+    return closure;
+}
+
+static void
+s0_closure_free(struct s0_entity *closure)
+{
+    s0_environment_free(closure->_.closure.env);
+    s0_named_blocks_free(closure->_.closure.blocks);
+}
+
+struct s0_environment *
+s0_closure_environment(const struct s0_entity *closure)
+{
+    assert(closure->type == S0_ENTITY_TYPE_CLOSURE);
+    return closure->_.closure.env;
+}
+
+struct s0_named_blocks *
+s0_closure_named_blocks(const struct s0_entity *closure)
+{
+    assert(closure->type == S0_ENTITY_TYPE_CLOSURE);
+    return closure->_.closure.blocks;
 }
 
 
@@ -571,6 +612,9 @@ s0_entity_free(struct s0_entity *entity)
     switch (entity->type) {
         case S0_ENTITY_TYPE_ATOM:
             s0_atom_free(entity);
+            break;
+        case S0_ENTITY_TYPE_CLOSURE:
+            s0_closure_free(entity);
             break;
         case S0_ENTITY_TYPE_LITERAL:
             s0_literal_free(entity);

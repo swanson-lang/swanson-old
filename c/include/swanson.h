@@ -144,6 +144,7 @@ s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
 
 enum s0_entity_type {
     S0_ENTITY_TYPE_ATOM,
+    S0_ENTITY_TYPE_CLOSURE,
     S0_ENTITY_TYPE_LITERAL,
     S0_ENTITY_TYPE_OBJECT
 };
@@ -161,6 +162,19 @@ s0_atom_new(void);
 /* Both entities MUST be atoms */
 bool
 s0_atom_eq(const struct s0_entity *, const struct s0_entity *);
+
+
+/* Takes control of env and blocks */
+struct s0_entity *
+s0_closure_new(struct s0_environment *env, struct s0_named_blocks *blocks);
+
+/* Entity MUST be a closure.  Closure retains ownership of environment. */
+struct s0_environment *
+s0_closure_environment(const struct s0_entity *);
+
+/* Entity MUST be a closure.  Closure retains ownership of blocks. */
+struct s0_named_blocks *
+s0_closure_named_blocks(const struct s0_entity *);
 
 
 /* Makes a copy of content */
