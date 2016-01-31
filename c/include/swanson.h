@@ -146,6 +146,7 @@ enum s0_entity_type {
     S0_ENTITY_TYPE_ATOM,
     S0_ENTITY_TYPE_CLOSURE,
     S0_ENTITY_TYPE_LITERAL,
+    S0_ENTITY_TYPE_METHOD,
     S0_ENTITY_TYPE_OBJECT
 };
 
@@ -192,6 +193,19 @@ s0_literal_content(const struct s0_entity *);
 /* Entity MUST be a literal */
 size_t
 s0_literal_size(const struct s0_entity *);
+
+
+/* Takes control of self_name and block */
+struct s0_entity *
+s0_method_new(struct s0_name *self_name, struct s0_block *block);
+
+/* Entity MUST be a method.  method retains ownership of self_name. */
+struct s0_name *
+s0_method_self_name(const struct s0_entity *);
+
+/* Entity MUST be a method.  method retains ownership of block. */
+struct s0_block *
+s0_method_block(const struct s0_entity *);
 
 
 struct s0_object_entry {

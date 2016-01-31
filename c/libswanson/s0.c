@@ -403,6 +403,10 @@ struct s0_entity {
             const void  *content;
         } literal;
         struct {
+            struct s0_name  *self_name;
+            struct s0_block  *block;
+        } method;
+        struct {
             size_t  size;
             size_t  allocated_size;
             struct s0_object_entry  *entries;
@@ -519,6 +523,43 @@ s0_literal_size(const struct s0_entity *literal)
 }
 
 
+struct s0_entity *
+s0_method_new(struct s0_name *self_name, struct s0_block *block)
+{
+    struct s0_entity  *method = malloc(sizeof(struct s0_entity));
+    if (unlikely(method == NULL)) {
+        s0_name_free(self_name);
+        s0_block_free(block);
+        return NULL;
+    }
+    method->type = S0_ENTITY_TYPE_METHOD;
+    method->_.method.self_name = self_name;
+    method->_.method.block = block;
+    return method;
+}
+
+static void
+s0_method_free(struct s0_entity *method)
+{
+    s0_name_free(method->_.method.self_name);
+    s0_block_free(method->_.method.block);
+}
+
+struct s0_name *
+s0_method_self_name(const struct s0_entity *method)
+{
+    assert(method->type == S0_ENTITY_TYPE_METHOD);
+    return method->_.method.self_name;
+}
+
+struct s0_block *
+s0_method_block(const struct s0_entity *method)
+{
+    assert(method->type == S0_ENTITY_TYPE_METHOD);
+    return method->_.method.block;
+}
+
+
 #define DEFAULT_INITIAL_OBJECT_SIZE  4
 
 struct s0_entity *
@@ -618,6 +659,9 @@ s0_entity_free(struct s0_entity *entity)
             break;
         case S0_ENTITY_TYPE_LITERAL:
             s0_literal_free(entity);
+            break;
+        case S0_ENTITY_TYPE_METHOD:
+            s0_method_free(entity);
             break;
         case S0_ENTITY_TYPE_OBJECT:
             s0_object_free(entity);

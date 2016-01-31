@@ -268,6 +268,38 @@ test_s0_literals(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Methods
+ */
+
+#define TEST_COUNT_S0_METHODS  7
+
+static void
+test_s0_methods(void)
+{
+    struct s0_entity  *method;
+    struct s0_name  *self_name;
+    struct s0_block  *block;
+
+    diag("S₀ methods");
+
+    ok_alloc(self_name, s0_name_new_str("self"));
+    ok_alloc(block, s0_block_new());
+    ok_alloc(method, s0_method_new(self_name, block));
+
+    ok(s0_entity_type(method) == S0_ENTITY_TYPE_METHOD,
+       "type(method) == method");
+
+    ok_alloc(self_name, s0_name_new_str("self"));
+    ok(s0_name_eq(s0_method_self_name(method), self_name),
+       "self_name(method) == self_name");
+    s0_name_free(self_name);
+
+    ok(s0_method_block(method) == block, "block(method) == block");
+
+    s0_entity_free(method);
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Objects
  */
 
@@ -422,6 +454,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_CLOSURES + \
     TEST_COUNT_S0_LITERALS + \
+    TEST_COUNT_S0_METHODS + \
     TEST_COUNT_S0_OBJECTS + \
     TEST_COUNT_S0_ENVIRONMENTS + \
     0
@@ -435,6 +468,7 @@ int main(void)
     test_s0_atoms();
     test_s0_closures();
     test_s0_literals();
+    test_s0_methods();
     test_s0_objects();
     test_s0_environments();
     return exit_status();
