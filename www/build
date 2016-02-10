@@ -74,7 +74,7 @@ fi
 
 case "$COMMAND" in
     build)    build;;
-    clean)    clean;;
+    clean)    clean "$@";;
     create)   create;;
     deploy)   deploy;;
     nikola)   nikola "$@";;
