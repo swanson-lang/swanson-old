@@ -15,7 +15,7 @@ REDIRECTIONS = []
 BLOG_AUTHOR = 'Swanson Project'
 BLOG_DESCRIPTION = 'Swanson programming language'
 BLOG_TITLE = 'Swanson'
-SITE_URL = 'http://www.swanson-lang.org/'
+SITE_URL = 'https://www.swanson-lang.org/'
 
 DEFAULT_LANG = 'en'
 TRANSLATIONS = {

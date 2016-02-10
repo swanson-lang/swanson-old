@@ -4,6 +4,7 @@ SCRIPT=`python -c "import os; print(os.path.realpath('$0'))"`
 WWW_ROOT=`dirname "$SCRIPT"`
 SWANSON_ROOT=`dirname "$WWW_ROOT"`
 OUTPUT_PATH="$WWW_ROOT/.output"
+REMOTE_PATH="forum.swanson-lang.org:/srv/www/current"
 VIRTUALENV_PATH="$WWW_ROOT/.venv"
 
 clean () {
@@ -55,7 +56,7 @@ build () {
 }
 
 deploy () {
-    gsutil rsync -R "$OUTPUT_PATH" gs://www.swanson-lang.org
+    rsync -avz --delete "$OUTPUT_PATH"/ "$REMOTE_PATH"
 }
 
 usage () {
