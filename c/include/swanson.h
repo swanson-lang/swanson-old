@@ -259,6 +259,50 @@ s0_create_method_body(const struct s0_statement *);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Invocations
+ */
+
+struct s0_invocation;
+
+enum s0_invocation_type {
+    S0_INVOCATION_TYPE_INVOKE_CLOSURE,
+    S0_INVOCATION_TYPE_INVOKE_METHOD
+};
+
+void
+s0_invocation_free(struct s0_invocation *);
+
+enum s0_invocation_type
+s0_invocation_type(const struct s0_invocation *);
+
+
+/* Takes control of src and branch */
+struct s0_invocation *
+s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch);
+
+/* Invocation MUST be InvokeClosure */
+struct s0_name *
+s0_invoke_closure_src(const struct s0_invocation *);
+
+/* Invocation MUST be InvokeClosure */
+struct s0_name *
+s0_invoke_closure_branch(const struct s0_invocation *);
+
+
+/* Takes control of src and method */
+struct s0_invocation *
+s0_invoke_method_new(struct s0_name *src, struct s0_name *method);
+
+/* Invocation MUST be InvokeMethod */
+struct s0_name *
+s0_invoke_method_src(const struct s0_invocation *);
+
+/* Invocation MUST be InvokeMethod */
+struct s0_name *
+s0_invoke_method_method(const struct s0_invocation *);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: Entities
  */
 

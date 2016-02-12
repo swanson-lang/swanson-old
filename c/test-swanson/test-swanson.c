@@ -330,6 +330,63 @@ test_s0_statements(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Invocations
+ */
+
+#define TEST_COUNT_S0_INVOCATIONS  16
+
+static void
+test_s0_invocations(void)
+{
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_name  *method;
+    struct s0_invocation  *invocation;
+
+    diag("S₀ invocations");
+
+    /* invoke_closure */
+
+    ok_alloc(src, s0_name_new_str("a"));
+    ok_alloc(branch, s0_name_new_str("body"));
+    ok_alloc(invocation, s0_invoke_closure_new(src, branch));
+    ok(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_CLOSURE,
+       "type(invocation) == invoke_closure");
+
+    ok_alloc(src, s0_name_new_str("a"));
+    ok(s0_name_eq(s0_invoke_closure_src(invocation), src),
+       "src(invocation) == \"a\"");
+    s0_name_free(src);
+
+    ok_alloc(branch, s0_name_new_str("body"));
+    ok(s0_name_eq(s0_invoke_closure_branch(invocation), branch),
+       "branch(invocation) == \"body\"");
+    s0_name_free(branch);
+
+    s0_invocation_free(invocation);
+
+    /* invoke_method */
+
+    ok_alloc(src, s0_name_new_str("a"));
+    ok_alloc(method, s0_name_new_str("run"));
+    ok_alloc(invocation, s0_invoke_method_new(src, method));
+    ok(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_METHOD,
+       "type(invocation) == invoke_method");
+
+    ok_alloc(src, s0_name_new_str("a"));
+    ok(s0_name_eq(s0_invoke_method_src(invocation), src),
+       "src(invocation) == \"a\"");
+    s0_name_free(src);
+
+    ok_alloc(method, s0_name_new_str("run"));
+    ok(s0_name_eq(s0_invoke_method_method(invocation), method),
+       "method(invocation) == \"run\"");
+    s0_name_free(method);
+
+    s0_invocation_free(invocation);
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Atoms
  */
 
@@ -622,6 +679,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_NAME_MAPPINGS + \
     TEST_COUNT_S0_NAMED_BLOCKS + \
     TEST_COUNT_S0_STATEMENTS + \
+    TEST_COUNT_S0_INVOCATIONS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_CLOSURES + \
     TEST_COUNT_S0_LITERALS + \
@@ -638,6 +696,7 @@ int main(void)
     test_s0_name_mappings();
     test_s0_named_blocks();
     test_s0_statements();
+    test_s0_invocations();
     test_s0_atoms();
     test_s0_closures();
     test_s0_literals();

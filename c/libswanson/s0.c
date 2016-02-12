@@ -716,6 +716,123 @@ s0_statement_type(const struct s0_statement *stmt)
 
 
 /*-----------------------------------------------------------------------------
+ * Invocations
+ */
+
+struct s0_invocation {
+    enum s0_invocation_type  type;
+    union {
+        struct {
+            struct s0_name  *src;
+            struct s0_name  *branch;
+        } invoke_closure;
+        struct {
+            struct s0_name  *src;
+            struct s0_name  *method;
+        } invoke_method;
+    } _;
+};
+
+
+struct s0_invocation *
+s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch)
+{
+    struct s0_invocation  *invocation = malloc(sizeof(struct s0_invocation));
+    if (unlikely(invocation == NULL)) {
+        s0_name_free(src);
+        s0_name_free(branch);
+        return NULL;
+    }
+    invocation->type = S0_INVOCATION_TYPE_INVOKE_CLOSURE;
+    invocation->_.invoke_closure.src = src;
+    invocation->_.invoke_closure.branch = branch;
+    return invocation;
+}
+
+static void
+s0_invoke_closure_free(struct s0_invocation *invocation)
+{
+    s0_name_free(invocation->_.invoke_closure.src);
+    s0_name_free(invocation->_.invoke_closure.branch);
+}
+
+struct s0_name *
+s0_invoke_closure_src(const struct s0_invocation *invocation)
+{
+    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    return invocation->_.invoke_closure.src;
+}
+
+struct s0_name *
+s0_invoke_closure_branch(const struct s0_invocation *invocation)
+{
+    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    return invocation->_.invoke_closure.branch;
+}
+
+
+struct s0_invocation *
+s0_invoke_method_new(struct s0_name *src, struct s0_name *method)
+{
+    struct s0_invocation  *invocation = malloc(sizeof(struct s0_invocation));
+    if (unlikely(invocation == NULL)) {
+        s0_name_free(src);
+        s0_name_free(method);
+        return NULL;
+    }
+    invocation->type = S0_INVOCATION_TYPE_INVOKE_METHOD;
+    invocation->_.invoke_method.src = src;
+    invocation->_.invoke_method.method = method;
+    return invocation;
+}
+
+static void
+s0_invoke_method_free(struct s0_invocation *invocation)
+{
+    s0_name_free(invocation->_.invoke_method.src);
+    s0_name_free(invocation->_.invoke_method.method);
+}
+
+struct s0_name *
+s0_invoke_method_src(const struct s0_invocation *invocation)
+{
+    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    return invocation->_.invoke_method.src;
+}
+
+struct s0_name *
+s0_invoke_method_method(const struct s0_invocation *invocation)
+{
+    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    return invocation->_.invoke_method.method;
+}
+
+
+void
+s0_invocation_free(struct s0_invocation *invocation)
+{
+    switch (invocation->type) {
+        case S0_INVOCATION_TYPE_INVOKE_CLOSURE:
+            s0_invoke_closure_free(invocation);
+            break;
+        case S0_INVOCATION_TYPE_INVOKE_METHOD:
+            s0_invoke_method_free(invocation);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    free(invocation);
+}
+
+enum s0_invocation_type
+s0_invocation_type(const struct s0_invocation *invocation)
+{
+    return invocation->type;
+}
+
+
+/*-----------------------------------------------------------------------------
  * Entities
  */
 
