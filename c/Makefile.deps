@@ -3,6 +3,38 @@ $(BUILD_ROOT)/objs/libswanson/s0.o: \
  $(SOURCE_ROOT)/include/swanson.h \
  $(SOURCE_ROOT)/ccan/likely/likely.h \
  $(SOURCE_ROOT)/include/config.h
+$(BUILD_ROOT)/objs/yaml/src/api.o: \
+ $(SOURCE_ROOT)/yaml/src/api.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/dumper.o: \
+ $(SOURCE_ROOT)/yaml/src/dumper.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/emitter.o: \
+ $(SOURCE_ROOT)/yaml/src/emitter.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/loader.o: \
+ $(SOURCE_ROOT)/yaml/src/loader.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/parser.o: \
+ $(SOURCE_ROOT)/yaml/src/parser.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/reader.o: \
+ $(SOURCE_ROOT)/yaml/src/reader.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/scanner.o: \
+ $(SOURCE_ROOT)/yaml/src/scanner.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
+$(BUILD_ROOT)/objs/yaml/src/writer.o: \
+ $(SOURCE_ROOT)/yaml/src/writer.c \
+ $(SOURCE_ROOT)/yaml/src/yaml_private.h \
+ $(SOURCE_ROOT)/yaml/include/yaml.h
 $(BUILD_ROOT)/objs/swanson/swanson.o: \
  $(SOURCE_ROOT)/swanson/swanson.c
 $(BUILD_ROOT)/objs/ccan/tap/tap.o: \
