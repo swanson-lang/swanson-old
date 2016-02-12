@@ -238,6 +238,98 @@ test_s0_named_blocks(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Statements
+ */
+
+#define TEST_COUNT_S0_STATEMENTS  31
+
+static void
+test_s0_statements(void)
+{
+    struct s0_name  *dest;
+    struct s0_name_set  *closed_over;
+    struct s0_named_blocks  *branches;
+    struct s0_name  *self_input;
+    struct s0_block  *body;
+    struct s0_statement  *stmt;
+
+    diag("S₀ statements");
+
+    /* create_atom */
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok_alloc(stmt, s0_create_atom_new(dest));
+    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_ATOM,
+       "type(stmt) == create_atom");
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok(s0_name_eq(s0_create_atom_dest(stmt), dest), "dest(stmt) == \"a\"");
+    s0_name_free(dest);
+
+    s0_statement_free(stmt);
+
+    /* create_closure */
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok_alloc(closed_over, s0_name_set_new());
+    ok_alloc(branches, s0_named_blocks_new());
+    ok_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
+    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_CLOSURE,
+       "type(stmt) == create_closure");
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok(s0_name_eq(s0_create_closure_dest(stmt), dest), "dest(stmt) == \"a\"");
+    s0_name_free(dest);
+
+    ok(s0_create_closure_closed_over(stmt) == closed_over,
+       "closed_over(stmt) == closed_over");
+    ok(s0_create_closure_branches(stmt) == branches,
+       "branches(stmt) == branches");
+
+    s0_statement_free(stmt);
+
+    /* create_literal */
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
+    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_LITERAL,
+       "type(stmt) == create_literal");
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok(s0_name_eq(s0_create_literal_dest(stmt), dest), "dest(stmt) == \"a\"");
+    s0_name_free(dest);
+
+    ok(s0_create_literal_size(stmt) == 5,
+       "[create_literal(5, \"hello\")] == 5");
+    ok(memcmp(s0_create_literal_content(stmt), "hello", 5) == 0,
+       "create_literal(5, \"hello\") == \"hello\"");
+
+    s0_statement_free(stmt);
+
+    /* create_method */
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok_alloc(self_input, s0_name_new_str("self"));
+    ok_alloc(body, s0_block_new());
+    ok_alloc(stmt, s0_create_method_new(dest, self_input, body));
+    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_METHOD,
+       "type(stmt) == create_method");
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok(s0_name_eq(s0_create_method_dest(stmt), dest), "dest(stmt) == \"a\"");
+    s0_name_free(dest);
+
+    ok_alloc(self_input, s0_name_new_str("self"));
+    ok(s0_name_eq(s0_create_method_self_input(stmt), self_input),
+       "self_input(stmt) == \"self\"");
+    s0_name_free(self_input);
+
+    ok(s0_create_method_body(stmt) == body, "body(stmt) == body");
+
+    s0_statement_free(stmt);
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Atoms
  */
 
@@ -529,6 +621,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_NAME_SETS + \
     TEST_COUNT_S0_NAME_MAPPINGS + \
     TEST_COUNT_S0_NAMED_BLOCKS + \
+    TEST_COUNT_S0_STATEMENTS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_CLOSURES + \
     TEST_COUNT_S0_LITERALS + \
@@ -544,6 +637,7 @@ int main(void)
     test_s0_name_sets();
     test_s0_name_mappings();
     test_s0_named_blocks();
+    test_s0_statements();
     test_s0_atoms();
     test_s0_closures();
     test_s0_literals();

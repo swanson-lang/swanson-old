@@ -177,6 +177,88 @@ s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Statements
+ */
+
+struct s0_statement;
+
+enum s0_statement_type {
+    S0_STATEMENT_TYPE_CREATE_ATOM,
+    S0_STATEMENT_TYPE_CREATE_CLOSURE,
+    S0_STATEMENT_TYPE_CREATE_LITERAL,
+    S0_STATEMENT_TYPE_CREATE_METHOD
+};
+
+void
+s0_statement_free(struct s0_statement *);
+
+enum s0_statement_type
+s0_statement_type(const struct s0_statement *);
+
+
+/* Takes control of dest */
+struct s0_statement *
+s0_create_atom_new(struct s0_name *dest);
+
+/* Statement MUST be CreateAtom */
+struct s0_name *
+s0_create_atom_dest(const struct s0_statement *);
+
+
+/* Takes control of dest, closed_over, and branches */
+struct s0_statement *
+s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
+                      struct s0_named_blocks *branches);
+
+/* Statement MUST be CreateClosure */
+struct s0_name *
+s0_create_closure_dest(const struct s0_statement *);
+
+/* Statement MUST be CreateClosure */
+struct s0_name_set *
+s0_create_closure_closed_over(const struct s0_statement *);
+
+/* Statement MUST be CreateClosure */
+struct s0_named_blocks *
+s0_create_closure_branches(const struct s0_statement *);
+
+
+/* Takes control of dest; makes a copy of content */
+struct s0_statement *
+s0_create_literal_new(struct s0_name *dest, size_t size, const void *content);
+
+/* Statement MUST be CreateLiteral */
+struct s0_name *
+s0_create_literal_dest(const struct s0_statement *);
+
+/* Statement MUST be CreateLiteral */
+const void *
+s0_create_literal_content(const struct s0_statement *);
+
+/* Statement MUST be CreateLiteral */
+size_t
+s0_create_literal_size(const struct s0_statement *);
+
+
+/* Takes control of dest, self_input, and body */
+struct s0_statement *
+s0_create_method_new(struct s0_name *dest, struct s0_name *self_input,
+                     struct s0_block *body);
+
+/* Statement MUST be CreateMethod */
+struct s0_name *
+s0_create_method_dest(const struct s0_statement *);
+
+/* Statement MUST be CreateMethod */
+struct s0_name *
+s0_create_method_self_input(const struct s0_statement *);
+
+/* Statement MUST be CreateMethod */
+struct s0_block *
+s0_create_method_body(const struct s0_statement *);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: Entities
  */
 

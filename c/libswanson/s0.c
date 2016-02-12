@@ -484,6 +484,238 @@ s0_named_blocks_get(const struct s0_named_blocks *blocks,
 
 
 /*-----------------------------------------------------------------------------
+ * Statements
+ */
+
+struct s0_statement {
+    enum s0_statement_type  type;
+    union {
+        struct {
+            struct s0_name  *dest;
+        } create_atom;
+        struct {
+            struct s0_name  *dest;
+            struct s0_name_set  *closed_over;
+            struct s0_named_blocks  *branches;
+        } create_closure;
+        struct {
+            struct s0_name  *dest;
+            size_t  size;
+            const void  *content;
+        } create_literal;
+        struct {
+            struct s0_name  *dest;
+            struct s0_name  *self_input;
+            struct s0_block  *body;
+        } create_method;
+    } _;
+};
+
+
+struct s0_statement *
+s0_create_atom_new(struct s0_name *dest)
+{
+    struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
+    if (unlikely(stmt == NULL)) {
+        s0_name_free(dest);
+        return NULL;
+    }
+    stmt->type = S0_STATEMENT_TYPE_CREATE_ATOM;
+    stmt->_.create_atom.dest = dest;
+    return stmt;
+}
+
+static void
+s0_create_atom_free(struct s0_statement *stmt)
+{
+    s0_name_free(stmt->_.create_atom.dest);
+}
+
+struct s0_name *
+s0_create_atom_dest(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_ATOM);
+    return stmt->_.create_atom.dest;
+}
+
+
+struct s0_statement *
+s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
+                      struct s0_named_blocks *branches)
+{
+    struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
+    if (unlikely(stmt == NULL)) {
+        s0_name_free(dest);
+        s0_name_set_free(closed_over);
+        s0_named_blocks_free(branches);
+        return NULL;
+    }
+    stmt->type = S0_STATEMENT_TYPE_CREATE_CLOSURE;
+    stmt->_.create_closure.dest = dest;
+    stmt->_.create_closure.closed_over = closed_over;
+    stmt->_.create_closure.branches = branches;
+    return stmt;
+}
+
+static void
+s0_create_closure_free(struct s0_statement *stmt)
+{
+    s0_name_free(stmt->_.create_closure.dest);
+    s0_name_set_free(stmt->_.create_closure.closed_over);
+    s0_named_blocks_free(stmt->_.create_closure.branches);
+}
+
+struct s0_name *
+s0_create_closure_dest(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    return stmt->_.create_closure.dest;
+}
+
+struct s0_name_set *
+s0_create_closure_closed_over(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    return stmt->_.create_closure.closed_over;
+}
+
+struct s0_named_blocks *
+s0_create_closure_branches(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    return stmt->_.create_closure.branches;
+}
+
+
+struct s0_statement *
+s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
+{
+    struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
+    if (unlikely(stmt == NULL)) {
+        s0_name_free(dest);
+        return NULL;
+    }
+    stmt->type = S0_STATEMENT_TYPE_CREATE_LITERAL;
+    stmt->_.create_literal.dest = dest;
+    stmt->_.create_literal.size = size;
+    stmt->_.create_literal.content = malloc(size);
+    if (unlikely(stmt->_.create_literal.content == NULL)) {
+        s0_name_free(dest);
+        free(stmt);
+        return NULL;
+    }
+    memcpy((void *) stmt->_.create_literal.content, content, size);
+    return stmt;
+}
+
+static void
+s0_create_literal_free(struct s0_statement *stmt)
+{
+    s0_name_free(stmt->_.create_literal.dest);
+    free((void *) stmt->_.create_literal.content);
+}
+
+struct s0_name *
+s0_create_literal_dest(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    return stmt->_.create_literal.dest;
+}
+
+const void *
+s0_create_literal_content(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    return stmt->_.create_literal.content;
+}
+
+size_t
+s0_create_literal_size(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    return stmt->_.create_literal.size;
+}
+
+
+struct s0_statement *
+s0_create_method_new(struct s0_name *dest, struct s0_name *self_input,
+                     struct s0_block *body)
+{
+    struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
+    if (unlikely(stmt == NULL)) {
+        s0_name_free(dest);
+        s0_name_free(self_input);
+        s0_block_free(body);
+        return NULL;
+    }
+    stmt->type = S0_STATEMENT_TYPE_CREATE_METHOD;
+    stmt->_.create_method.dest = dest;
+    stmt->_.create_method.self_input = self_input;
+    stmt->_.create_method.body = body;
+    return stmt;
+}
+
+static void
+s0_create_method_free(struct s0_statement *stmt)
+{
+    s0_name_free(stmt->_.create_method.dest);
+    s0_name_free(stmt->_.create_method.self_input);
+    s0_block_free(stmt->_.create_method.body);
+}
+
+struct s0_name *
+s0_create_method_dest(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    return stmt->_.create_method.dest;
+}
+
+struct s0_name *
+s0_create_method_self_input(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    return stmt->_.create_method.self_input;
+}
+
+struct s0_block *
+s0_create_method_body(const struct s0_statement *stmt)
+{
+    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    return stmt->_.create_method.body;
+}
+
+
+void
+s0_statement_free(struct s0_statement *stmt)
+{
+    switch (stmt->type) {
+        case S0_STATEMENT_TYPE_CREATE_ATOM:
+            s0_create_atom_free(stmt);
+            break;
+        case S0_STATEMENT_TYPE_CREATE_CLOSURE:
+            s0_create_closure_free(stmt);
+            break;
+        case S0_STATEMENT_TYPE_CREATE_LITERAL:
+            s0_create_literal_free(stmt);
+            break;
+        case S0_STATEMENT_TYPE_CREATE_METHOD:
+            s0_create_method_free(stmt);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    free(stmt);
+}
+
+enum s0_statement_type
+s0_statement_type(const struct s0_statement *stmt)
+{
+    return stmt->type;
+}
+
+
+/*-----------------------------------------------------------------------------
  * Entities
  */
 
