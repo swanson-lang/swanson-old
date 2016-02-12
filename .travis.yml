@@ -1,0 +1,10 @@
+language: c
+compiler:
+  - clang
+  - gcc
+sudo: false
+addons:
+  apt:
+    packages:
+      - valgrind
+script: make -C c check
