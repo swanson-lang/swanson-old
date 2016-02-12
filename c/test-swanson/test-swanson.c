@@ -110,6 +110,83 @@ test_s0_name_sets(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Name mappings
+ */
+
+#define TEST_COUNT_S0_NAME_MAPPINGS  28
+
+static void
+test_s0_name_mappings(void)
+{
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_name_mapping_entry  entry;
+
+    diag("S₀ name mappings");
+
+#define check_size(expected) \
+    ok(s0_name_mapping_size(mapping) == expected, \
+       "s0_name_mapping_size(mapping) == " #expected);
+
+    ok_alloc(mapping, s0_name_mapping_new());
+    check_size(0);
+
+    ok_alloc(from, s0_name_new_str("a"));
+    ok_alloc(to, s0_name_new_str("b"));
+    ok0(s0_name_mapping_add(mapping, from, to),
+        "s0_name_mapping_add(\"a\", \"b\")");
+    check_size(1);
+
+    ok_alloc(from, s0_name_new_str("c"));
+    ok_alloc(to, s0_name_new_str("d"));
+    ok0(s0_name_mapping_add(mapping, from, to),
+        "s0_name_mapping_add(\"c\", \"d\")");
+    check_size(2);
+
+    ok_alloc(from, s0_name_new_str("a"));
+    ok_alloc(to, s0_name_new_str("b"));
+    ok(s0_name_eq(s0_name_mapping_get(mapping, from), to),
+       "s0_name_mapping_get(mapping, \"a\") == \"b\"");
+    s0_name_free(from);
+    s0_name_free(to);
+    check_size(2);
+
+    ok_alloc(from, s0_name_new_str("c"));
+    ok_alloc(to, s0_name_new_str("d"));
+    ok(s0_name_eq(s0_name_mapping_get(mapping, from), to),
+       "s0_name_mapping_get(mapping, \"c\") == \"d\"");
+    s0_name_free(from);
+    s0_name_free(to);
+    check_size(2);
+
+    entry = s0_name_mapping_at(mapping, 0);
+    ok_alloc(from, s0_name_new_str("a"));
+    ok_alloc(to, s0_name_new_str("b"));
+    ok(s0_name_eq(entry.from, from),
+       "s0_name_mapping_at(mapping, 0).from == \"a\"");
+    ok(s0_name_eq(entry.to, to),
+       "s0_name_mapping_at(mapping, 0).to == \"b\"");
+    s0_name_free(from);
+    s0_name_free(to);
+    check_size(2);
+
+    entry = s0_name_mapping_at(mapping, 1);
+    ok_alloc(from, s0_name_new_str("c"));
+    ok_alloc(to, s0_name_new_str("d"));
+    ok(s0_name_eq(entry.from, from),
+       "s0_name_mapping_at(mapping, 1).from == \"c\"");
+    ok(s0_name_eq(entry.to, to),
+       "s0_name_mapping_at(mapping, 1).to == \"d\"");
+    s0_name_free(from);
+    s0_name_free(to);
+    check_size(2);
+
+    s0_name_mapping_free(mapping);
+#undef check_size
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Named blocks
  */
 
@@ -450,6 +527,7 @@ test_s0_environments(void)
 #define TEST_COUNT_TOTAL \
     TEST_COUNT_S0_NAMES + \
     TEST_COUNT_S0_NAME_SETS + \
+    TEST_COUNT_S0_NAME_MAPPINGS + \
     TEST_COUNT_S0_NAMED_BLOCKS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_CLOSURES + \
@@ -464,6 +542,7 @@ int main(void)
     plan_tests(TEST_COUNT_TOTAL);
     test_s0_names();
     test_s0_name_sets();
+    test_s0_name_mappings();
     test_s0_named_blocks();
     test_s0_atoms();
     test_s0_closures();
