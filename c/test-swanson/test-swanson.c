@@ -23,6 +23,23 @@
         ok((call) == 0, desc); \
     } while (0)
 
+static struct s0_block *
+create_empty_block(void)
+{
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_name_mapping  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_invocation  *invocation;
+
+    inputs = s0_name_mapping_new();
+    statements = s0_statement_list_new();
+    src = s0_name_new_str("x");
+    branch = s0_name_new_str("body");
+    invocation = s0_invoke_closure_new(src, branch);
+    return s0_block_new(inputs, statements, invocation);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Names
  */
@@ -210,13 +227,13 @@ test_s0_named_blocks(void)
     check_size(0);
 
     ok_alloc(name, s0_name_new_str("a"));
-    ok_alloc(block1, s0_block_new());
+    ok_alloc(block1, create_empty_block());
     ok0(s0_named_blocks_add(blocks, name, block1),
         "s0_named_blocks_add(\"a\", block1)");
     check_size(1);
 
     ok_alloc(name, s0_name_new_str("b"));
-    ok_alloc(block2, s0_block_new());
+    ok_alloc(block2, create_empty_block());
     ok0(s0_named_blocks_add(blocks, name, block2),
         "s0_named_blocks_add(\"b\", block2)");
     check_size(2);
@@ -310,7 +327,7 @@ test_s0_statements(void)
 
     ok_alloc(dest, s0_name_new_str("a"));
     ok_alloc(self_input, s0_name_new_str("self"));
-    ok_alloc(body, s0_block_new());
+    ok_alloc(body, create_empty_block());
     ok_alloc(stmt, s0_create_method_new(dest, self_input, body));
     ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_METHOD,
        "type(stmt) == create_method");
@@ -431,6 +448,40 @@ test_s0_invocations(void)
     s0_name_free(method);
 
     s0_invocation_free(invocation);
+}
+
+/*-----------------------------------------------------------------------------
+ * S₀: Blocks
+ */
+
+#define TEST_COUNT_S0_BLOCKS  9
+
+static void
+test_s0_blocks(void)
+{
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_name_mapping  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_invocation  *invocation;
+    struct s0_block  *block;
+
+    diag("S₀ blocks");
+
+    ok_alloc(inputs, s0_name_mapping_new());
+    ok_alloc(statements, s0_statement_list_new());
+    ok_alloc(src, s0_name_new_str("x"));
+    ok_alloc(branch, s0_name_new_str("body"));
+    ok_alloc(invocation, s0_invoke_closure_new(src, branch));
+    ok_alloc(block, s0_block_new(inputs, statements, invocation));
+
+    ok(s0_block_inputs(block) == inputs, "inputs(block) == inputs");
+    ok(s0_block_statements(block) == statements,
+       "statements(block) == statements");
+    ok(s0_block_invocation(block) == invocation,
+       "invocation(block) == invocation");
+
+    s0_block_free(block);
 }
 
 /*-----------------------------------------------------------------------------
@@ -556,7 +607,7 @@ test_s0_methods(void)
     diag("S₀ methods");
 
     ok_alloc(self_name, s0_name_new_str("self"));
-    ok_alloc(block, s0_block_new());
+    ok_alloc(block, create_empty_block());
     ok_alloc(method, s0_method_new(self_name, block));
 
     ok(s0_entity_type(method) == S0_ENTITY_TYPE_METHOD,
@@ -728,6 +779,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_STATEMENTS + \
     TEST_COUNT_S0_STATEMENT_LISTS + \
     TEST_COUNT_S0_INVOCATIONS + \
+    TEST_COUNT_S0_BLOCKS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_CLOSURES + \
     TEST_COUNT_S0_LITERALS + \
@@ -746,6 +798,7 @@ int main(void)
     test_s0_statements();
     test_s0_statement_lists();
     test_s0_invocations();
+    test_s0_blocks();
     test_s0_atoms();
     test_s0_closures();
     test_s0_literals();

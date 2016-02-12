@@ -137,22 +137,10 @@ s0_environment_delete(struct s0_environment *, const struct s0_name *name);
 
 
 /*-----------------------------------------------------------------------------
- * S₀: Blocks
- */
-
-struct s0_block;
-
-struct s0_block *
-s0_block_new(void);
-
-void
-s0_block_free(struct s0_block *);
-
-
-/*-----------------------------------------------------------------------------
  * S₀: Named blocks
  */
 
+struct s0_block;
 struct s0_named_blocks;
 
 struct s0_named_blocks *
@@ -326,6 +314,29 @@ s0_invoke_method_src(const struct s0_invocation *);
 /* Invocation MUST be InvokeMethod */
 struct s0_name *
 s0_invoke_method_method(const struct s0_invocation *);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Blocks
+ */
+
+/* Takes control of inputs, statements, and invocation */
+struct s0_block *
+s0_block_new(struct s0_name_mapping *inputs,
+             struct s0_statement_list *statements,
+             struct s0_invocation *invocation);
+
+void
+s0_block_free(struct s0_block *);
+
+struct s0_name_mapping *
+s0_block_inputs(const struct s0_block *);
+
+struct s0_statement_list *
+s0_block_statements(const struct s0_block *);
+
+struct s0_invocation *
+s0_block_invocation(const struct s0_block *);
 
 
 /*-----------------------------------------------------------------------------

@@ -371,22 +371,54 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
  */
 
 struct s0_block {
+    struct s0_name_mapping  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_invocation  *invocation;
 };
 
 struct s0_block *
-s0_block_new(void)
+s0_block_new(struct s0_name_mapping *inputs,
+             struct s0_statement_list *statements,
+             struct s0_invocation *invocation)
 {
     struct s0_block  *block = malloc(sizeof(struct s0_block));
     if (unlikely(block == NULL)) {
+        s0_name_mapping_free(inputs);
+        s0_statement_list_free(statements);
+        s0_invocation_free(invocation);
         return NULL;
     }
+    block->inputs = inputs;
+    block->statements = statements;
+    block->invocation = invocation;
     return block;
 }
 
 void
 s0_block_free(struct s0_block *block)
 {
+    s0_name_mapping_free(block->inputs);
+    s0_statement_list_free(block->statements);
+    s0_invocation_free(block->invocation);
     free(block);
+}
+
+struct s0_name_mapping *
+s0_block_inputs(const struct s0_block *block)
+{
+    return block->inputs;
+}
+
+struct s0_statement_list *
+s0_block_statements(const struct s0_block *block)
+{
+    return block->statements;
+}
+
+struct s0_invocation *
+s0_block_invocation(const struct s0_block *block)
+{
+    return block->invocation;
 }
 
 
