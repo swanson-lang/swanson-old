@@ -259,6 +259,32 @@ s0_create_method_body(const struct s0_statement *);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Statement lists
+ */
+
+struct s0_statement_list;
+
+struct s0_statement_list *
+s0_statement_list_new(void);
+
+void
+s0_statement_list_free(struct s0_statement_list *);
+
+/* Takes ownership of stmt.  Returns 0 if name was added; -1 if we couldn't
+ * allocate space for the new entry. */
+int
+s0_statement_list_add(struct s0_statement_list *, struct s0_statement *stmt);
+
+size_t
+s0_statement_list_size(const struct s0_statement_list *);
+
+/* Returns statements in order that they were added to the set.  index MUST be <
+ * size of list.  List still owns the statement; you must not free it. */
+struct s0_statement *
+s0_statement_list_at(const struct s0_statement_list *, size_t index);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: Invocations
  */
 

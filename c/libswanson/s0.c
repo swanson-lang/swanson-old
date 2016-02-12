@@ -716,6 +716,81 @@ s0_statement_type(const struct s0_statement *stmt)
 
 
 /*-----------------------------------------------------------------------------
+ * Statement lists
+ */
+
+struct s0_statement_list {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_statement  **statements;
+};
+
+#define DEFAULT_INITIAL_STATEMENT_LIST_SIZE  4
+
+struct s0_statement_list *
+s0_statement_list_new(void)
+{
+    struct s0_statement_list  *list = malloc(sizeof(struct s0_statement_list));
+    if (unlikely(list == NULL)) {
+        return NULL;
+    }
+    list->size = 0;
+    list->allocated_size = DEFAULT_INITIAL_STATEMENT_LIST_SIZE;
+    list->statements =
+        malloc(DEFAULT_INITIAL_STATEMENT_LIST_SIZE *
+               sizeof(struct s0_statement *));
+    if (unlikely(list->statements == NULL)) {
+        free(list);
+        return NULL;
+    }
+    return list;
+}
+
+void
+s0_statement_list_free(struct s0_statement_list *list)
+{
+    size_t  i;
+    for (i = 0; i < list->size; i++) {
+        s0_statement_free(list->statements[i]);
+    }
+    free(list->statements);
+    free(list);
+}
+
+int
+s0_statement_list_add(struct s0_statement_list *list, struct s0_statement *stmt)
+{
+    if (unlikely(list->size == list->allocated_size)) {
+        size_t  new_size = list->allocated_size * 2;
+        struct s0_statement  **new_statements =
+            realloc(list->statements, new_size * sizeof(struct s0_statement *));
+        if (unlikely(new_statements == NULL)) {
+            s0_statement_free(stmt);
+            return -1;
+        }
+        list->statements = new_statements;
+        list->allocated_size = new_size;
+    }
+
+    list->statements[list->size++] = stmt;
+    return 0;
+}
+
+size_t
+s0_statement_list_size(const struct s0_statement_list *list)
+{
+    return list->size;
+}
+
+struct s0_statement *
+s0_statement_list_at(const struct s0_statement_list *list, size_t index)
+{
+    assert(index < list->size);
+    return list->statements[index];
+}
+
+
+/*-----------------------------------------------------------------------------
  * Invocations
  */
 

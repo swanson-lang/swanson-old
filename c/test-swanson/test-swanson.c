@@ -330,6 +330,53 @@ test_s0_statements(void)
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Statement lists
+ */
+
+#define TEST_COUNT_S0_STATEMENT_LISTS  14
+
+static void
+test_s0_statement_lists(void)
+{
+    struct s0_statement_list  *list;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt1;
+    struct s0_statement  *stmt2;
+
+    diag("S₀ statement list");
+
+#define check_size(expected) \
+    ok(s0_statement_list_size(list) == expected, \
+       "s0_statement_list_size(list) == " #expected);
+
+    ok_alloc(list, s0_statement_list_new());
+    check_size(0);
+
+    ok_alloc(dest, s0_name_new_str("a"));
+    ok_alloc(stmt1, s0_create_atom_new(dest));
+    ok0(s0_statement_list_add(list, stmt1),
+        "s0_statement_list_add(list, create_atom(\"a\"))");
+    check_size(1);
+
+    ok_alloc(dest, s0_name_new_str("b"));
+    ok_alloc(stmt2, s0_create_atom_new(dest));
+    ok0(s0_statement_list_add(list, stmt2),
+        "s0_statement_list_add(list, create_atom(\"b\"))");
+    check_size(2);
+
+    ok(s0_statement_list_at(list, 0) == stmt1,
+       "s0_statement_list_at(list, 0) == create_atom(\"a\")");
+    check_size(2);
+
+    ok(s0_statement_list_at(list, 1) == stmt2,
+       "s0_statement_list_at(list, 2) == create_atom(\"b\")");
+    check_size(2);
+
+    s0_statement_list_free(list);
+#undef check_size
+}
+
+/*-----------------------------------------------------------------------------
  * S₀: Invocations
  */
 
@@ -679,6 +726,7 @@ test_s0_environments(void)
     TEST_COUNT_S0_NAME_MAPPINGS + \
     TEST_COUNT_S0_NAMED_BLOCKS + \
     TEST_COUNT_S0_STATEMENTS + \
+    TEST_COUNT_S0_STATEMENT_LISTS + \
     TEST_COUNT_S0_INVOCATIONS + \
     TEST_COUNT_S0_ATOMS + \
     TEST_COUNT_S0_CLOSURES + \
@@ -696,6 +744,7 @@ int main(void)
     test_s0_name_mappings();
     test_s0_named_blocks();
     test_s0_statements();
+    test_s0_statement_lists();
     test_s0_invocations();
     test_s0_atoms();
     test_s0_closures();
