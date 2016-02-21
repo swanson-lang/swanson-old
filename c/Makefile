@@ -74,7 +74,8 @@ LIBSWANSON_VERSION = $(LIBSWANSON_SOVERSION).$(LIBSWANSON_REVISION).$(LIBSWANSON
 LIBSWANSON_H = \
     $(SOURCE_ROOT)/include/swanson.h
 LIBSWANSON_C = \
-    $(SOURCE_ROOT)/libswanson/s0.c
+    $(SOURCE_ROOT)/libswanson/s0.c \
+    $(SOURCE_ROOT)/libswanson/yaml.c
 LIBSWANSON_O = $(LIBSWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 LIBSWANSON_D = $(LIBSWANSON_O:.o=.d)
 
@@ -97,9 +98,16 @@ SWANSON_D = $(SWANSON_O:.o=.d)
 
 TEST_SWANSON_C = \
     $(SOURCE_ROOT)/ccan/tap/tap.c \
-    $(SOURCE_ROOT)/test-swanson/test-swanson.c
+    $(SOURCE_ROOT)/tests/test-swanson.c
 TEST_SWANSON_O = $(TEST_SWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 TEST_SWANSON_D = $(TEST_SWANSON_O:.o=.d)
+
+TEST_S0_PARSER_C = \
+    $(SOURCE_ROOT)/ccan/tap/tap.c \
+    $(SOURCE_ROOT)/tests/directory-walker.c \
+    $(SOURCE_ROOT)/tests/test-s0-parser.c
+TEST_S0_PARSER_O = $(TEST_S0_PARSER_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
+TEST_S0_PARSER_D = $(TEST_S0_PARSER_O:.o=.d)
 
 #------------------------------------------------------------------------------
 # Compiling
@@ -164,7 +172,8 @@ $(LIBYAML_O): $(BUILD_ROOT)/objs/%.o: $(SOURCE_ROOT)/%.c $(BUILD)
 #------------------------------------------------------------------------------
 # Dependency post-processing
 
-depends: $(LIBSWANSON_O) $(LIBYAML_O) $(SWANSON_O) $(TEST_SWANSON_O)
+depends: $(LIBSWANSON_O) $(LIBYAML_O) $(SWANSON_O) \
+    $(TEST_SWANSON_O) $(TEST_S0_PARSER_O)
 	@echo "DEPS  Makefile.deps"
 	@$(SED) \
 	    -e 's+'"$(BUILD_ROOT)"'+$$(BUILD_ROOT)+g' \
@@ -225,17 +234,38 @@ $(TEST_SWANSON_EXE): $(TEST_SWANSON_O) $(LIBSWANSON_SO_X) $(BUILD)
 	    -Wl,-rpath,$(BUILD_ROOT) \
 	    -lswanson
 
-check: $(TEST_SWANSON_EXE)
+TEST_S0_PARSER_EXE = $(BUILD_ROOT)/test-s0-parser
+
+test-s0-parser: $(TEST_S0_PARSER_EXE) $(TEST_S0_PARSER_WRAPPER)
+$(TEST_S0_PARSER_EXE): $(TEST_S0_PARSER_O) $(LIBSWANSON_SO_X) $(BUILD)
+	@echo "LD   $(patsubst $(BUILD_ROOT)/%, %, $@)"
+	@mkdir -p $(dir $@)
+	@$(CC) \
+	    $(CFLAGS) \
+	    $(INCLUDE_LDFLAGS) \
+	    -o $@ $(filter %.o, $^) \
+	    -Wl,-rpath,$(BUILD_ROOT) \
+	    -lswanson
+
+check: $(TEST_SWANSON_EXE) $(TEST_S0_PARSER_EXE)
 ifdef VALGRIND
-	@echo "TEST (valgrind)"
+	@echo "TEST (valgrind) test-swanson"
 	@$(VALGRIND) \
 	    --error-exitcode=1 \
 	    --leak-check=full \
-	    --log-file=$(BUILD_ROOT)/valgrind.out \
+	    --log-file=$(BUILD_ROOT)/test-swanson.valgrind.out \
 	    $(TEST_SWANSON_EXE)
+	@echo "TEST (valgrind) test-s0-parser"
+	@$(VALGRIND) \
+	    --error-exitcode=1 \
+	    --leak-check=full \
+	    --log-file=$(BUILD_ROOT)/test-s0-parser.valgrind.out \
+	    $(TEST_S0_PARSER_EXE) $(SOURCE_ROOT)/../tests
 else
-	@echo "TEST"
+	@echo "TEST test-swanson"
 	@$(TEST_SWANSON_EXE)
+	@echo "TEST test-s0-parser"
+	@$(TEST_S0_PARSER_EXE) $(SOURCE_ROOT)/../tests
 endif
 
 #------------------------------------------------------------------------------

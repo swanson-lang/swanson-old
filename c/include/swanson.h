@@ -3,13 +3,15 @@
  * Please see the COPYING file in this distribution for license details.
  */
 
-#ifndef SWANSON_S0_H
-#define SWANSON_S0_H
+#ifndef SWANSON_H
+#define SWANSON_H
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 
@@ -438,7 +440,113 @@ struct s0_entity *
 s0_object_get(const struct s0_entity *, const struct s0_name *name);
 
 
+/*-----------------------------------------------------------------------------
+ * S₀: YAML
+ */
+
+
+#define SWANSON_TAG_PREFIX  "tag:swanson-lang.org,2016:"
+#define S0_CREATE_ATOM_TAG     SWANSON_TAG_PREFIX "create-atom"
+#define S0_CREATE_CLOSURE_TAG  SWANSON_TAG_PREFIX "create-closure"
+#define S0_CREATE_LITERAL_TAG  SWANSON_TAG_PREFIX "create-literal"
+#define S0_CREATE_METHOD_TAG   SWANSON_TAG_PREFIX "create-method"
+#define S0_INVOKE_CLOSURE_TAG  SWANSON_TAG_PREFIX "invoke-closure"
+#define S0_INVOKE_METHOD_TAG   SWANSON_TAG_PREFIX "invoke-method"
+
+
+struct s0_yaml_stream;
+
+/* You should allocate these directly on the stack.  All of the fields are
+ * opaque; you must only use the functions below to interact with this type. */
+struct s0_yaml_node {
+    struct s0_yaml_stream  *stream;
+    void  *node;
+};
+
+#define S0_YAML_NODE_ERROR  ((void *) (uintptr_t) -1)
+#define s0_yaml_node_is_error(node_)    ((node_).node == S0_YAML_NODE_ERROR)
+#define s0_yaml_node_is_missing(node_)  ((node_).node == NULL)
+#define s0_yaml_node_is_valid(node_) \
+    (!s0_yaml_node_is_error(node_) && !s0_yaml_node_is_missing(node_))
+
+const char *
+s0_yaml_node_tag(const struct s0_yaml_node);
+
+bool
+s0_yaml_node_has_tag(const struct s0_yaml_node, const char *tag);
+
+bool
+s0_yaml_node_is_mapping(const struct s0_yaml_node);
+
+bool
+s0_yaml_node_is_scalar(const struct s0_yaml_node);
+
+bool
+s0_yaml_node_is_sequence(const struct s0_yaml_node);
+
+const void *
+s0_yaml_node_scalar_content(const struct s0_yaml_node);
+
+size_t
+s0_yaml_node_scalar_size(const struct s0_yaml_node);
+
+size_t
+s0_yaml_node_sequence_size(const struct s0_yaml_node);
+
+struct s0_yaml_node
+s0_yaml_node_sequence_at(const struct s0_yaml_node, size_t index);
+
+size_t
+s0_yaml_node_mapping_size(const struct s0_yaml_node);
+
+struct s0_yaml_node
+s0_yaml_node_mapping_key_at(const struct s0_yaml_node, size_t index);
+
+struct s0_yaml_node
+s0_yaml_node_mapping_value_at(const struct s0_yaml_node, size_t index);
+
+struct s0_yaml_node
+s0_yaml_node_mapping_get(const struct s0_yaml_node, const char *key);
+
+
+/* Makes a copy of `filename`.  `filename` is only descriptive, since you'll
+ * already have opened the file. */
+struct s0_yaml_stream *
+s0_yaml_stream_new_from_file(FILE *fp, const char *filename,
+                             bool should_close_fp);
+
+/* Makes a copy of `filename`.  Doesn't actually try to open `filename` until
+ * the first time you call s0_yaml_stream_parse_document.  (So the only way this
+ * can fail is if we can't allocate memory for the new stream object.) */
+struct s0_yaml_stream *
+s0_yaml_stream_new_from_filename(const char *filename);
+
+void
+s0_yaml_stream_free(struct s0_yaml_stream *);
+
+/* If there was an error during the most recent function call for this stream,
+ * returns a string describing the error.  If the most recent function call
+ * completed successfully, returns NULL. */
+const char *
+s0_yaml_stream_last_error(const struct s0_yaml_stream *);
+
+/* Reads the next YAML document from the stream.  If there aren't any more
+ * documents in the stream, s0_yaml_node_is_missing will be true of the result.
+ * If there's an error reading from the stream, s0_yaml_node_is_error will be
+ * true of the result.  The resulting node, and any other nodes you extract from
+ * it, are only valid until the next time you call this function. */
+struct s0_yaml_node
+s0_yaml_stream_parse_document(struct s0_yaml_stream *);
+
+/* Loads an S₀ module from a YAML node.  If the YAML node doesn't conform to the
+ * S₀ YAML module schema, then we return NULL, and fill in an error on the
+ * stream that the node came from.  You take ownership of the return value and
+ * are responsible for freeing it. */
+struct s0_entity *
+s0_yaml_document_parse_module(struct s0_yaml_node node);
+
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-#endif /* SWANSON_S0_H */
+#endif /* SWANSON_H */

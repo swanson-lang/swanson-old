@@ -1,0 +1,43 @@
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: invoke-method can call a method in the environment
+module:
+  inputs:
+    self: self
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method needs a source
+module:
+  inputs: {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    method: id
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method needs a method
+module:
+  inputs:
+    self: self
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+
+# TODO - invoke-method cannot call a missing environment entry
+# TODO - invoke-method cannot call an atom
+# TODO - invoke-method cannot call a closure
+# TODO - invoke-method cannot call a literal
+# TODO - invoke-method cannot call a method
+# TODO - invoke-method cannot call a missing method
+# TODO - invoke-method environment must satisfy the inputs of its target

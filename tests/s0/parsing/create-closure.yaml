@@ -1,0 +1,216 @@
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: create-closure can create a new environment entry
+module:
+  inputs: {}
+  statements:
+    - !s0!create-closure
+      dest: x
+      closed-over: []
+      branches:
+        body:
+          inputs: {}
+          statements: []
+          invocation:
+            !s0!invoke-closure
+            src: exit
+            branch: call
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: create-closure needs a destination
+module:
+  inputs: {}
+  statements:
+    - !s0!create-closure
+      closed-over: []
+      branches:
+        body:
+          inputs: {}
+          statements: []
+          invocation:
+            !s0!invoke-closure
+            src: exit
+            branch: call
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: create-closure needs a closure set
+module:
+  inputs: {}
+  statements:
+    - !s0!create-closure
+      dest: x
+      branches:
+        body:
+          inputs: {}
+          statements: []
+          invocation:
+            !s0!invoke-closure
+            src: exit
+            branch: call
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: create-closure needs a branches section
+module:
+  inputs: {}
+  statements:
+    - !s0!create-closure
+      dest: x
+      closed-over: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+# TODO
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: create-closure needs at least one branch
+# module:
+#   inputs: {}
+#   statements:
+#     - !s0!create-closure
+#       dest: x
+#       closed-over: []
+#       branches: {}
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call
+
+# TODO - need to check environment contents
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: create-closure cannot overwrite an input
+# module:
+#   inputs:
+#     x: x
+#   statements:
+#     - !s0!create-closure
+#       dest: x
+#       closed-over: []
+#       branches:
+#         body:
+#           inputs: {}
+#           statements: []
+#           invocation:
+#             !s0!invoke-closure
+#             src: exit
+#             branch: call
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call
+
+# TODO - need to check environment contents
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: create-closure cannot overwrite an existing environment entry
+# module:
+#   inputs: {}
+#   statements:
+#     - !s0!create-closure
+#       dest: x
+#       closed-over: []
+#       branches:
+#         body:
+#           inputs: {}
+#           statements: []
+#           invocation:
+#             !s0!invoke-closure
+#             src: exit
+#             branch: call
+#     - !s0!create-closure
+#       dest: x
+#       closed-over: []
+#       branches:
+#         body:
+#           inputs: {}
+#           statements: []
+#           invocation:
+#             !s0!invoke-closure
+#             src: exit
+#             branch: call
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call
+
+# TODO
+#%TAG !s0! tag:swanson-lang.org,2016:
+#---
+#!s0!invalid-parse
+#name: create-closure closure set cannot contain duplicates
+#module:
+#  inputs: {}
+#  statements:
+#    - !s0!create-closure
+#      dest: x
+#      closed-over:
+#        - x
+#        - x
+#      branches:
+#        body:
+#          inputs: {}
+#          statements: []
+#          invocation:
+#            !s0!invoke-closure
+#            src: exit
+#            branch: call
+#  invocation:
+#    !s0!invoke-closure
+#    src: exit
+#    branch: call
+
+# TODO
+#%TAG !s0! tag:swanson-lang.org,2016:
+#---
+#!s0!invalid-parse
+#name: create-closure branch list cannot contain duplicates
+#module:
+#  inputs: {}
+#  statements:
+#    - !s0!create-closure
+#      dest: x
+#      closed-over:
+#        - x
+#      branches:
+#        body:
+#          inputs: {}
+#          statements: []
+#          invocation:
+#            !s0!invoke-closure
+#            src: exit
+#            branch: call
+#        body:
+#          inputs: {}
+#          statements: []
+#          invocation:
+#            !s0!invoke-closure
+#            src: exit
+#            branch: call
+#  invocation:
+#    !s0!invoke-closure
+#    src: exit
+#    branch: call
