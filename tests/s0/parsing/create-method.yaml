@@ -1,0 +1,135 @@
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: create-method can create a new environment entry
+module:
+  inputs: {}
+  statements:
+    - !s0!create-method
+      dest: x
+      self-input: self
+      body:
+        inputs: {}
+        statements: []
+        invocation:
+          !s0!invoke-closure
+          src: exit
+          branch: call
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: create-method needs a destination
+module:
+  inputs: {}
+  statements:
+    - !s0!create-method
+      self-input: self
+      body:
+        inputs: {}
+        statements: []
+        invocation:
+          !s0!invoke-closure
+          src: exit
+          branch: call
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: create-method needs a self input
+module:
+  inputs: {}
+  statements:
+    - !s0!create-method
+      dest: x
+      body:
+        inputs: {}
+        statements: []
+        invocation:
+          !s0!invoke-closure
+          src: exit
+          branch: call
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: create-method needs a body
+module:
+  inputs: {}
+  statements:
+    - !s0!create-method
+      dest: x
+      self-input: self
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+# TODO - need to check environment contents
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: create-method cannot overwrite an input
+# module:
+#   inputs:
+#     x: x
+#   statements:
+#     - !s0!create-method
+#       dest: x
+#       self-input: self
+#       body:
+#         inputs: {}
+#         statements: []
+#         invocation:
+#           !s0!invoke-closure
+#           src: exit
+#           branch: call
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call
+
+# TODO - need to check environment contents
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: create-method cannot overwrite an existing environment entry
+# module:
+#   inputs: {}
+#   statements:
+#     - !s0!create-method
+#       dest: x
+#       self-input: self
+#       body:
+#         inputs: {}
+#         statements: []
+#         invocation:
+#           !s0!invoke-closure
+#           src: exit
+#           branch: call
+#     - !s0!create-method
+#       dest: x
+#       self-input: self
+#       body:
+#         inputs: {}
+#         statements: []
+#         invocation:
+#           !s0!invoke-closure
+#           src: exit
+#           branch: call
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call

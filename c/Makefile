@@ -74,9 +74,22 @@ LIBSWANSON_VERSION = $(LIBSWANSON_SOVERSION).$(LIBSWANSON_REVISION).$(LIBSWANSON
 LIBSWANSON_H = \
     $(SOURCE_ROOT)/include/swanson.h
 LIBSWANSON_C = \
-    $(SOURCE_ROOT)/libswanson/s0.c
+    $(SOURCE_ROOT)/libswanson/s0.c \
+    $(SOURCE_ROOT)/libswanson/yaml.c
 LIBSWANSON_O = $(LIBSWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 LIBSWANSON_D = $(LIBSWANSON_O:.o=.d)
+
+LIBYAML_C = \
+    $(SOURCE_ROOT)/yaml/src/api.c \
+    $(SOURCE_ROOT)/yaml/src/dumper.c \
+    $(SOURCE_ROOT)/yaml/src/emitter.c \
+    $(SOURCE_ROOT)/yaml/src/loader.c \
+    $(SOURCE_ROOT)/yaml/src/parser.c \
+    $(SOURCE_ROOT)/yaml/src/reader.c \
+    $(SOURCE_ROOT)/yaml/src/scanner.c \
+    $(SOURCE_ROOT)/yaml/src/writer.c
+LIBYAML_O = $(LIBYAML_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
+LIBYAML_D = $(LIBYAML_O:.o=.d)
 
 SWANSON_C = \
     $(SOURCE_ROOT)/swanson/swanson.c
@@ -85,9 +98,16 @@ SWANSON_D = $(SWANSON_O:.o=.d)
 
 TEST_SWANSON_C = \
     $(SOURCE_ROOT)/ccan/tap/tap.c \
-    $(SOURCE_ROOT)/test-swanson/test-swanson.c
+    $(SOURCE_ROOT)/tests/test-swanson.c
 TEST_SWANSON_O = $(TEST_SWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 TEST_SWANSON_D = $(TEST_SWANSON_O:.o=.d)
+
+TEST_S0_PARSER_C = \
+    $(SOURCE_ROOT)/ccan/tap/tap.c \
+    $(SOURCE_ROOT)/tests/directory-walker.c \
+    $(SOURCE_ROOT)/tests/test-s0-parser.c
+TEST_S0_PARSER_O = $(TEST_S0_PARSER_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
+TEST_S0_PARSER_D = $(TEST_S0_PARSER_O:.o=.d)
 
 #------------------------------------------------------------------------------
 # Compiling
@@ -109,7 +129,10 @@ include $(SOURCE_ROOT)/Makefile.deps
 # You probably shouldn't override this part; this is how we tell the compiler
 # where all of our include files live.  If $(SOURCE_ROOT) has been set
 # correctly, then you don't need to touch this.
-INCLUDE_CPPFLAGS ?= -I$(SOURCE_ROOT)/include -I$(SOURCE_ROOT)
+INCLUDE_CPPFLAGS ?= \
+    -I$(SOURCE_ROOT)/include \
+    -I$(SOURCE_ROOT) \
+    -I$(SOURCE_ROOT)/yaml/include
 
 # A pattern rule for compiling .c files into .o files.
 $(BUILD_ROOT)/objs/%.o: $(SOURCE_ROOT)/%.c $(BUILD)
@@ -122,10 +145,35 @@ $(BUILD_ROOT)/objs/%.o: $(SOURCE_ROOT)/%.c $(BUILD)
 	    $(INCLUDE_CPPFLAGS) \
 	    $< -o $@
 
+# libyaml isn't warning-free, so we can't have $(CC) treat warnings as errors.
+# We also want to hide the libyaml symbols so they're not part of the publicly
+# exposed libswanson API.
+YAML_CFLAGS ?= $(filter-out -Wall -Werror,$(CFLAGS)) -fvisibility=hidden
+
+# Some additional flags that we need to pass in while compiling libyaml.
+YAML_CPPFLAGS ?= \
+    -DYAML_VERSION_MAJOR=0 \
+    -DYAML_VERSION_MINOR=1 \
+    -DYAML_VERSION_PATCH=6 \
+    -DYAML_VERSION_STRING=\"0.1.6\"
+
+# A specialized pattern rule for compiling libyaml .c files.
+$(LIBYAML_O): $(BUILD_ROOT)/objs/%.o: $(SOURCE_ROOT)/%.c $(BUILD)
+	@echo "CC   $(patsubst $(SOURCE_ROOT)/%, %, $<)"
+	@mkdir -p $(dir $@)
+	@$(CC) -c \
+	    $(YAML_CFLAGS) \
+	    $(SHARED_CFLAGS) \
+	    $(DEPENDENCY_CFLAGS) \
+	    $(INCLUDE_CPPFLAGS) \
+	    $(YAML_CPPFLAGS) \
+	    $< -o $@
+
 #------------------------------------------------------------------------------
 # Dependency post-processing
 
-depends: $(LIBSWANSON_O) $(SWANSON_O) $(TEST_SWANSON_O)
+depends: $(LIBSWANSON_O) $(LIBYAML_O) $(SWANSON_O) \
+    $(TEST_SWANSON_O) $(TEST_S0_PARSER_O)
 	@echo "DEPS  Makefile.deps"
 	@$(SED) \
 	    -e 's+'"$(BUILD_ROOT)"'+$$(BUILD_ROOT)+g' \
@@ -149,7 +197,7 @@ LIBSWANSON_SO_X = $(LIBSWANSON_SO).$(LIBSWANSON_SOVERSION)
 LIBSWANSON_VERSION_LDFLAGS = -soname libswanson.so.$(LIBSWANSON_SOVERSION)
 
 libswanson: $(LIBSWANSON_SO) $(LIBSWANSON_SO_X) $(LIBSWANSON_SO_XYZ)
-$(LIBSWANSON_SO): $(LIBSWANSON_O) $(BUILD)
+$(LIBSWANSON_SO): $(LIBSWANSON_O) $(LIBYAML_O) $(BUILD)
 	@echo "LD   $(patsubst $(BUILD_ROOT)/%, %, $@)"
 	@$(LD) \
 	    $(SHARED_LDFLAGS) \
@@ -186,17 +234,38 @@ $(TEST_SWANSON_EXE): $(TEST_SWANSON_O) $(LIBSWANSON_SO_X) $(BUILD)
 	    -Wl,-rpath,$(BUILD_ROOT) \
 	    -lswanson
 
-check: $(TEST_SWANSON_EXE)
+TEST_S0_PARSER_EXE = $(BUILD_ROOT)/test-s0-parser
+
+test-s0-parser: $(TEST_S0_PARSER_EXE) $(TEST_S0_PARSER_WRAPPER)
+$(TEST_S0_PARSER_EXE): $(TEST_S0_PARSER_O) $(LIBSWANSON_SO_X) $(BUILD)
+	@echo "LD   $(patsubst $(BUILD_ROOT)/%, %, $@)"
+	@mkdir -p $(dir $@)
+	@$(CC) \
+	    $(CFLAGS) \
+	    $(INCLUDE_LDFLAGS) \
+	    -o $@ $(filter %.o, $^) \
+	    -Wl,-rpath,$(BUILD_ROOT) \
+	    -lswanson
+
+check: $(TEST_SWANSON_EXE) $(TEST_S0_PARSER_EXE)
 ifdef VALGRIND
-	@echo "TEST (valgrind)"
+	@echo "TEST (valgrind) test-swanson"
 	@$(VALGRIND) \
 	    --error-exitcode=1 \
 	    --leak-check=full \
-	    --log-file=$(BUILD_ROOT)/valgrind.out \
+	    --log-file=$(BUILD_ROOT)/test-swanson.valgrind.out \
 	    $(TEST_SWANSON_EXE)
+	@echo "TEST (valgrind) test-s0-parser"
+	@$(VALGRIND) \
+	    --error-exitcode=1 \
+	    --leak-check=full \
+	    --log-file=$(BUILD_ROOT)/test-s0-parser.valgrind.out \
+	    $(TEST_S0_PARSER_EXE) $(SOURCE_ROOT)/../tests
 else
-	@echo "TEST"
+	@echo "TEST test-swanson"
 	@$(TEST_SWANSON_EXE)
+	@echo "TEST test-s0-parser"
+	@$(TEST_S0_PARSER_EXE) $(SOURCE_ROOT)/../tests
 endif
 
 #------------------------------------------------------------------------------
@@ -207,6 +276,8 @@ clean:
 	@rm -f $(LIBSWANSON_O)
 	@rm -f $(LIBSWANSON_SO)
 	@rm -f $(LIBSWANSON_SO_X)
+	@rm -f $(LIBYAML_D)
+	@rm -f $(LIBYAML_O)
 	@rm -f $(SWANSON_D)
 	@rm -f $(SWANSON_O)
 	@rm -f $(SWANSON_EXE)

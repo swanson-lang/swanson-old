@@ -1,0 +1,43 @@
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: invoke-closure can call a closure in the environment
+module:
+  inputs:
+    exit: exit
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure needs a source
+module:
+  inputs: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure needs a branch
+module:
+  inputs:
+    exit: exit
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+
+# TODO - invoke-closure cannot call a missing environment entry
+# TODO - invoke-closure cannot call an atom
+# TODO - invoke-closure cannot call a literal
+# TODO - invoke-closure cannot call a method
+# TODO - invoke-closure cannot call an object
+# TODO - invoke-closure cannot call a missing branch
+# TODO - invoke-closure environment must satisfy the inputs of its target

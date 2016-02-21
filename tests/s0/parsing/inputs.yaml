@@ -1,0 +1,72 @@
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: The input set can be empty
+module:
+  inputs: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: The name of an input doesn't need to change
+module:
+  inputs:
+    self: self
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: All of the renamings happen "at the same time"
+module:
+  inputs:
+    a: b
+    b: a
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
+# TODO
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: There cannot be multiple inputs with the same "from" name
+# module:
+#   inputs:
+#     a: b
+#     a: c
+#   statements: []
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call
+# error: >
+#   There is already an input named `a`.
+
+# TODO
+# %TAG !s0! tag:swanson-lang.org,2016:
+# ---
+# !s0!invalid-parse
+# name: There cannot be multiple inputs with the same "to" name
+# module:
+#   inputs:
+#     a: c
+#     b: c
+#   statements: []
+#   invocation:
+#     !s0!invoke-closure
+#     src: exit
+#     branch: call
+# error: >
+#   There is already an input that is renamed to `c`.
