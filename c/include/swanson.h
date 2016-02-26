@@ -33,6 +33,9 @@ void
 s0_name_free(struct s0_name *);
 
 const char *
+s0_name_human_readable(const struct s0_name *);
+
+const char *
 s0_name_content(const struct s0_name *);
 
 size_t
@@ -104,6 +107,11 @@ s0_name_mapping_at(const struct s0_name_mapping *, size_t index);
 /* Returns NULL if from is not in the mapping's domain. */
 struct s0_name *
 s0_name_mapping_get(const struct s0_name_mapping *, const struct s0_name *from);
+
+/* Returns NULL if from is not in the mapping's range. */
+struct s0_name *
+s0_name_mapping_get_from(const struct s0_name_mapping *,
+                         const struct s0_name *to);
 
 
 /*-----------------------------------------------------------------------------

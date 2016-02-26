@@ -28,12 +28,13 @@ s0_name_new(size_t size, const void *content)
         return NULL;
     }
     name->size = size;
-    name->content = malloc(size);
+    name->content = malloc(size + 1);
     if (unlikely(name->content == NULL)) {
         free(name);
         return NULL;
     }
     memcpy((void *) name->content, content, size);
+    ((char *) name->content)[size] = '\0';
     return name;
 }
 
@@ -48,6 +49,13 @@ s0_name_free(struct s0_name *name)
 {
     free((void *) name->content);
     free(name);
+}
+
+const char *
+s0_name_human_readable(const struct s0_name *name)
+{
+    /* TODO: Return something nicer for binary content. */
+    return name->content;
 }
 
 const char *
@@ -243,6 +251,19 @@ s0_name_mapping_get(const struct s0_name_mapping *mapping,
     for (i = 0; i < mapping->size; i++) {
         if (s0_name_eq(mapping->entries[i].from, from)) {
             return mapping->entries[i].to;
+        }
+    }
+    return NULL;
+}
+
+struct s0_name *
+s0_name_mapping_get_from(const struct s0_name_mapping *mapping,
+                         const struct s0_name *to)
+{
+    size_t  i;
+    for (i = 0; i < mapping->size; i++) {
+        if (s0_name_eq(mapping->entries[i].to, to)) {
+            return mapping->entries[i].from;
         }
     }
     return NULL;
