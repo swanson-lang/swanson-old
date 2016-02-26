@@ -37,36 +37,34 @@ module:
     src: exit
     branch: call
 
-# TODO
-# %TAG !s0! tag:swanson-lang.org,2016:
-# ---
-# !s0!invalid-parse
-# name: There cannot be multiple inputs with the same "from" name
-# module:
-#   inputs:
-#     a: b
-#     a: c
-#   statements: []
-#   invocation:
-#     !s0!invoke-closure
-#     src: exit
-#     branch: call
-# error: >
-#   There is already an input named `a`.
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: There cannot be multiple inputs with the same "from" name
+module:
+  inputs:
+    a: b
+    a: c
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+error: >
+  There is already an input named `a`.
 
-# TODO
-# %TAG !s0! tag:swanson-lang.org,2016:
-# ---
-# !s0!invalid-parse
-# name: There cannot be multiple inputs with the same "to" name
-# module:
-#   inputs:
-#     a: c
-#     b: c
-#   statements: []
-#   invocation:
-#     !s0!invoke-closure
-#     src: exit
-#     branch: call
-# error: >
-#   There is already an input that is renamed to `c`.
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: There cannot be multiple inputs with the same "to" name
+module:
+  inputs:
+    a: c
+    b: c
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+error: >
+  There is already an input that is renamed to `c`.

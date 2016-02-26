@@ -31,6 +31,9 @@ struct s0_yaml_stream {
 #define fill_error(stream, ...) \
     snprintf((stream)->error, YAML_ERROR_SIZE, __VA_ARGS__)
 
+#define fill_memory_error(stream) \
+    fill_error((stream), "Error allocating memory")
+
 struct s0_yaml_stream *
 s0_yaml_stream_new_from_file(FILE *fp, const char *filename,
                              bool should_close_fp)
@@ -328,7 +331,30 @@ s0_load_name_mapping(struct s0_yaml_node node)
             return NULL;
         }
 
+        if (unlikely(s0_name_mapping_get(mapping, from) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already an input named `%s`.",
+                 s0_name_human_readable(from));
+            s0_name_free(from);
+            s0_name_free(to);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_name_mapping_get_from(mapping, to) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already an input that is renamed to `%s`.",
+                 s0_name_human_readable(to));
+            s0_name_free(from);
+            s0_name_free(to);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
         if (unlikely(s0_name_mapping_add(mapping, from, to))) {
+            fill_memory_error(node.stream);
             s0_name_mapping_free(mapping);
             return NULL;
         }

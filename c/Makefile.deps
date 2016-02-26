@@ -8,6 +8,8 @@ $(BUILD_ROOT)/objs/libswanson/yaml.o: \
  $(SOURCE_ROOT)/include/swanson.h \
  $(SOURCE_ROOT)/ccan/likely/likely.h \
  $(SOURCE_ROOT)/include/config.h \
+ $(SOURCE_ROOT)/ccan/str/str.h \
+ $(SOURCE_ROOT)/ccan/str/str_debug.h \
  $(SOURCE_ROOT)/yaml/include/yaml.h
 $(BUILD_ROOT)/objs/yaml/src/api.o: \
  $(SOURCE_ROOT)/yaml/src/api.c \
