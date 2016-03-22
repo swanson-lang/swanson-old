@@ -62,6 +62,9 @@ s0_name_set_free(struct s0_name_set *);
 int
 s0_name_set_add(struct s0_name_set *, struct s0_name *name);
 
+bool
+s0_name_set_contains(const struct s0_name_set *, struct s0_name *name);
+
 size_t
 s0_name_set_size(const struct s0_name_set *);
 
