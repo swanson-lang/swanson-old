@@ -553,7 +553,7 @@ s0_named_blocks_get(const struct s0_named_blocks *blocks,
  */
 
 struct s0_statement {
-    enum s0_statement_type  type;
+    enum s0_statement_kind  type;
     union {
         struct {
             struct s0_name  *dest;
@@ -585,7 +585,7 @@ s0_create_atom_new(struct s0_name *dest)
         s0_name_free(dest);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_ATOM;
+    stmt->type = S0_STATEMENT_KIND_CREATE_ATOM;
     stmt->_.create_atom.dest = dest;
     return stmt;
 }
@@ -599,7 +599,7 @@ s0_create_atom_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_atom_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_ATOM);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_ATOM);
     return stmt->_.create_atom.dest;
 }
 
@@ -615,7 +615,7 @@ s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
         s0_named_blocks_free(branches);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_CLOSURE;
+    stmt->type = S0_STATEMENT_KIND_CREATE_CLOSURE;
     stmt->_.create_closure.dest = dest;
     stmt->_.create_closure.closed_over = closed_over;
     stmt->_.create_closure.branches = branches;
@@ -633,21 +633,21 @@ s0_create_closure_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_closure_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.dest;
 }
 
 struct s0_name_set *
 s0_create_closure_closed_over(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.closed_over;
 }
 
 struct s0_named_blocks *
 s0_create_closure_branches(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.branches;
 }
 
@@ -660,7 +660,7 @@ s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
         s0_name_free(dest);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_LITERAL;
+    stmt->type = S0_STATEMENT_KIND_CREATE_LITERAL;
     stmt->_.create_literal.dest = dest;
     stmt->_.create_literal.size = size;
     stmt->_.create_literal.content = malloc(size);
@@ -683,21 +683,21 @@ s0_create_literal_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_literal_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.dest;
 }
 
 const void *
 s0_create_literal_content(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.content;
 }
 
 size_t
 s0_create_literal_size(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.size;
 }
 
@@ -713,7 +713,7 @@ s0_create_method_new(struct s0_name *dest, struct s0_name *self_input,
         s0_block_free(body);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_METHOD;
+    stmt->type = S0_STATEMENT_KIND_CREATE_METHOD;
     stmt->_.create_method.dest = dest;
     stmt->_.create_method.self_input = self_input;
     stmt->_.create_method.body = body;
@@ -731,21 +731,21 @@ s0_create_method_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_method_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.dest;
 }
 
 struct s0_name *
 s0_create_method_self_input(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.self_input;
 }
 
 struct s0_block *
 s0_create_method_body(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.body;
 }
 
@@ -754,16 +754,16 @@ void
 s0_statement_free(struct s0_statement *stmt)
 {
     switch (stmt->type) {
-        case S0_STATEMENT_TYPE_CREATE_ATOM:
+        case S0_STATEMENT_KIND_CREATE_ATOM:
             s0_create_atom_free(stmt);
             break;
-        case S0_STATEMENT_TYPE_CREATE_CLOSURE:
+        case S0_STATEMENT_KIND_CREATE_CLOSURE:
             s0_create_closure_free(stmt);
             break;
-        case S0_STATEMENT_TYPE_CREATE_LITERAL:
+        case S0_STATEMENT_KIND_CREATE_LITERAL:
             s0_create_literal_free(stmt);
             break;
-        case S0_STATEMENT_TYPE_CREATE_METHOD:
+        case S0_STATEMENT_KIND_CREATE_METHOD:
             s0_create_method_free(stmt);
             break;
         default:
@@ -773,8 +773,8 @@ s0_statement_free(struct s0_statement *stmt)
     free(stmt);
 }
 
-enum s0_statement_type
-s0_statement_type(const struct s0_statement *stmt)
+enum s0_statement_kind
+s0_statement_kind(const struct s0_statement *stmt)
 {
     return stmt->type;
 }
@@ -860,7 +860,7 @@ s0_statement_list_at(const struct s0_statement_list *list, size_t index)
  */
 
 struct s0_invocation {
-    enum s0_invocation_type  type;
+    enum s0_invocation_kind  type;
     union {
         struct {
             struct s0_name  *src;
@@ -883,7 +883,7 @@ s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch)
         s0_name_free(branch);
         return NULL;
     }
-    invocation->type = S0_INVOCATION_TYPE_INVOKE_CLOSURE;
+    invocation->type = S0_INVOCATION_KIND_INVOKE_CLOSURE;
     invocation->_.invoke_closure.src = src;
     invocation->_.invoke_closure.branch = branch;
     return invocation;
@@ -899,14 +899,14 @@ s0_invoke_closure_free(struct s0_invocation *invocation)
 struct s0_name *
 s0_invoke_closure_src(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.src;
 }
 
 struct s0_name *
 s0_invoke_closure_branch(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.branch;
 }
 
@@ -920,7 +920,7 @@ s0_invoke_method_new(struct s0_name *src, struct s0_name *method)
         s0_name_free(method);
         return NULL;
     }
-    invocation->type = S0_INVOCATION_TYPE_INVOKE_METHOD;
+    invocation->type = S0_INVOCATION_KIND_INVOKE_METHOD;
     invocation->_.invoke_method.src = src;
     invocation->_.invoke_method.method = method;
     return invocation;
@@ -936,14 +936,14 @@ s0_invoke_method_free(struct s0_invocation *invocation)
 struct s0_name *
 s0_invoke_method_src(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.src;
 }
 
 struct s0_name *
 s0_invoke_method_method(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.method;
 }
 
@@ -952,10 +952,10 @@ void
 s0_invocation_free(struct s0_invocation *invocation)
 {
     switch (invocation->type) {
-        case S0_INVOCATION_TYPE_INVOKE_CLOSURE:
+        case S0_INVOCATION_KIND_INVOKE_CLOSURE:
             s0_invoke_closure_free(invocation);
             break;
-        case S0_INVOCATION_TYPE_INVOKE_METHOD:
+        case S0_INVOCATION_KIND_INVOKE_METHOD:
             s0_invoke_method_free(invocation);
             break;
         default:
@@ -965,8 +965,8 @@ s0_invocation_free(struct s0_invocation *invocation)
     free(invocation);
 }
 
-enum s0_invocation_type
-s0_invocation_type(const struct s0_invocation *invocation)
+enum s0_invocation_kind
+s0_invocation_kind(const struct s0_invocation *invocation)
 {
     return invocation->type;
 }
@@ -977,7 +977,7 @@ s0_invocation_type(const struct s0_invocation *invocation)
  */
 
 struct s0_entity {
-    enum s0_entity_type  type;
+    enum s0_entity_kind  type;
     union {
         struct {
             struct s0_environment  *env;
@@ -1007,7 +1007,7 @@ s0_atom_new(void)
     if (unlikely(atom == NULL)) {
         return NULL;
     }
-    atom->type = S0_ENTITY_TYPE_ATOM;
+    atom->type = S0_ENTITY_KIND_ATOM;
     return atom;
 }
 
@@ -1020,8 +1020,8 @@ s0_atom_free(struct s0_entity *atom)
 bool
 s0_atom_eq(const struct s0_entity *a1, const struct s0_entity *a2)
 {
-    assert(a1->type == S0_ENTITY_TYPE_ATOM);
-    assert(a2->type == S0_ENTITY_TYPE_ATOM);
+    assert(a1->type == S0_ENTITY_KIND_ATOM);
+    assert(a2->type == S0_ENTITY_KIND_ATOM);
     return (a1 == a2);
 }
 
@@ -1035,7 +1035,7 @@ s0_closure_new(struct s0_environment *env, struct s0_named_blocks *blocks)
         s0_named_blocks_free(blocks);
         return NULL;
     }
-    closure->type = S0_ENTITY_TYPE_CLOSURE;
+    closure->type = S0_ENTITY_KIND_CLOSURE;
     closure->_.closure.env = env;
     closure->_.closure.blocks = blocks;
     return closure;
@@ -1051,14 +1051,14 @@ s0_closure_free(struct s0_entity *closure)
 struct s0_environment *
 s0_closure_environment(const struct s0_entity *closure)
 {
-    assert(closure->type == S0_ENTITY_TYPE_CLOSURE);
+    assert(closure->type == S0_ENTITY_KIND_CLOSURE);
     return closure->_.closure.env;
 }
 
 struct s0_named_blocks *
 s0_closure_named_blocks(const struct s0_entity *closure)
 {
-    assert(closure->type == S0_ENTITY_TYPE_CLOSURE);
+    assert(closure->type == S0_ENTITY_KIND_CLOSURE);
     return closure->_.closure.blocks;
 }
 
@@ -1070,7 +1070,7 @@ s0_literal_new(size_t size, const void *content)
     if (unlikely(literal == NULL)) {
         return NULL;
     }
-    literal->type = S0_ENTITY_TYPE_LITERAL;
+    literal->type = S0_ENTITY_KIND_LITERAL;
     literal->_.literal.size = size;
     literal->_.literal.content = malloc(size);
     if (unlikely(literal->_.literal.content == NULL)) {
@@ -1096,14 +1096,14 @@ s0_literal_free(struct s0_entity *literal)
 const char *
 s0_literal_content(const struct s0_entity *literal)
 {
-    assert(literal->type == S0_ENTITY_TYPE_LITERAL);
+    assert(literal->type == S0_ENTITY_KIND_LITERAL);
     return literal->_.literal.content;
 }
 
 size_t
 s0_literal_size(const struct s0_entity *literal)
 {
-    assert(literal->type == S0_ENTITY_TYPE_LITERAL);
+    assert(literal->type == S0_ENTITY_KIND_LITERAL);
     return literal->_.literal.size;
 }
 
@@ -1117,7 +1117,7 @@ s0_method_new(struct s0_name *self_name, struct s0_block *block)
         s0_block_free(block);
         return NULL;
     }
-    method->type = S0_ENTITY_TYPE_METHOD;
+    method->type = S0_ENTITY_KIND_METHOD;
     method->_.method.self_name = self_name;
     method->_.method.block = block;
     return method;
@@ -1133,14 +1133,14 @@ s0_method_free(struct s0_entity *method)
 struct s0_name *
 s0_method_self_name(const struct s0_entity *method)
 {
-    assert(method->type == S0_ENTITY_TYPE_METHOD);
+    assert(method->type == S0_ENTITY_KIND_METHOD);
     return method->_.method.self_name;
 }
 
 struct s0_block *
 s0_method_block(const struct s0_entity *method)
 {
-    assert(method->type == S0_ENTITY_TYPE_METHOD);
+    assert(method->type == S0_ENTITY_KIND_METHOD);
     return method->_.method.block;
 }
 
@@ -1154,7 +1154,7 @@ s0_object_new(void)
     if (unlikely(obj == NULL)) {
         return NULL;
     }
-    obj->type = S0_ENTITY_TYPE_OBJECT;
+    obj->type = S0_ENTITY_KIND_OBJECT;
     obj->_.obj.size = 0;
     obj->_.obj.allocated_size = DEFAULT_INITIAL_OBJECT_SIZE;
     obj->_.obj.entries =
@@ -1206,14 +1206,14 @@ s0_object_add(struct s0_entity *obj,
 size_t
 s0_object_size(const struct s0_entity *obj)
 {
-    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(obj->type == S0_ENTITY_KIND_OBJECT);
     return obj->_.obj.size;
 }
 
 struct s0_object_entry
 s0_object_at(const struct s0_entity *obj, size_t index)
 {
-    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(obj->type == S0_ENTITY_KIND_OBJECT);
     assert(index < obj->_.obj.size);
     return obj->_.obj.entries[index];
 }
@@ -1222,7 +1222,7 @@ struct s0_entity *
 s0_object_get(const struct s0_entity *obj, const struct s0_name *name)
 {
     size_t  i;
-    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(obj->type == S0_ENTITY_KIND_OBJECT);
     for (i = 0; i < obj->_.obj.size; i++) {
         if (s0_name_eq(obj->_.obj.entries[i].name, name)) {
             return obj->_.obj.entries[i].entity;
@@ -1236,19 +1236,19 @@ void
 s0_entity_free(struct s0_entity *entity)
 {
     switch (entity->type) {
-        case S0_ENTITY_TYPE_ATOM:
+        case S0_ENTITY_KIND_ATOM:
             s0_atom_free(entity);
             break;
-        case S0_ENTITY_TYPE_CLOSURE:
+        case S0_ENTITY_KIND_CLOSURE:
             s0_closure_free(entity);
             break;
-        case S0_ENTITY_TYPE_LITERAL:
+        case S0_ENTITY_KIND_LITERAL:
             s0_literal_free(entity);
             break;
-        case S0_ENTITY_TYPE_METHOD:
+        case S0_ENTITY_KIND_METHOD:
             s0_method_free(entity);
             break;
-        case S0_ENTITY_TYPE_OBJECT:
+        case S0_ENTITY_KIND_OBJECT:
             s0_object_free(entity);
             break;
         default:
@@ -1258,8 +1258,8 @@ s0_entity_free(struct s0_entity *entity)
     free(entity);
 }
 
-enum s0_entity_type
-s0_entity_type(const struct s0_entity *entity)
+enum s0_entity_kind
+s0_entity_kind(const struct s0_entity *entity)
 {
     return entity->type;
 }

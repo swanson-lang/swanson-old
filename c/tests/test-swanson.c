@@ -397,7 +397,7 @@ TEST_CASE("can create `create-atom` statement") {
 
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(stmt, s0_create_atom_new(dest));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_ATOM);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_ATOM);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_atom_dest(stmt), dest));
@@ -416,7 +416,7 @@ TEST_CASE("can create `create-closure` statement") {
     check_alloc(closed_over, s0_name_set_new());
     check_alloc(branches, s0_named_blocks_new());
     check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_CLOSURE);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_closure_dest(stmt), dest));
@@ -434,7 +434,7 @@ TEST_CASE("can create `create-literal` statement") {
 
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_LITERAL);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_literal_dest(stmt), dest));
@@ -456,7 +456,7 @@ TEST_CASE("can create `create-method` statement") {
     check_alloc(self_input, s0_name_new_str("self"));
     check_alloc(body, create_empty_block());
     check_alloc(stmt, s0_create_method_new(dest, self_input, body));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_METHOD);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_METHOD);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_method_dest(stmt), dest));
@@ -553,7 +553,7 @@ TEST_CASE("can create `invoke-closure` invocation") {
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("body"));
     check_alloc(invocation, s0_invoke_closure_new(src, branch));
-    check(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    check(s0_invocation_kind(invocation) == S0_INVOCATION_KIND_INVOKE_CLOSURE);
 
     check_alloc(src, s0_name_new_str("a"));
     check(s0_name_eq(s0_invoke_closure_src(invocation), src));
@@ -574,7 +574,7 @@ TEST_CASE("can create `invoke-method` invocation") {
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(method, s0_name_new_str("run"));
     check_alloc(invocation, s0_invoke_method_new(src, method));
-    check(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    check(s0_invocation_kind(invocation) == S0_INVOCATION_KIND_INVOKE_METHOD);
 
     check_alloc(src, s0_name_new_str("a"));
     check(s0_name_eq(s0_invoke_method_src(invocation), src));
@@ -621,7 +621,7 @@ TEST_CASE_GROUP("S₀ atoms");
 TEST_CASE("can create atom") {
     struct s0_entity  *atom;
     check_alloc(atom, s0_atom_new());
-    check(s0_entity_type(atom) == S0_ENTITY_TYPE_ATOM);
+    check(s0_entity_kind(atom) == S0_ENTITY_KIND_ATOM);
     s0_entity_free(atom);
 }
 
@@ -668,7 +668,7 @@ TEST_CASE("can create closure") {
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
     check_alloc(closure, s0_closure_new(env, blocks));
-    check(s0_entity_type(closure) == S0_ENTITY_TYPE_CLOSURE);
+    check(s0_entity_kind(closure) == S0_ENTITY_KIND_CLOSURE);
     check(s0_closure_environment(closure) == env);
     check(s0_closure_named_blocks(closure) == blocks);
     s0_entity_free(closure);
@@ -683,7 +683,7 @@ TEST_CASE_GROUP("S₀ literals");
 TEST_CASE("can create literal from C string") {
     struct s0_entity  *literal;
     check_alloc(literal, s0_literal_new_str("hello"));
-    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_entity_kind(literal) == S0_ENTITY_KIND_LITERAL);
     check(s0_literal_size(literal) == 5);
     check(memcmp(s0_literal_content(literal), "hello", 5) == 0);
     s0_entity_free(literal);
@@ -692,7 +692,7 @@ TEST_CASE("can create literal from C string") {
 TEST_CASE("can create literal with explicit length") {
     struct s0_entity  *literal;
     check_alloc(literal, s0_literal_new(5, "hello"));
-    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_entity_kind(literal) == S0_ENTITY_KIND_LITERAL);
     check(s0_literal_size(literal) == 5);
     check(memcmp(s0_literal_content(literal), "hello", 5) == 0);
     s0_entity_free(literal);
@@ -701,7 +701,7 @@ TEST_CASE("can create literal with explicit length") {
 TEST_CASE("can create literal with embedded NUL") {
     struct s0_entity  *literal;
     check_alloc(literal, s0_literal_new(6, "hello\x00"));
-    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_entity_kind(literal) == S0_ENTITY_KIND_LITERAL);
     check(s0_literal_size(literal) == 6);
     check(memcmp(s0_literal_content(literal), "hello\x00", 6) == 0);
     s0_entity_free(literal);
@@ -720,7 +720,7 @@ TEST_CASE("can create method") {
     check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
     check_alloc(method, s0_method_new(self_name, block));
-    check(s0_entity_type(method) == S0_ENTITY_TYPE_METHOD);
+    check(s0_entity_kind(method) == S0_ENTITY_KIND_METHOD);
     check_alloc(self_name, s0_name_new_str("self"));
     check(s0_name_eq(s0_method_self_name(method), self_name));
     s0_name_free(self_name);

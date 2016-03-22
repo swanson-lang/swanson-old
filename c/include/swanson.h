@@ -183,18 +183,18 @@ s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
 
 struct s0_statement;
 
-enum s0_statement_type {
-    S0_STATEMENT_TYPE_CREATE_ATOM,
-    S0_STATEMENT_TYPE_CREATE_CLOSURE,
-    S0_STATEMENT_TYPE_CREATE_LITERAL,
-    S0_STATEMENT_TYPE_CREATE_METHOD
+enum s0_statement_kind {
+    S0_STATEMENT_KIND_CREATE_ATOM,
+    S0_STATEMENT_KIND_CREATE_CLOSURE,
+    S0_STATEMENT_KIND_CREATE_LITERAL,
+    S0_STATEMENT_KIND_CREATE_METHOD
 };
 
 void
 s0_statement_free(struct s0_statement *);
 
-enum s0_statement_type
-s0_statement_type(const struct s0_statement *);
+enum s0_statement_kind
+s0_statement_kind(const struct s0_statement *);
 
 
 /* Takes control of dest */
@@ -291,16 +291,16 @@ s0_statement_list_at(const struct s0_statement_list *, size_t index);
 
 struct s0_invocation;
 
-enum s0_invocation_type {
-    S0_INVOCATION_TYPE_INVOKE_CLOSURE,
-    S0_INVOCATION_TYPE_INVOKE_METHOD
+enum s0_invocation_kind {
+    S0_INVOCATION_KIND_INVOKE_CLOSURE,
+    S0_INVOCATION_KIND_INVOKE_METHOD
 };
 
 void
 s0_invocation_free(struct s0_invocation *);
 
-enum s0_invocation_type
-s0_invocation_type(const struct s0_invocation *);
+enum s0_invocation_kind
+s0_invocation_kind(const struct s0_invocation *);
 
 
 /* Takes control of src and branch */
@@ -356,19 +356,19 @@ s0_block_invocation(const struct s0_block *);
  * S₀: Entities
  */
 
-enum s0_entity_type {
-    S0_ENTITY_TYPE_ATOM,
-    S0_ENTITY_TYPE_CLOSURE,
-    S0_ENTITY_TYPE_LITERAL,
-    S0_ENTITY_TYPE_METHOD,
-    S0_ENTITY_TYPE_OBJECT
+enum s0_entity_kind {
+    S0_ENTITY_KIND_ATOM,
+    S0_ENTITY_KIND_CLOSURE,
+    S0_ENTITY_KIND_LITERAL,
+    S0_ENTITY_KIND_METHOD,
+    S0_ENTITY_KIND_OBJECT
 };
 
 void
 s0_entity_free(struct s0_entity *);
 
-enum s0_entity_type
-s0_entity_type(const struct s0_entity *);
+enum s0_entity_kind
+s0_entity_kind(const struct s0_entity *);
 
 
 struct s0_entity *
