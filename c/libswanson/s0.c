@@ -147,6 +147,18 @@ s0_name_set_add(struct s0_name_set *set, struct s0_name *name)
     return 0;
 }
 
+bool
+s0_name_set_contains(const struct s0_name_set *set, struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < set->size; i++) {
+        if (s0_name_eq(name, set->names[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
 size_t
 s0_name_set_size(const struct s0_name_set *set)
 {

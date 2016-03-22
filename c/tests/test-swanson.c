@@ -83,7 +83,7 @@ test_s0_names(void)
  * S₀: Name sets
  */
 
-#define TEST_COUNT_S0_NAME_SETS  14
+#define TEST_COUNT_S0_NAME_SETS  32
 
 static void
 test_s0_name_sets(void)
@@ -101,14 +101,50 @@ test_s0_name_sets(void)
     check_size(0);
 
     ok_alloc(name, s0_name_new_str("a"));
+    ok(!s0_name_set_contains(set, name),
+       "!s0_name_set_contains(set, \"a\")");
+    check_size(0);
+    s0_name_free(name);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(!s0_name_set_contains(set, name),
+       "!s0_name_set_contains(set, \"b\")");
+    check_size(0);
+    s0_name_free(name);
+
+    ok_alloc(name, s0_name_new_str("a"));
     ok0(s0_name_set_add(set, name),
         "s0_name_set_add(set, \"a\")");
     check_size(1);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_name_set_contains(set, name),
+       "s0_name_set_contains(set, \"a\")");
+    check_size(1);
+    s0_name_free(name);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(!s0_name_set_contains(set, name),
+       "!s0_name_set_contains(set, \"b\")");
+    check_size(1);
+    s0_name_free(name);
 
     ok_alloc(name, s0_name_new_str("b"));
     ok0(s0_name_set_add(set, name),
         "s0_name_set_add(set, \"b\")");
     check_size(2);
+
+    ok_alloc(name, s0_name_new_str("a"));
+    ok(s0_name_set_contains(set, name),
+       "s0_name_set_contains(set, \"a\")");
+    check_size(2);
+    s0_name_free(name);
+
+    ok_alloc(name, s0_name_new_str("b"));
+    ok(s0_name_set_contains(set, name),
+       "s0_name_set_contains(set, \"b\")");
+    check_size(2);
+    s0_name_free(name);
 
     ok_alloc(name, s0_name_new_str("a"));
     ok(s0_name_eq(name, s0_name_set_at(set, 0)),

@@ -292,6 +292,16 @@ s0_load_name_set(struct s0_yaml_node node)
             return NULL;
         }
 
+        if (unlikely(s0_name_set_contains(set, name))) {
+            fill_error
+                (node.stream,
+                 "Closure set already contains `%s`.",
+                 s0_name_human_readable(name));
+            s0_name_free(name);
+            s0_name_set_free(set);
+            return NULL;
+        }
+
         if (unlikely(s0_name_set_add(set, name))) {
             s0_name_set_free(set);
             return NULL;
@@ -384,6 +394,16 @@ s0_load_named_blocks(struct s0_yaml_node node)
         item = s0_yaml_node_mapping_key_at(node, i);
         name = s0_load_name(item);
         if (unlikely(name == NULL)) {
+            s0_named_blocks_free(blocks);
+            return NULL;
+        }
+
+        if (unlikely(s0_named_blocks_get(blocks, name) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already a branch named `%s`.",
+                 s0_name_human_readable(name));
+            s0_name_free(name);
             s0_named_blocks_free(blocks);
             return NULL;
         }
@@ -487,6 +507,16 @@ s0_load_create_closure(struct s0_yaml_node node)
     branches = s0_load_named_blocks(item);
     if (unlikely(branches == NULL)) {
         s0_name_free(dest);
+        s0_name_set_free(closed_over);
+        return NULL;
+    }
+    if (unlikely(s0_named_blocks_size(branches) == 0)) {
+        fill_error(node.stream,
+                   "create-closure needs at least one branch at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        s0_name_free(dest);
+        s0_named_blocks_free(branches);
         s0_name_set_free(closed_over);
         return NULL;
     }
