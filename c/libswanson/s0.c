@@ -1263,3 +1263,70 @@ s0_entity_kind(const struct s0_entity *entity)
 {
     return entity->type;
 }
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entity types
+ */
+
+struct s0_entity_type {
+    enum s0_entity_type_kind  kind;
+};
+
+struct s0_entity_type *
+s0_any_entity_type_new(void)
+{
+    struct s0_entity_type  *any = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(any == NULL)) {
+        return NULL;
+    }
+    any->kind = S0_ENTITY_TYPE_KIND_ANY;
+    return any;
+}
+
+static void
+s0_any_entity_type_free(struct s0_entity_type *any)
+{
+    /* Nothing to do */
+}
+
+static bool
+s0_any_entity_type_satisfied_by(const struct s0_entity_type *any,
+                                const struct s0_entity *entity)
+{
+    return true;
+}
+
+void
+s0_entity_type_free(struct s0_entity_type *type)
+{
+    switch (type->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            s0_any_entity_type_free(type);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    free(type);
+}
+
+enum s0_entity_type_kind
+s0_entity_type_kind(const struct s0_entity_type *type)
+{
+    return type->kind;
+}
+
+bool
+s0_entity_type_satisfied_by(const struct s0_entity_type *type,
+                            const struct s0_entity *entity)
+{
+    switch (type->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            return s0_any_entity_type_satisfied_by(type, entity);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}

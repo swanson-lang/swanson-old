@@ -452,6 +452,31 @@ s0_object_get(const struct s0_entity *, const struct s0_name *name);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Entity types
+ */
+
+struct s0_entity_type;
+
+enum s0_entity_type_kind {
+    S0_ENTITY_TYPE_KIND_ANY
+};
+
+void
+s0_entity_type_free(struct s0_entity_type *);
+
+enum s0_entity_type_kind
+s0_entity_type_kind(const struct s0_entity_type *);
+
+bool
+s0_entity_type_satisfied_by(const struct s0_entity_type *,
+                            const struct s0_entity *);
+
+
+struct s0_entity_type *
+s0_any_entity_type_new(void);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: YAML
  */
 

@@ -972,6 +972,70 @@ TEST_CASE("can delete entries from environment") {
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Entity types: Any
+ */
+
+TEST_CASE_GROUP("S₀ entity types: any");
+
+TEST_CASE("atom : any") {
+    struct s0_entity_type  *any;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(entity, s0_atom_new());
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("closure : any") {
+    struct s0_entity_type  *any;
+    struct s0_environment  *env;
+    struct s0_named_blocks  *blocks;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(env, s0_environment_new());
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(entity, s0_closure_new(env, blocks));
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("literal : any") {
+    struct s0_entity_type  *any;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(entity, s0_literal_new_str("hello"));
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("method : any") {
+    struct s0_entity_type  *any;
+    struct s0_name  *self_name;
+    struct s0_block  *block;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(self_name, s0_name_new_str("self"));
+    check_alloc(block, create_empty_block());
+    check_alloc(entity, s0_method_new(self_name, block));
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("object : any") {
+    struct s0_entity_type  *any;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(entity, s0_object_new());
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+/*-----------------------------------------------------------------------------
  * Harness
  */
 
