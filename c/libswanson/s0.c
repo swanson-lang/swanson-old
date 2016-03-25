@@ -6,6 +6,7 @@
 #include "swanson.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ccan/likely/likely.h"
@@ -1453,6 +1454,74 @@ s0_environment_type_get(const struct s0_environment_type *type,
         }
     }
     return NULL;
+}
+
+int
+s0_environment_type_add_external_inputs(struct s0_environment_type *type,
+                                        const struct s0_name_mapping *inputs)
+{
+    size_t  i;
+    for (i = 0; i < inputs->size; i++) {
+        const struct s0_name  *name = inputs->entries[i].from;
+        if (s0_environment_type_get(type, name) != NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy;
+            struct s0_entity_type  *etype_copy;
+
+            name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                return ENOMEM;
+            }
+
+            etype_copy = s0_entity_type_new_copy(inputs->entries[i].type);
+            if (unlikely(etype_copy == NULL)) {
+                s0_name_free(name_copy);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_type_add(type, name_copy, etype_copy);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
+}
+
+int
+s0_environment_type_add_internal_inputs(struct s0_environment_type *type,
+                                        const struct s0_name_mapping *inputs)
+{
+    size_t  i;
+    for (i = 0; i < inputs->size; i++) {
+        const struct s0_name  *name = inputs->entries[i].to;
+        if (s0_environment_type_get(type, name) != NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy;
+            struct s0_entity_type  *etype_copy;
+
+            name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                return ENOMEM;
+            }
+
+            etype_copy = s0_entity_type_new_copy(inputs->entries[i].type);
+            if (unlikely(etype_copy == NULL)) {
+                s0_name_free(name_copy);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_type_add(type, name_copy, etype_copy);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
 }
 
 bool

@@ -522,6 +522,31 @@ struct s0_entity_type *
 s0_environment_type_get(const struct s0_environment_type *,
                         const struct s0_name *name);
 
+/* Adds an entry to the environment type for each entry in a name mapping, using
+ * the mapping entry's `from` name and `type`.  This type describes the
+ * environment that the caller must provide when invoking a block.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error creating the environment type. */
+int
+s0_environment_type_add_external_inputs(struct s0_environment_type *,
+                                        const struct s0_name_mapping *inputs);
+
+/* Adds an entry to the environment type for each entry in a name mapping, using
+ * the mapping entry's `to` name and `type`.  This type describes the
+ * environment a block is given when it first starts executing.
+ *
+ * You should have already filled in the environment type with entries
+ * representing any closure set that the block will operate under (to ensure
+ * that there are no name clashes between the closure set and the input
+ * mapping).
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error creating the environment type. */
+int
+s0_environment_type_add_internal_inputs(struct s0_environment_type *,
+                                        const struct s0_name_mapping *inputs);
+
 bool
 s0_environment_type_satisfied_by(const struct s0_environment_type *,
                                  const struct s0_environment *);

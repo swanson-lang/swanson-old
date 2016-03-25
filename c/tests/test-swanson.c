@@ -1269,6 +1269,150 @@ TEST_CASE("env(a,b) : {a: any, b: any}") {
     s0_environment_free(env);
 }
 
+TEST_CASE("can create external environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type from the mapping */
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_add_external_inputs(type, mapping));
+
+    /* Result should be {a: any, c: any} */
+    check(s0_environment_type_size(type) == 2);
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("c"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("cannot overwrite external environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type with entries that overlap what we'd add from
+     * the mapping. */
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("c"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check(s0_environment_type_add_external_inputs(type, mapping) == -1);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("can create internal environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type from the mapping */
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_add_internal_inputs(type, mapping));
+
+    /* Result should be {b: any, d: any} */
+    check(s0_environment_type_size(type) == 2);
+    check_alloc(name, s0_name_new_str("b"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("d"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("cannot overwrite internal environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type with entries that overlap what we'd add from
+     * the mapping. */
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check(s0_environment_type_add_internal_inputs(type, mapping) == -1);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
 /*-----------------------------------------------------------------------------
  * Harness
  */
