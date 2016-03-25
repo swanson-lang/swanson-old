@@ -294,6 +294,7 @@ struct s0_environment_entry {
 
 struct s0_environment {
     struct s0_environment_entry  *head;
+    size_t  size;
 };
 
 struct s0_environment *
@@ -304,6 +305,7 @@ s0_environment_new(void)
         return NULL;
     }
     env->head = NULL;
+    env->size = 0;
     return env;
 }
 
@@ -324,12 +326,7 @@ s0_environment_free(struct s0_environment *env)
 size_t
 s0_environment_size(const struct s0_environment *env)
 {
-    size_t  size = 0;
-    struct s0_environment_entry  *curr;
-    for (curr = env->head; curr != NULL; curr = curr->next) {
-        size++;
-    }
-    return size;
+    return env->size;
 }
 
 int
@@ -358,6 +355,7 @@ s0_environment_add(struct s0_environment *env,
     entry->entity = entity;
     entry->next = env->head;
     env->head = entry;
+    env->size++;
     return 0;
 }
 
@@ -389,6 +387,7 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
             }
             s0_name_free(curr->name);
             free(curr);
+            env->size--;
             return entity;
         }
     }
