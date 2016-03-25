@@ -44,6 +44,12 @@ s0_name_new_str(const void *content)
     return s0_name_new(strlen(content), content);
 }
 
+struct s0_name *
+s0_name_new_copy(const struct s0_name *other)
+{
+    return s0_name_new(other->size, other->content);
+}
+
 void
 s0_name_free(struct s0_name *name)
 {

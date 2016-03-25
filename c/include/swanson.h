@@ -29,6 +29,9 @@ s0_name_new(size_t size, const void *content);
 struct s0_name *
 s0_name_new_str(const void *content);
 
+struct s0_name *
+s0_name_new_copy(const struct s0_name *other);
+
 void
 s0_name_free(struct s0_name *);
 

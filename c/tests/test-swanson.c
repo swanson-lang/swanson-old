@@ -58,6 +58,18 @@ TEST_CASE("can create name with embedded NUL") {
     s0_name_free(name);
 }
 
+TEST_CASE("can create copy of name") {
+    struct s0_name  *name1;
+    struct s0_name  *name2;
+    check_alloc(name1, s0_name_new(6, "hello\x00"));
+    check_alloc(name2, s0_name_new_copy(name1));
+    check(s0_name_size(name2) == 6);
+    check(memcmp(s0_name_content(name2), "hello\x00", 6) == 0);
+    check(s0_name_eq(name1, name2));
+    s0_name_free(name1);
+    s0_name_free(name2);
+}
+
 TEST_CASE("can compare names") {
     struct s0_name  *n1;
     struct s0_name  *n2;
