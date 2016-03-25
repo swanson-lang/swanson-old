@@ -477,6 +477,49 @@ s0_any_entity_type_new(void);
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Environment types
+ */
+
+struct s0_environment_type;
+
+struct s0_environment_type_entry {
+    struct s0_name  *name;
+    struct s0_entity_type  *type;
+};
+
+struct s0_environment_type *
+s0_environment_type_new(void);
+
+void
+s0_environment_type_free(struct s0_environment_type *);
+
+/* Takes ownership of name and type.  name MUST not already be present in
+ * environment type.  Returns 0 if name was added; -1 if we couldn't allocate
+ * space for the new entry. */
+int
+s0_environment_type_add(struct s0_environment_type *,
+                        struct s0_name *name, struct s0_entity_type *type);
+
+size_t
+s0_environment_type_size(const struct s0_environment_type *);
+
+/* Returns entries in order that they were added to the set.  index MUST be <
+ * size of environment_type.  Set still owns the name and entity type; you must
+ * not free them. */
+struct s0_environment_type_entry
+s0_environment_type_at(const struct s0_environment_type *, size_t index);
+
+/* Returns NULL if name is not in environment type. */
+struct s0_entity_type *
+s0_environment_type_get(const struct s0_environment_type *,
+                        const struct s0_name *name);
+
+bool
+s0_environment_type_satisfied_by(const struct s0_environment_type *,
+                                 const struct s0_environment *);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: YAML
  */
 

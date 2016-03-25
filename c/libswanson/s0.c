@@ -1329,3 +1329,122 @@ s0_entity_type_satisfied_by(const struct s0_entity_type *type,
             break;
     }
 }
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Environment types
+ */
+
+struct s0_environment_type {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_environment_type_entry  *entries;
+};
+
+#define DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE  4
+
+struct s0_environment_type *
+s0_environment_type_new(void)
+{
+    struct s0_environment_type  *type =
+        malloc(sizeof(struct s0_environment_type));
+    if (unlikely(type == NULL)) {
+        return NULL;
+    }
+    type->size = 0;
+    type->allocated_size = DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE;
+    type->entries =
+        malloc(DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE *
+               sizeof(struct s0_environment_type_entry));
+    if (unlikely(type->entries == NULL)) {
+        free(type);
+        return NULL;
+    }
+    return type;
+}
+
+void
+s0_environment_type_free(struct s0_environment_type *type)
+{
+    size_t  i;
+    for (i = 0; i < type->size; i++) {
+        s0_name_free(type->entries[i].name);
+        s0_entity_type_free(type->entries[i].type);
+    }
+    free(type->entries);
+    free(type);
+}
+
+int
+s0_environment_type_add(struct s0_environment_type *type,
+                        struct s0_name *name, struct s0_entity_type *etype)
+{
+    struct s0_environment_type_entry  *new_entry;
+
+    if (unlikely(type->size == type->allocated_size)) {
+        size_t  new_size = type->allocated_size * 2;
+        struct s0_environment_type_entry  *new_entries =
+            realloc(type->entries,
+                    new_size * sizeof(struct s0_environment_type_entry));
+        if (unlikely(new_entries == NULL)) {
+            s0_name_free(name);
+            s0_entity_type_free(etype);
+            return -1;
+        }
+        type->entries = new_entries;
+        type->allocated_size = new_size;
+    }
+
+    new_entry = &type->entries[type->size++];
+    new_entry->name = name;
+    new_entry->type = etype;
+    return 0;
+}
+
+size_t
+s0_environment_type_size(const struct s0_environment_type *type)
+{
+    return type->size;
+}
+
+struct s0_environment_type_entry
+s0_environment_type_at(const struct s0_environment_type *type, size_t index)
+{
+    assert(index < type->size);
+    return type->entries[index];
+}
+
+struct s0_entity_type *
+s0_environment_type_get(const struct s0_environment_type *type,
+                        const struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < type->size; i++) {
+        if (s0_name_eq(type->entries[i].name, name)) {
+            return type->entries[i].type;
+        }
+    }
+    return NULL;
+}
+
+bool
+s0_environment_type_satisfied_by(const struct s0_environment_type *type,
+                                 const struct s0_environment *env)
+{
+    size_t  i;
+
+    if (type->size != env->size) {
+        return false;
+    }
+
+    for (i = 0; i < type->size; i++) {
+        const struct s0_name  *name = type->entries[i].name;
+        const struct s0_entity_type  *etype = type->entries[i].type;
+        struct s0_entity  *element = s0_environment_get(env, name);
+        if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+            return false;
+        }
+    }
+
+    return true;
+}
