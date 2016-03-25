@@ -1456,6 +1456,24 @@ s0_environment_type_get(const struct s0_environment_type *type,
     return NULL;
 }
 
+struct s0_entity_type *
+s0_environment_type_delete(struct s0_environment_type *type,
+                           const struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < type->size; i++) {
+        if (s0_name_eq(type->entries[i].name, name)) {
+            struct s0_entity_type  *result = type->entries[i].type;
+            s0_name_free(type->entries[i].name);
+            memmove(&type->entries[i], &type->entries[i + 1],
+                    sizeof(type->entries[i]) * (type->size - i - 1));
+            type->size--;
+            return result;
+        }
+    }
+    return NULL;
+}
+
 int
 s0_environment_type_add_external_inputs(struct s0_environment_type *type,
                                         const struct s0_name_mapping *inputs)

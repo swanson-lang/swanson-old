@@ -522,6 +522,11 @@ struct s0_entity_type *
 s0_environment_type_get(const struct s0_environment_type *,
                         const struct s0_name *name);
 
+/* Returns NULL if name is not in environment type. */
+struct s0_entity_type *
+s0_environment_type_delete(struct s0_environment_type *,
+                           const struct s0_name *name);
+
 /* Adds an entry to the environment type for each entry in a name mapping, using
  * the mapping entry's `from` name and `type`.  This type describes the
  * environment that the caller must provide when invoking a block.
