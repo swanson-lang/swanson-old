@@ -97,7 +97,6 @@ SWANSON_O = $(SWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 SWANSON_D = $(SWANSON_O:.o=.d)
 
 TEST_SWANSON_C = \
-    $(SOURCE_ROOT)/ccan/tap/tap.c \
     $(SOURCE_ROOT)/tests/test-swanson.c
 TEST_SWANSON_O = $(TEST_SWANSON_C:$(SOURCE_ROOT)/%.c=$(BUILD_ROOT)/objs/%.o)
 TEST_SWANSON_D = $(TEST_SWANSON_O:.o=.d)
@@ -247,7 +246,7 @@ $(TEST_S0_PARSER_EXE): $(TEST_S0_PARSER_O) $(LIBSWANSON_SO_X) $(BUILD)
 	    -Wl,-rpath,$(BUILD_ROOT) \
 	    -lswanson
 
-check: $(TEST_SWANSON_EXE) $(TEST_S0_PARSER_EXE)
+check: depends $(TEST_SWANSON_EXE) $(TEST_S0_PARSER_EXE)
 ifdef VALGRIND
 	@echo "TEST (valgrind) test-swanson"
 	@$(VALGRIND) \
