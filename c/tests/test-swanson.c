@@ -5,23 +5,12 @@
 
 #include <string.h>
 
-#include "ccan/tap/tap.h"
 #include "swanson.h"
+#include "test-cases.h"
 
 /*-----------------------------------------------------------------------------
  * Helpers
  */
-
-#define ok_alloc(var, call) \
-    do { \
-        var = call; \
-        ok(var != NULL, #call " != NULL"); \
-    } while (0)
-
-#define ok0(call, desc) \
-    do { \
-        ok((call) == 0, desc); \
-    } while (0)
 
 static struct s0_block *
 create_empty_block(void)
@@ -31,7 +20,6 @@ create_empty_block(void)
     struct s0_name_mapping  *inputs;
     struct s0_statement_list  *statements;
     struct s0_invocation  *invocation;
-
     inputs = s0_name_mapping_new();
     statements = s0_statement_list_new();
     src = s0_name_new_str("x");
@@ -44,36 +32,41 @@ create_empty_block(void)
  * S₀: Names
  */
 
-#define TEST_COUNT_S0_NAMES  11
+TEST_CASE_GROUP("S₀ names");
 
-static void
-test_s0_names(void)
-{
+TEST_CASE("can create name from C string") {
+    struct s0_name  *name;
+    check_alloc(name, s0_name_new_str("hello"));
+    check(s0_name_size(name) == 5);
+    check(memcmp(s0_name_content(name), "hello", 5) == 0);
+    s0_name_free(name);
+}
+
+TEST_CASE("can create name with explicit length") {
+    struct s0_name  *name;
+    check_alloc(name, s0_name_new(5, "hello"));
+    check(s0_name_size(name) == 5);
+    check(memcmp(s0_name_content(name), "hello", 5) == 0);
+    s0_name_free(name);
+}
+
+TEST_CASE("can create name with embedded NUL") {
+    struct s0_name  *name;
+    check_alloc(name, s0_name_new(6, "hello\x00"));
+    check(s0_name_size(name) == 6);
+    check(memcmp(s0_name_content(name), "hello\x00", 6) == 0);
+    s0_name_free(name);
+}
+
+TEST_CASE("can compare names") {
     struct s0_name  *n1;
     struct s0_name  *n2;
     struct s0_name  *n3;
-
-    diag("S₀ names");
-
-    ok_alloc(n1, s0_name_new_str("hello"));
-    ok_alloc(n2, s0_name_new(5, "hello"));
-    /* content includes NUL terminator */
-    ok_alloc(n3, s0_name_new(6, "hello"));
-
-    ok(s0_name_size(n1) == 5, "[name(5, \"hello\")] == 5");
-    ok(s0_name_size(n2) == 5, "[name(5, \"hello\")] == 5");
-    ok(s0_name_size(n3) == 6, "[name(6, \"hello\\x00\")] == 6");
-
-    ok(memcmp(s0_name_content(n1), "hello", 5) == 0,
-       "name(5, \"hello\") == \"hello\"");
-    ok(memcmp(s0_name_content(n2), "hello", 5) == 0,
-       "name(5, \"hello\") == \"hello\"");
-    ok(memcmp(s0_name_content(n3), "hello\x00", 6) == 0,
-       "name(6, \"hello\\x00\") == \"hello\\x00\"");
-
-    ok(s0_name_eq(n1, n2),  "name(5, \"hello\") == name(5, \"hello\")");
-    ok(!s0_name_eq(n1, n3), "name(5, \"hello\") != name(6, \"hello\\x00\")");
-
+    check_alloc(n1, s0_name_new_str("hello"));
+    check_alloc(n2, s0_name_new(5, "hello"));
+    check_alloc(n3, s0_name_new(6, "hello\x00"));
+    check(s0_name_eq(n1, n2));
+    check(!s0_name_eq(n1, n3));
     s0_name_free(n1);
     s0_name_free(n2);
     s0_name_free(n3);
@@ -83,301 +76,397 @@ test_s0_names(void)
  * S₀: Name sets
  */
 
-#define TEST_COUNT_S0_NAME_SETS  32
+TEST_CASE_GROUP("S₀ name sets");
 
-static void
-test_s0_name_sets(void)
-{
+TEST_CASE("can create empty name set") {
+    struct s0_name_set  *set;
+    check_alloc(set, s0_name_set_new());
+    s0_name_set_free(set);
+}
+
+TEST_CASE("empty name set has zero elements") {
+    struct s0_name_set  *set;
+    check_alloc(set, s0_name_set_new());
+    check(s0_name_set_size(set) == 0);
+    s0_name_set_free(set);
+}
+
+TEST_CASE("empty name set doesn't contain anything") {
     struct s0_name_set  *set;
     struct s0_name  *name;
-
-    diag("S₀ name sets");
-
-#define check_size(expected) \
-    ok(s0_name_set_size(set) == expected, \
-       "s0_name_set_size(set) == " #expected);
-
-    ok_alloc(set, s0_name_set_new());
-    check_size(0);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(!s0_name_set_contains(set, name),
-       "!s0_name_set_contains(set, \"a\")");
-    check_size(0);
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check(!s0_name_set_contains(set, name));
     s0_name_free(name);
+    s0_name_set_free(set);
+}
 
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(!s0_name_set_contains(set, name),
-       "!s0_name_set_contains(set, \"b\")");
-    check_size(0);
-    s0_name_free(name);
+TEST_CASE("can add names to set") {
+    struct s0_name_set  *set;
+    struct s0_name  *name;
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    s0_name_set_free(set);
+}
 
-    ok_alloc(name, s0_name_new_str("a"));
-    ok0(s0_name_set_add(set, name),
-        "s0_name_set_add(set, \"a\")");
-    check_size(1);
+TEST_CASE("non-empty name set has accurate size") {
+    struct s0_name_set  *set;
+    struct s0_name  *name;
+    check_alloc(set, s0_name_set_new());
 
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_name_set_contains(set, name),
-       "s0_name_set_contains(set, \"a\")");
-    check_size(1);
-    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check(s0_name_set_size(set) == 1);
 
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(!s0_name_set_contains(set, name),
-       "!s0_name_set_contains(set, \"b\")");
-    check_size(1);
-    s0_name_free(name);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok0(s0_name_set_add(set, name),
-        "s0_name_set_add(set, \"b\")");
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_name_set_contains(set, name),
-       "s0_name_set_contains(set, \"a\")");
-    check_size(2);
-    s0_name_free(name);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_name_set_contains(set, name),
-       "s0_name_set_contains(set, \"b\")");
-    check_size(2);
-    s0_name_free(name);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_name_eq(name, s0_name_set_at(set, 0)),
-       "s0_name_set_at(set, 0) == \"a\"");
-    s0_name_free(name);
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_name_eq(name, s0_name_set_at(set, 1)),
-       "s0_name_set_at(set, 1) == \"b\"");
-    s0_name_free(name);
-    check_size(2);
+    check_alloc(name, s0_name_new_str("b"));
+    check0(s0_name_set_add(set, name));
+    check(s0_name_set_size(set) == 2);
 
     s0_name_set_free(set);
-#undef check_size
+}
+
+TEST_CASE("can check which names belong to set") {
+    struct s0_name_set  *set;
+    struct s0_name  *name;
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(name, s0_name_new_str("b"));
+    check0(s0_name_set_add(set, name));
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_name_set_contains(set, name));
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_name_set_contains(set, name));
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(!s0_name_set_contains(set, name));
+    s0_name_free(name);
+
+    s0_name_set_free(set);
+}
+
+TEST_CASE("can iterate through names in set") {
+    struct s0_name_set  *set;
+    struct s0_name  *name;
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(name, s0_name_new_str("b"));
+    check0(s0_name_set_add(set, name));
+
+    /* This test assumes that the names are returned in the same order that they
+     * were added to the set. */
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_name_eq(name, s0_name_set_at(set, 0)));
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_name_eq(name, s0_name_set_at(set, 1)));
+    s0_name_free(name);
+
+    s0_name_set_free(set);
 }
 
 /*-----------------------------------------------------------------------------
  * S₀: Name mappings
  */
 
-#define TEST_COUNT_S0_NAME_MAPPINGS  28
+TEST_CASE_GROUP("S₀ name mappings");
 
-static void
-test_s0_name_mappings(void)
-{
+TEST_CASE("can create empty name mapping") {
+    struct s0_name_mapping  *mapping;
+    check_alloc(mapping, s0_name_mapping_new());
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("empty name mapping has zero elements") {
+    struct s0_name_mapping  *mapping;
+    check_alloc(mapping, s0_name_mapping_new());
+    check(s0_name_mapping_size(mapping) == 0);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("empty name mapping doesn't contain anything") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check(s0_name_mapping_get(mapping, from) == NULL);
+    s0_name_free(from);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("can add names to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
-    struct s0_name_mapping_entry  entry;
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    s0_name_mapping_free(mapping);
+}
 
-    diag("S₀ name mappings");
+TEST_CASE("non-empty name mapping has accurate size") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    check_alloc(mapping, s0_name_mapping_new());
 
-#define check_size(expected) \
-    ok(s0_name_mapping_size(mapping) == expected, \
-       "s0_name_mapping_size(mapping) == " #expected);
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check(s0_name_mapping_size(mapping) == 1);
 
-    ok_alloc(mapping, s0_name_mapping_new());
-    check_size(0);
-
-    ok_alloc(from, s0_name_new_str("a"));
-    ok_alloc(to, s0_name_new_str("b"));
-    ok0(s0_name_mapping_add(mapping, from, to),
-        "s0_name_mapping_add(\"a\", \"b\")");
-    check_size(1);
-
-    ok_alloc(from, s0_name_new_str("c"));
-    ok_alloc(to, s0_name_new_str("d"));
-    ok0(s0_name_mapping_add(mapping, from, to),
-        "s0_name_mapping_add(\"c\", \"d\")");
-    check_size(2);
-
-    ok_alloc(from, s0_name_new_str("a"));
-    ok_alloc(to, s0_name_new_str("b"));
-    ok(s0_name_eq(s0_name_mapping_get(mapping, from), to),
-       "s0_name_mapping_get(mapping, \"a\") == \"b\"");
-    s0_name_free(from);
-    s0_name_free(to);
-    check_size(2);
-
-    ok_alloc(from, s0_name_new_str("c"));
-    ok_alloc(to, s0_name_new_str("d"));
-    ok(s0_name_eq(s0_name_mapping_get(mapping, from), to),
-       "s0_name_mapping_get(mapping, \"c\") == \"d\"");
-    s0_name_free(from);
-    s0_name_free(to);
-    check_size(2);
-
-    entry = s0_name_mapping_at(mapping, 0);
-    ok_alloc(from, s0_name_new_str("a"));
-    ok_alloc(to, s0_name_new_str("b"));
-    ok(s0_name_eq(entry.from, from),
-       "s0_name_mapping_at(mapping, 0).from == \"a\"");
-    ok(s0_name_eq(entry.to, to),
-       "s0_name_mapping_at(mapping, 0).to == \"b\"");
-    s0_name_free(from);
-    s0_name_free(to);
-    check_size(2);
-
-    entry = s0_name_mapping_at(mapping, 1);
-    ok_alloc(from, s0_name_new_str("c"));
-    ok_alloc(to, s0_name_new_str("d"));
-    ok(s0_name_eq(entry.from, from),
-       "s0_name_mapping_at(mapping, 1).from == \"c\"");
-    ok(s0_name_eq(entry.to, to),
-       "s0_name_mapping_at(mapping, 1).to == \"d\"");
-    s0_name_free(from);
-    s0_name_free(to);
-    check_size(2);
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check(s0_name_mapping_size(mapping) == 2);
 
     s0_name_mapping_free(mapping);
-#undef check_size
+}
+
+TEST_CASE("can check which names belong to mapping") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check(s0_name_eq(s0_name_mapping_get(mapping, from), to));
+    s0_name_free(from);
+    s0_name_free(to);
+
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check(s0_name_eq(s0_name_mapping_get(mapping, from), to));
+    s0_name_free(from);
+    s0_name_free(to);
+
+    check_alloc(from, s0_name_new_str("e"));
+    check(s0_name_mapping_get(mapping, from) == NULL);
+    s0_name_free(from);
+
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("can iterate through names in mapping") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name_mapping_entry  entry;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+
+    /* This test assumes that the names are returned in the same order that they
+     * were added to the mapping. */
+
+    entry = s0_name_mapping_at(mapping, 0);
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check(s0_name_eq(entry.from, from));
+    check(s0_name_eq(entry.to, to));
+    s0_name_free(from);
+    s0_name_free(to);
+
+    entry = s0_name_mapping_at(mapping, 1);
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check(s0_name_eq(entry.from, from));
+    check(s0_name_eq(entry.to, to));
+    s0_name_free(from);
+    s0_name_free(to);
+
+    s0_name_mapping_free(mapping);
 }
 
 /*-----------------------------------------------------------------------------
  * S₀: Named blocks
  */
 
-#define TEST_COUNT_S0_NAMED_BLOCKS  16
+TEST_CASE_GROUP("S₀ named blocks");
 
-static void
-test_s0_named_blocks(void)
-{
+TEST_CASE("can create empty named blocks") {
+    struct s0_named_blocks  *blocks;
+    check_alloc(blocks, s0_named_blocks_new());
+    s0_named_blocks_free(blocks);
+}
+
+TEST_CASE("empty named blocks has zero elements") {
+    struct s0_named_blocks  *blocks;
+    check_alloc(blocks, s0_named_blocks_new());
+    check(s0_named_blocks_size(blocks) == 0);
+    s0_named_blocks_free(blocks);
+}
+
+TEST_CASE("empty named blocks doesn't contain anything") {
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_named_blocks_get(blocks, name) == NULL);
+    s0_name_free(name);
+    s0_named_blocks_free(blocks);
+}
+
+TEST_CASE("can add names to blocks") {
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    s0_named_blocks_free(blocks);
+}
+
+TEST_CASE("non-empty named blocks has accurate size") {
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block;
+    check_alloc(blocks, s0_named_blocks_new());
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    check(s0_named_blocks_size(blocks) == 1);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    check(s0_named_blocks_size(blocks) == 2);
+
+    s0_named_blocks_free(blocks);
+}
+
+TEST_CASE("can check which names belong to blocks") {
     struct s0_named_blocks  *blocks;
     struct s0_name  *name;
     struct s0_block  *block1;
     struct s0_block  *block2;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block1, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(block2, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block2));
 
-    diag("S₀ named blocks");
-
-#define check_size(expected) \
-    ok(s0_named_blocks_size(blocks) == expected, \
-       "s0_named_blocks_size(blocks) == " #expected);
-
-    ok_alloc(blocks, s0_named_blocks_new());
-    check_size(0);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok_alloc(block1, create_empty_block());
-    ok0(s0_named_blocks_add(blocks, name, block1),
-        "s0_named_blocks_add(\"a\", block1)");
-    check_size(1);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok_alloc(block2, create_empty_block());
-    ok0(s0_named_blocks_add(blocks, name, block2),
-        "s0_named_blocks_add(\"b\", block2)");
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_named_blocks_get(blocks, name) == block1,
-       "s0_named_blocks_get(blocks, \"a\") == block1");
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_named_blocks_get(blocks, name) == block1);
     s0_name_free(name);
-    check_size(2);
 
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_named_blocks_get(blocks, name) == block2,
-       "s0_named_blocks_get(blocks, \"b\") == block2");
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_named_blocks_get(blocks, name) == block2);
     s0_name_free(name);
-    check_size(2);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_named_blocks_get(blocks, name) == NULL);
+    s0_name_free(name);
 
     s0_named_blocks_free(blocks);
-#undef check_size
 }
 
 /*-----------------------------------------------------------------------------
  * S₀: Statements
  */
 
-#define TEST_COUNT_S0_STATEMENTS  31
+TEST_CASE_GROUP("S₀ statements");
 
-static void
-test_s0_statements(void)
-{
+TEST_CASE("can create `create-atom` statement") {
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_ATOM);
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check(s0_name_eq(s0_create_atom_dest(stmt), dest));
+    s0_name_free(dest);
+
+    s0_statement_free(stmt);
+}
+
+TEST_CASE("can create `create-closure` statement") {
     struct s0_name  *dest;
     struct s0_name_set  *closed_over;
     struct s0_named_blocks  *branches;
+    struct s0_statement  *stmt;
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(closed_over, s0_name_set_new());
+    check_alloc(branches, s0_named_blocks_new());
+    check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
+    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check(s0_name_eq(s0_create_closure_dest(stmt), dest));
+    s0_name_free(dest);
+
+    check(s0_create_closure_closed_over(stmt) == closed_over);
+    check(s0_create_closure_branches(stmt) == branches);
+
+    s0_statement_free(stmt);
+}
+
+TEST_CASE("can create `create-literal` statement") {
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
+    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_LITERAL);
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check(s0_name_eq(s0_create_literal_dest(stmt), dest));
+    s0_name_free(dest);
+
+    check(s0_create_literal_size(stmt) == 5);
+    check(memcmp(s0_create_literal_content(stmt), "hello", 5) == 0);
+
+    s0_statement_free(stmt);
+}
+
+TEST_CASE("can create `create-method` statement") {
+    struct s0_name  *dest;
     struct s0_name  *self_input;
     struct s0_block  *body;
     struct s0_statement  *stmt;
 
-    diag("S₀ statements");
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(self_input, s0_name_new_str("self"));
+    check_alloc(body, create_empty_block());
+    check_alloc(stmt, s0_create_method_new(dest, self_input, body));
+    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_METHOD);
 
-    /* create_atom */
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok_alloc(stmt, s0_create_atom_new(dest));
-    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_ATOM,
-       "type(stmt) == create_atom");
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok(s0_name_eq(s0_create_atom_dest(stmt), dest), "dest(stmt) == \"a\"");
+    check_alloc(dest, s0_name_new_str("a"));
+    check(s0_name_eq(s0_create_method_dest(stmt), dest));
     s0_name_free(dest);
 
-    s0_statement_free(stmt);
-
-    /* create_closure */
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok_alloc(closed_over, s0_name_set_new());
-    ok_alloc(branches, s0_named_blocks_new());
-    ok_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
-    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_CLOSURE,
-       "type(stmt) == create_closure");
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok(s0_name_eq(s0_create_closure_dest(stmt), dest), "dest(stmt) == \"a\"");
-    s0_name_free(dest);
-
-    ok(s0_create_closure_closed_over(stmt) == closed_over,
-       "closed_over(stmt) == closed_over");
-    ok(s0_create_closure_branches(stmt) == branches,
-       "branches(stmt) == branches");
-
-    s0_statement_free(stmt);
-
-    /* create_literal */
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
-    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_LITERAL,
-       "type(stmt) == create_literal");
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok(s0_name_eq(s0_create_literal_dest(stmt), dest), "dest(stmt) == \"a\"");
-    s0_name_free(dest);
-
-    ok(s0_create_literal_size(stmt) == 5,
-       "[create_literal(5, \"hello\")] == 5");
-    ok(memcmp(s0_create_literal_content(stmt), "hello", 5) == 0,
-       "create_literal(5, \"hello\") == \"hello\"");
-
-    s0_statement_free(stmt);
-
-    /* create_method */
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok_alloc(self_input, s0_name_new_str("self"));
-    ok_alloc(body, create_empty_block());
-    ok_alloc(stmt, s0_create_method_new(dest, self_input, body));
-    ok(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_METHOD,
-       "type(stmt) == create_method");
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok(s0_name_eq(s0_create_method_dest(stmt), dest), "dest(stmt) == \"a\"");
-    s0_name_free(dest);
-
-    ok_alloc(self_input, s0_name_new_str("self"));
-    ok(s0_name_eq(s0_create_method_self_input(stmt), self_input),
-       "self_input(stmt) == \"self\"");
+    check_alloc(self_input, s0_name_new_str("self"));
+    check(s0_name_eq(s0_create_method_self_input(stmt), self_input));
     s0_name_free(self_input);
 
-    ok(s0_create_method_body(stmt) == body, "body(stmt) == body");
+    check(s0_create_method_body(stmt) == body);
 
     s0_statement_free(stmt);
 }
@@ -386,101 +475,113 @@ test_s0_statements(void)
  * S₀: Statement lists
  */
 
-#define TEST_COUNT_S0_STATEMENT_LISTS  14
+TEST_CASE_GROUP("S₀ statement lists");
 
-static void
-test_s0_statement_lists(void)
-{
+TEST_CASE("can create empty statement list") {
+    struct s0_statement_list  *list;
+    check_alloc(list, s0_statement_list_new());
+    s0_statement_list_free(list);
+}
+
+TEST_CASE("empty statement list has zero elements") {
+    struct s0_statement_list  *list;
+    check_alloc(list, s0_statement_list_new());
+    check(s0_statement_list_size(list) == 0);
+    s0_statement_list_free(list);
+}
+
+TEST_CASE("can add statements to list") {
+    struct s0_statement_list  *list;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    check_alloc(list, s0_statement_list_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    s0_statement_list_free(list);
+}
+
+TEST_CASE("non-empty statement list has accurate size") {
+    struct s0_statement_list  *list;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    check_alloc(list, s0_statement_list_new());
+
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    check(s0_statement_list_size(list) == 1);
+
+    check_alloc(dest, s0_name_new_str("b"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    check(s0_statement_list_size(list) == 2);
+
+    s0_statement_list_free(list);
+}
+
+TEST_CASE("can iterate through statements in list") {
     struct s0_statement_list  *list;
     struct s0_name  *dest;
     struct s0_statement  *stmt1;
     struct s0_statement  *stmt2;
+    check_alloc(list, s0_statement_list_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt1, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt1));
+    check_alloc(dest, s0_name_new_str("b"));
+    check_alloc(stmt2, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt2));
 
-    diag("S₀ statement list");
-
-#define check_size(expected) \
-    ok(s0_statement_list_size(list) == expected, \
-       "s0_statement_list_size(list) == " #expected);
-
-    ok_alloc(list, s0_statement_list_new());
-    check_size(0);
-
-    ok_alloc(dest, s0_name_new_str("a"));
-    ok_alloc(stmt1, s0_create_atom_new(dest));
-    ok0(s0_statement_list_add(list, stmt1),
-        "s0_statement_list_add(list, create_atom(\"a\"))");
-    check_size(1);
-
-    ok_alloc(dest, s0_name_new_str("b"));
-    ok_alloc(stmt2, s0_create_atom_new(dest));
-    ok0(s0_statement_list_add(list, stmt2),
-        "s0_statement_list_add(list, create_atom(\"b\"))");
-    check_size(2);
-
-    ok(s0_statement_list_at(list, 0) == stmt1,
-       "s0_statement_list_at(list, 0) == create_atom(\"a\")");
-    check_size(2);
-
-    ok(s0_statement_list_at(list, 1) == stmt2,
-       "s0_statement_list_at(list, 2) == create_atom(\"b\")");
-    check_size(2);
+    check(s0_statement_list_at(list, 0) == stmt1);
+    check(s0_statement_list_at(list, 1) == stmt2);
 
     s0_statement_list_free(list);
-#undef check_size
 }
 
 /*-----------------------------------------------------------------------------
  * S₀: Invocations
  */
 
-#define TEST_COUNT_S0_INVOCATIONS  16
+TEST_CASE_GROUP("S₀ invocations");
 
-static void
-test_s0_invocations(void)
-{
+TEST_CASE("can create `invoke-closure` invocation") {
     struct s0_name  *src;
     struct s0_name  *branch;
-    struct s0_name  *method;
     struct s0_invocation  *invocation;
 
-    diag("S₀ invocations");
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
 
-    /* invoke_closure */
-
-    ok_alloc(src, s0_name_new_str("a"));
-    ok_alloc(branch, s0_name_new_str("body"));
-    ok_alloc(invocation, s0_invoke_closure_new(src, branch));
-    ok(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_CLOSURE,
-       "type(invocation) == invoke_closure");
-
-    ok_alloc(src, s0_name_new_str("a"));
-    ok(s0_name_eq(s0_invoke_closure_src(invocation), src),
-       "src(invocation) == \"a\"");
+    check_alloc(src, s0_name_new_str("a"));
+    check(s0_name_eq(s0_invoke_closure_src(invocation), src));
     s0_name_free(src);
 
-    ok_alloc(branch, s0_name_new_str("body"));
-    ok(s0_name_eq(s0_invoke_closure_branch(invocation), branch),
-       "branch(invocation) == \"body\"");
+    check_alloc(branch, s0_name_new_str("body"));
+    check(s0_name_eq(s0_invoke_closure_branch(invocation), branch));
     s0_name_free(branch);
 
     s0_invocation_free(invocation);
+}
 
-    /* invoke_method */
+TEST_CASE("can create `invoke-method` invocation") {
+    struct s0_name  *src;
+    struct s0_name  *method;
+    struct s0_invocation  *invocation;
 
-    ok_alloc(src, s0_name_new_str("a"));
-    ok_alloc(method, s0_name_new_str("run"));
-    ok_alloc(invocation, s0_invoke_method_new(src, method));
-    ok(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_METHOD,
-       "type(invocation) == invoke_method");
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(method, s0_name_new_str("run"));
+    check_alloc(invocation, s0_invoke_method_new(src, method));
+    check(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_METHOD);
 
-    ok_alloc(src, s0_name_new_str("a"));
-    ok(s0_name_eq(s0_invoke_method_src(invocation), src),
-       "src(invocation) == \"a\"");
+    check_alloc(src, s0_name_new_str("a"));
+    check(s0_name_eq(s0_invoke_method_src(invocation), src));
     s0_name_free(src);
 
-    ok_alloc(method, s0_name_new_str("run"));
-    ok(s0_name_eq(s0_invoke_method_method(invocation), method),
-       "method(invocation) == \"run\"");
+    check_alloc(method, s0_name_new_str("run"));
+    check(s0_name_eq(s0_invoke_method_method(invocation), method));
     s0_name_free(method);
 
     s0_invocation_free(invocation);
@@ -490,33 +591,24 @@ test_s0_invocations(void)
  * S₀: Blocks
  */
 
-#define TEST_COUNT_S0_BLOCKS  9
+TEST_CASE_GROUP("S₀ blocks");
 
-static void
-test_s0_blocks(void)
-{
+TEST_CASE("can create block") {
     struct s0_name  *src;
     struct s0_name  *branch;
     struct s0_name_mapping  *inputs;
     struct s0_statement_list  *statements;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
-
-    diag("S₀ blocks");
-
-    ok_alloc(inputs, s0_name_mapping_new());
-    ok_alloc(statements, s0_statement_list_new());
-    ok_alloc(src, s0_name_new_str("x"));
-    ok_alloc(branch, s0_name_new_str("body"));
-    ok_alloc(invocation, s0_invoke_closure_new(src, branch));
-    ok_alloc(block, s0_block_new(inputs, statements, invocation));
-
-    ok(s0_block_inputs(block) == inputs, "inputs(block) == inputs");
-    ok(s0_block_statements(block) == statements,
-       "statements(block) == statements");
-    ok(s0_block_invocation(block) == invocation,
-       "invocation(block) == invocation");
-
+    check_alloc(inputs, s0_name_mapping_new());
+    check_alloc(statements, s0_statement_list_new());
+    check_alloc(src, s0_name_new_str("x"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(block, s0_block_new(inputs, statements, invocation));
+    check(s0_block_inputs(block) == inputs);
+    check(s0_block_statements(block) == statements);
+    check(s0_block_invocation(block) == invocation);
     s0_block_free(block);
 }
 
@@ -524,33 +616,40 @@ test_s0_blocks(void)
  * S₀: Atoms
  */
 
-#define TEST_COUNT_S0_ATOMS  12
+TEST_CASE_GROUP("S₀ atoms");
 
-static void
-test_s0_atoms(void)
-{
+TEST_CASE("can create atom") {
+    struct s0_entity  *atom;
+    check_alloc(atom, s0_atom_new());
+    check(s0_entity_type(atom) == S0_ENTITY_TYPE_ATOM);
+    s0_entity_free(atom);
+}
+
+TEST_CASE("atoms should equal themselves") {
     struct s0_entity  *a1;
     struct s0_entity  *a2;
     struct s0_entity  *a3;
+    check_alloc(a1, s0_atom_new());
+    check_alloc(a2, s0_atom_new());
+    check_alloc(a3, s0_atom_new());
+    check(s0_atom_eq(a1, a1));
+    check(s0_atom_eq(a2, a2));
+    check(s0_atom_eq(a3, a3));
+    s0_entity_free(a1);
+    s0_entity_free(a2);
+    s0_entity_free(a3);
+}
 
-    diag("S₀ atoms");
-
-    ok_alloc(a1, s0_atom_new());
-    ok_alloc(a2, s0_atom_new());
-    ok_alloc(a3, s0_atom_new());
-
-    ok(s0_entity_type(a1) == S0_ENTITY_TYPE_ATOM, "type(atom1) == atom");
-    ok(s0_entity_type(a2) == S0_ENTITY_TYPE_ATOM, "type(atom2) == atom");
-    ok(s0_entity_type(a3) == S0_ENTITY_TYPE_ATOM, "type(atom3) == atom");
-
-    ok(s0_atom_eq(a1, a1),  "atom1 == atom1");
-    ok(s0_atom_eq(a2, a2),  "atom2 == atom2");
-    ok(s0_atom_eq(a3, a3),  "atom3 == atom3");
-
-    ok(!s0_atom_eq(a1, a2),  "atom1 != atom2");
-    ok(!s0_atom_eq(a1, a3),  "atom1 != atom3");
-    ok(!s0_atom_eq(a2, a3),  "atom2 != atom3");
-
+TEST_CASE("atoms should not equal any others") {
+    struct s0_entity  *a1;
+    struct s0_entity  *a2;
+    struct s0_entity  *a3;
+    check_alloc(a1, s0_atom_new());
+    check_alloc(a2, s0_atom_new());
+    check_alloc(a3, s0_atom_new());
+    check(!s0_atom_eq(a1, a2));
+    check(!s0_atom_eq(a1, a3));
+    check(!s0_atom_eq(a2, a3));
     s0_entity_free(a1);
     s0_entity_free(a2);
     s0_entity_free(a3);
@@ -560,27 +659,18 @@ test_s0_atoms(void)
  * S₀: Closures
  */
 
-#define TEST_COUNT_S0_CLOSURES  6
+TEST_CASE_GROUP("S₀ closures");
 
-static void
-test_s0_closures(void)
-{
+TEST_CASE("can create closure") {
     struct s0_entity  *closure;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
-
-    diag("S₀ closures");
-
-    ok_alloc(env, s0_environment_new());
-    ok_alloc(blocks, s0_named_blocks_new());
-    ok_alloc(closure, s0_closure_new(env, blocks));
-
-    ok(s0_entity_type(closure) == S0_ENTITY_TYPE_CLOSURE,
-       "type(closure) == closure");
-
-    ok(s0_closure_environment(closure) == env, "env(closure) == env");
-    ok(s0_closure_named_blocks(closure) == blocks, "blocks(closure) == blocks");
-
+    check_alloc(env, s0_environment_new());
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(closure, s0_closure_new(env, blocks));
+    check(s0_entity_type(closure) == S0_ENTITY_TYPE_CLOSURE);
+    check(s0_closure_environment(closure) == env);
+    check(s0_closure_named_blocks(closure) == blocks);
     s0_entity_free(closure);
 }
 
@@ -588,74 +678,53 @@ test_s0_closures(void)
  * S₀: Literals
  */
 
-#define TEST_COUNT_S0_LITERALS  12
+TEST_CASE_GROUP("S₀ literals");
 
-static void
-test_s0_literals(void)
-{
-    struct s0_entity  *l1;
-    struct s0_entity  *l2;
-    struct s0_entity  *l3;
+TEST_CASE("can create literal from C string") {
+    struct s0_entity  *literal;
+    check_alloc(literal, s0_literal_new_str("hello"));
+    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_literal_size(literal) == 5);
+    check(memcmp(s0_literal_content(literal), "hello", 5) == 0);
+    s0_entity_free(literal);
+}
 
-    diag("S₀ literals");
+TEST_CASE("can create literal with explicit length") {
+    struct s0_entity  *literal;
+    check_alloc(literal, s0_literal_new(5, "hello"));
+    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_literal_size(literal) == 5);
+    check(memcmp(s0_literal_content(literal), "hello", 5) == 0);
+    s0_entity_free(literal);
+}
 
-    ok_alloc(l1, s0_literal_new_str("hello"));
-    ok_alloc(l2, s0_literal_new(5, "hello"));
-    /* content includes NUL terminator */
-    ok_alloc(l3, s0_literal_new(6, "hello"));
-
-    ok(s0_entity_type(l1) == S0_ENTITY_TYPE_LITERAL,
-       "type(literal1) == literal");
-    ok(s0_entity_type(l2) == S0_ENTITY_TYPE_LITERAL,
-       "type(literal2) == literal");
-    ok(s0_entity_type(l3) == S0_ENTITY_TYPE_LITERAL,
-       "type(literal3) == literal");
-
-    ok(s0_literal_size(l1) == 5, "[literal(5, \"hello\")] == 5");
-    ok(s0_literal_size(l2) == 5, "[literal(5, \"hello\")] == 5");
-    ok(s0_literal_size(l3) == 6, "[literal(6, \"hello\\x00\")] == 6");
-
-    ok(memcmp(s0_literal_content(l1), "hello", 5) == 0,
-       "literal(5, \"hello\") == \"hello\"");
-    ok(memcmp(s0_literal_content(l2), "hello", 5) == 0,
-       "literal(5, \"hello\") == \"hello\"");
-    ok(memcmp(s0_literal_content(l3), "hello\x00", 6) == 0,
-       "literal(6, \"hello\\x00\") == \"hello\\x00\"");
-
-    s0_entity_free(l1);
-    s0_entity_free(l2);
-    s0_entity_free(l3);
+TEST_CASE("can create literal with embedded NUL") {
+    struct s0_entity  *literal;
+    check_alloc(literal, s0_literal_new(6, "hello\x00"));
+    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_literal_size(literal) == 6);
+    check(memcmp(s0_literal_content(literal), "hello\x00", 6) == 0);
+    s0_entity_free(literal);
 }
 
 /*-----------------------------------------------------------------------------
  * S₀: Methods
  */
 
-#define TEST_COUNT_S0_METHODS  7
+TEST_CASE_GROUP("S₀ methods");
 
-static void
-test_s0_methods(void)
-{
+TEST_CASE("can create method") {
     struct s0_entity  *method;
     struct s0_name  *self_name;
     struct s0_block  *block;
-
-    diag("S₀ methods");
-
-    ok_alloc(self_name, s0_name_new_str("self"));
-    ok_alloc(block, create_empty_block());
-    ok_alloc(method, s0_method_new(self_name, block));
-
-    ok(s0_entity_type(method) == S0_ENTITY_TYPE_METHOD,
-       "type(method) == method");
-
-    ok_alloc(self_name, s0_name_new_str("self"));
-    ok(s0_name_eq(s0_method_self_name(method), self_name),
-       "self_name(method) == self_name");
+    check_alloc(self_name, s0_name_new_str("self"));
+    check_alloc(block, create_empty_block());
+    check_alloc(method, s0_method_new(self_name, block));
+    check(s0_entity_type(method) == S0_ENTITY_TYPE_METHOD);
+    check_alloc(self_name, s0_name_new_str("self"));
+    check(s0_name_eq(s0_method_self_name(method), self_name));
     s0_name_free(self_name);
-
-    ok(s0_method_block(method) == block, "block(method) == block");
-
+    check(s0_method_block(method) == block);
     s0_entity_free(method);
 }
 
@@ -663,183 +732,251 @@ test_s0_methods(void)
  * S₀: Objects
  */
 
-#define TEST_COUNT_S0_OBJECTS  25
+TEST_CASE_GROUP("S₀ objects");
 
-static void
-test_s0_objects(void)
-{
+TEST_CASE("can create empty object") {
+    struct s0_entity  *obj;
+    check_alloc(obj, s0_object_new());
+    s0_entity_free(obj);
+}
+
+TEST_CASE("empty object has zero elements") {
+    struct s0_entity  *obj;
+    check_alloc(obj, s0_object_new());
+    check(s0_object_size(obj) == 0);
+    s0_entity_free(obj);
+}
+
+TEST_CASE("empty object doesn't contain anything") {
+    struct s0_entity  *obj;
+    struct s0_name  *name;
+    check_alloc(obj, s0_object_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_object_get(obj, name) == NULL);
+    s0_name_free(name);
+    s0_entity_free(obj);
+}
+
+TEST_CASE("can add entries to object") {
+    struct s0_entity  *obj;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    check_alloc(obj, s0_object_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_object_add(obj, name, atom));
+    s0_entity_free(obj);
+}
+
+TEST_CASE("non-empty object has accurate size") {
+    struct s0_entity  *obj;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    check_alloc(obj, s0_object_new());
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_object_add(obj, name, atom));
+    check(s0_object_size(obj) == 1);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_object_add(obj, name, atom));
+    check(s0_object_size(obj) == 2);
+
+    s0_entity_free(obj);
+}
+
+TEST_CASE("can check which names belong to object") {
     struct s0_entity  *obj;
     struct s0_name  *name;
     struct s0_entity  *atom1;
     struct s0_entity  *atom2;
-    struct s0_object_entry  entry;
+    check_alloc(obj, s0_object_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_object_add(obj, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_object_add(obj, name, atom2));
 
-    diag("S₀ objects");
-
-#define check_size(expected) \
-    ok(s0_object_size(obj) == expected, \
-       "s0_object_size(obj) == " #expected);
-
-    ok_alloc(obj, s0_object_new());
-    check_size(0);
-    ok(s0_entity_type(obj) == S0_ENTITY_TYPE_OBJECT, "type(obj) == object");
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok_alloc(atom1, s0_atom_new());
-    ok0(s0_object_add(obj, name, atom1),
-        "s0_object_add(\"a\", atom1)");
-    check_size(1);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok_alloc(atom2, s0_atom_new());
-    ok0(s0_object_add(obj, name, atom2),
-        "s0_object_add(\"b\", atom2)");
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_object_get(obj, name) == atom1,
-       "s0_object_get(obj, \"a\") == atom1");
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_object_get(obj, name) == atom1);
     s0_name_free(name);
-    check_size(2);
 
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_object_get(obj, name) == atom2,
-       "s0_object_get(obj, \"b\") == atom2");
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_object_get(obj, name) == atom2);
     s0_name_free(name);
-    check_size(2);
 
-    entry = s0_object_at(obj, 0);
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_name_eq(entry.name, name), "s0_object_at(obj, 0) == \"a\"");
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_object_get(obj, name) == NULL);
     s0_name_free(name);
-    ok(entry.entity == atom1, "s0_object_at(obj, 0) == atom1");
-    check_size(2);
-
-    entry = s0_object_at(obj, 1);
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_name_eq(entry.name, name), "s0_object_at(obj, 1) == \"b\"");
-    s0_name_free(name);
-    ok(entry.entity == atom2, "s0_object_at(obj, 1) == atom2");
-    check_size(2);
 
     s0_entity_free(obj);
-#undef check_size
+}
+
+TEST_CASE("can iterate through names in obj") {
+    struct s0_entity  *obj;
+    struct s0_object_entry  entry;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    check_alloc(obj, s0_object_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_object_add(obj, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_object_add(obj, name, atom2));
+
+    /* This test assumes that the entries are returned in the same order that
+     * they were added to the obj. */
+
+    entry = s0_object_at(obj, 0);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_name_eq(entry.name, name));
+    check(entry.entity == atom1);
+    s0_name_free(name);
+
+    entry = s0_object_at(obj, 1);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_name_eq(entry.name, name));
+    check(entry.entity == atom2);
+    s0_name_free(name);
+
+    s0_entity_free(obj);
 }
 
 /*-----------------------------------------------------------------------------
  * S₀: Environments
  */
 
-#define TEST_COUNT_S0_ENVIRONMENTS  28
+TEST_CASE_GROUP("S₀ environments");
 
-static void
-test_s0_environments(void)
-{
+TEST_CASE("can create empty environment") {
+    struct s0_environment  *env;
+    check_alloc(env, s0_environment_new());
+    s0_environment_free(env);
+}
+
+TEST_CASE("empty environment has zero elements") {
+    struct s0_environment  *env;
+    check_alloc(env, s0_environment_new());
+    check(s0_environment_size(env) == 0);
+    s0_environment_free(env);
+}
+
+TEST_CASE("empty environment doesn't contain anything") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    s0_environment_free(env);
+}
+
+TEST_CASE("can add entries to environment") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    s0_environment_free(env);
+}
+
+TEST_CASE("non-empty environment has accurate size") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    check_alloc(env, s0_environment_new());
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check(s0_environment_size(env) == 1);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check(s0_environment_size(env) == 2);
+
+    s0_environment_free(env);
+}
+
+TEST_CASE("can check which names belong to environment") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(env, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(env, name, atom2));
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == atom1);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == atom2);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+
+    s0_environment_free(env);
+}
+
+TEST_CASE("can delete entries from environment") {
     struct s0_environment  *env;
     struct s0_name  *name;
     struct s0_entity  *atom1;
     struct s0_entity  *atom2;
 
-    diag("S₀ environments");
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(env, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(env, name, atom2));
 
-#define check_size(expected) \
-    ok(s0_environment_size(env) == expected, \
-       "s0_environment_size(env) == " #expected);
-
-    ok_alloc(env, s0_environment_new());
-    check_size(0);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok_alloc(atom1, s0_atom_new());
-    ok0(s0_environment_add(env, name, atom1),
-        "s0_environment_add(\"a\", atom1)");
-    check_size(1);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok_alloc(atom2, s0_atom_new());
-    ok0(s0_environment_add(env, name, atom2),
-        "s0_environment_add(\"b\", atom2)");
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_environment_get(env, name) == atom1,
-       "s0_environment_get(env, \"a\") == atom1");
-    s0_name_free(name);
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_environment_get(env, name) == atom2,
-       "s0_environment_get(env, \"b\") == atom2");
-    s0_name_free(name);
-    check_size(2);
-
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_environment_delete(env, name) == atom1,
-       "s0_environment_delete(env, \"a\") == atom1");
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_delete(env, name) == atom1);
     s0_name_free(name);
     s0_entity_free(atom1);
-    check_size(1);
+    check(s0_environment_size(env) == 1);
 
-    ok_alloc(name, s0_name_new_str("a"));
-    ok(s0_environment_get(env, name) == NULL,
-       "s0_environment_get(env, \"a\") == NULL");
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == NULL);
     s0_name_free(name);
-    check_size(1);
 
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_environment_delete(env, name) == atom2,
-       "s0_environment_delete(env, \"b\") == atom2");
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_delete(env, name) == atom2);
     s0_name_free(name);
     s0_entity_free(atom2);
-    check_size(0);
+    check(s0_environment_size(env) == 0);
 
-    ok_alloc(name, s0_name_new_str("b"));
-    ok(s0_environment_get(env, name) == NULL,
-       "s0_environment_get(env, \"b\") == NULL");
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == NULL);
     s0_name_free(name);
-    check_size(0);
 
     s0_environment_free(env);
-#undef check_size
 }
 
 /*-----------------------------------------------------------------------------
  * Harness
  */
 
-#define TEST_COUNT_TOTAL \
-    TEST_COUNT_S0_NAMES + \
-    TEST_COUNT_S0_NAME_SETS + \
-    TEST_COUNT_S0_NAME_MAPPINGS + \
-    TEST_COUNT_S0_NAMED_BLOCKS + \
-    TEST_COUNT_S0_STATEMENTS + \
-    TEST_COUNT_S0_STATEMENT_LISTS + \
-    TEST_COUNT_S0_INVOCATIONS + \
-    TEST_COUNT_S0_BLOCKS + \
-    TEST_COUNT_S0_ATOMS + \
-    TEST_COUNT_S0_CLOSURES + \
-    TEST_COUNT_S0_LITERALS + \
-    TEST_COUNT_S0_METHODS + \
-    TEST_COUNT_S0_OBJECTS + \
-    TEST_COUNT_S0_ENVIRONMENTS + \
-    0
-
 int main(void)
 {
-    plan_tests(TEST_COUNT_TOTAL);
-    test_s0_names();
-    test_s0_name_sets();
-    test_s0_name_mappings();
-    test_s0_named_blocks();
-    test_s0_statements();
-    test_s0_statement_lists();
-    test_s0_invocations();
-    test_s0_blocks();
-    test_s0_atoms();
-    test_s0_closures();
-    test_s0_literals();
-    test_s0_methods();
-    test_s0_objects();
-    test_s0_environments();
+    run_tests();
     return exit_status();
 }

@@ -45,17 +45,17 @@ $(BUILD_ROOT)/objs/yaml/src/writer.o: \
  $(SOURCE_ROOT)/yaml/include/yaml.h
 $(BUILD_ROOT)/objs/swanson/swanson.o: \
  $(SOURCE_ROOT)/swanson/swanson.c
+$(BUILD_ROOT)/objs/tests/test-swanson.o: \
+ $(SOURCE_ROOT)/tests/test-swanson.c \
+ $(SOURCE_ROOT)/include/swanson.h \
+ $(SOURCE_ROOT)/tests/test-cases.h \
+ $(SOURCE_ROOT)/ccan/likely/likely.h \
+ $(SOURCE_ROOT)/include/config.h
 $(BUILD_ROOT)/objs/ccan/tap/tap.o: \
  $(SOURCE_ROOT)/ccan/tap/tap.c \
  $(SOURCE_ROOT)/include/config.h \
  $(SOURCE_ROOT)/ccan/tap/tap.h \
  $(SOURCE_ROOT)/ccan/compiler/compiler.h
-$(BUILD_ROOT)/objs/tests/test-swanson.o: \
- $(SOURCE_ROOT)/tests/test-swanson.c \
- $(SOURCE_ROOT)/ccan/tap/tap.h \
- $(SOURCE_ROOT)/ccan/compiler/compiler.h \
- $(SOURCE_ROOT)/include/config.h \
- $(SOURCE_ROOT)/include/swanson.h
 $(BUILD_ROOT)/objs/tests/directory-walker.o: \
  $(SOURCE_ROOT)/tests/directory-walker.c \
  $(SOURCE_ROOT)/tests/directory-walker.h \
