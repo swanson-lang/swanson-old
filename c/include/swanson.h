@@ -527,6 +527,18 @@ struct s0_entity_type *
 s0_environment_type_delete(struct s0_environment_type *,
                            const struct s0_name *name);
 
+/* Extracts entries from `src`, moving them into `dest`.  The entries to extract
+ * are given by a name set.  This is used for closure sets when constructing a
+ * closure, since the entries described by the type are moved from the
+ * containing environment into the closure's environment.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error moving the entries. */
+int
+s0_environment_type_extract(struct s0_environment_type *dest,
+                            struct s0_environment_type *src,
+                            const struct s0_name_set *set);
+
 /* Adds an entry to the environment type for each entry in a name mapping, using
  * the mapping entry's `from` name and `type`.  This type describes the
  * environment that the caller must provide when invoking a block.

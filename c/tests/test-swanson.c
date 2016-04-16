@@ -1209,6 +1209,81 @@ TEST_CASE("can delete entries from environment type") {
     s0_environment_type_free(type);
 }
 
+TEST_CASE("can extract entries from environment type") {
+    struct s0_environment_type  *src;
+    struct s0_environment_type  *dest;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype1;
+    struct s0_entity_type  *etype2;
+    struct s0_name_set  *set;
+
+    /* Construct {a: any, b: any} */
+    check_alloc(src, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype1, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype2, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype2));
+
+    /* Extract `a` into a separate type */
+    check_alloc(dest, s0_environment_type_new());
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check0(s0_environment_type_extract(dest, src, set));
+    s0_name_set_free(set);
+
+    /* Verify that dest == {b: any} */
+    check(s0_environment_type_size(dest) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(dest, name) == etype1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(dest, name) == NULL);
+    s0_name_free(name);
+
+    /* Verify that src == {b: any} */
+    check(s0_environment_type_size(src) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(src, name) == etype2);
+    s0_name_free(name);
+
+    s0_environment_type_free(src);
+    s0_environment_type_free(dest);
+}
+
+TEST_CASE("cannot extract duplicate entries from environment type") {
+    struct s0_environment_type  *src;
+    struct s0_environment_type  *dest;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    struct s0_name_set  *set;
+
+    /* Construct {a: any, b: any} */
+    check_alloc(src, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype));
+
+    /* Extract `a` into a separate type that already contains `a` */
+    check_alloc(dest, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(dest, name, etype));
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check(s0_environment_type_extract(dest, src, set) == -1);
+    s0_name_set_free(set);
+
+    s0_environment_type_free(src);
+    s0_environment_type_free(dest);
+}
+
 TEST_CASE("cannot get deleted entries from environment type") {
     struct s0_environment_type  *type;
     struct s0_name  *name;

@@ -1475,6 +1475,40 @@ s0_environment_type_delete(struct s0_environment_type *type,
 }
 
 int
+s0_environment_type_extract(struct s0_environment_type *dest,
+                            struct s0_environment_type *src,
+                            const struct s0_name_set *set)
+{
+    size_t  i;
+    for (i = 0; i < set->size; i++) {
+        const struct s0_name  *name = set->names[i];
+        struct s0_entity_type  *etype;
+
+        if (unlikely(s0_environment_type_get(dest, name) != NULL)) {
+            return -1;
+        }
+
+        etype = s0_environment_type_delete(src, name);
+        if (etype == NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                s0_entity_type_free(etype);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_type_add(dest, name_copy, etype);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
+}
+
+int
 s0_environment_type_add_external_inputs(struct s0_environment_type *type,
                                         const struct s0_name_mapping *inputs)
 {
