@@ -3,14 +3,16 @@
 !s0!successful-parse
 name: create-closure can create a new environment entry
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
       closed-over: []
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -26,13 +28,15 @@ module:
 !s0!invalid-parse
 name: create-closure needs a destination
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       closed-over: []
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -48,13 +52,15 @@ module:
 !s0!invalid-parse
 name: create-closure needs a closure set
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -70,7 +76,8 @@ module:
 !s0!invalid-parse
 name: create-closure needs a branches section
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
@@ -85,7 +92,8 @@ module:
 !s0!invalid-parse
 name: create-closure needs at least one branch
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
@@ -103,13 +111,15 @@ name: create-closure cannot overwrite an input
 module:
   inputs:
     x: x
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
       closed-over: []
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -125,14 +135,16 @@ module:
 !s0!invalid-parse
 name: create-closure cannot overwrite an existing environment entry
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
       closed-over: []
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -143,7 +155,8 @@ module:
       closed-over: []
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -159,7 +172,8 @@ module:
 !s0!invalid-parse
 name: create-closure closure set cannot contain duplicates
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
@@ -168,7 +182,8 @@ module:
         - x
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
@@ -184,7 +199,8 @@ module:
 !s0!invalid-parse
 name: create-closure branch list cannot contain duplicates
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-closure
       dest: x
@@ -192,14 +208,16 @@ module:
         - x
       branches:
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
             branch: call
         body:
-          inputs: {}
+          inputs:
+            exit: exit
           statements: []
           invocation:
             !s0!invoke-closure

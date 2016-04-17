@@ -3,7 +3,8 @@
 !s0!successful-parse
 name: The input set can be empty
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements: []
   invocation:
     !s0!invoke-closure
@@ -17,6 +18,7 @@ name: The name of an input doesn't need to change
 module:
   inputs:
     self: self
+    exit: exit
   statements: []
   invocation:
     !s0!invoke-closure
@@ -31,6 +33,7 @@ module:
   inputs:
     a: b
     b: a
+    exit: exit
   statements: []
   invocation:
     !s0!invoke-closure
@@ -45,6 +48,7 @@ module:
   inputs:
     a: b
     a: c
+    exit: exit
   statements: []
   invocation:
     !s0!invoke-closure
@@ -61,6 +65,7 @@ module:
   inputs:
     a: c
     b: c
+    exit: exit
   statements: []
   invocation:
     !s0!invoke-closure

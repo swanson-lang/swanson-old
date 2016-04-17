@@ -16,7 +16,8 @@ module:
 !s0!invalid-parse
 name: invoke-method needs a source
 module:
-  inputs: {}
+  inputs:
+    self: self
   statements: []
   invocation:
     !s0!invoke-method

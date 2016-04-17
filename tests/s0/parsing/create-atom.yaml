@@ -3,7 +3,8 @@
 !s0!successful-parse
 name: create-atom can create a new environment entry
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-atom
       dest: x
@@ -17,7 +18,8 @@ module:
 !s0!invalid-parse
 name: create-atom needs a destination
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-atom {}
   invocation:
@@ -32,6 +34,7 @@ name: create-atom cannot overwrite an input
 module:
   inputs:
     x: x
+    exit: exit
   statements:
     - !s0!create-atom
       dest: x
@@ -45,7 +48,8 @@ module:
 !s0!invalid-parse
 name: create-atom cannot overwrite an existing environment entry
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements:
     - !s0!create-atom
       dest: x

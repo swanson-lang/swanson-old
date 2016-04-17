@@ -792,19 +792,38 @@ s0_load_invoke_method(struct s0_yaml_node node)
 }
 
 static struct s0_invocation *
-s0_load_invocation(struct s0_yaml_node node)
+s0_load_invocation(struct s0_yaml_node node, struct s0_environment_type *type)
 {
+    int  rc;
+    struct s0_invocation  *invocation;
+
     ensure_mapping(node, "invocation");
     if (s0_yaml_node_has_tag(node, S0_INVOKE_CLOSURE_TAG)) {
-        return s0_load_invoke_closure(node);
+        invocation = s0_load_invoke_closure(node);
     } else if (s0_yaml_node_has_tag(node, S0_INVOKE_METHOD_TAG)) {
-        return s0_load_invoke_method(node);
+        invocation = s0_load_invoke_method(node);
     } else {
         fill_error(node.stream, "Unknown invocation type at %zu:%zu",
                    s0_yaml_node_get_node(node)->start_mark.line,
                    s0_yaml_node_get_node(node)->start_mark.column);
         return NULL;
     }
+
+    if (unlikely(invocation == NULL)) {
+        fill_memory_error(node.stream);
+        return NULL;
+    }
+
+    rc = s0_environment_type_add_invocation(type, invocation);
+    if (unlikely(rc != 0)) {
+        fill_error(node.stream, "Invocation has invalid type at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        s0_invocation_free(invocation);
+        return NULL;
+    }
+
+    return invocation;
 }
 
 static struct s0_block *
@@ -883,7 +902,7 @@ s0_load_block(struct s0_yaml_node node)
         return NULL;
     }
 
-    invocation = s0_load_invocation(item);
+    invocation = s0_load_invocation(item, type);
     if (unlikely(invocation == NULL)) {
         s0_name_mapping_free(inputs);
         s0_statement_list_free(statements);

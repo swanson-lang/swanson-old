@@ -16,7 +16,8 @@ module:
 !s0!invalid-parse
 name: invoke-closure needs a source
 module:
-  inputs: {}
+  inputs:
+    exit: exit
   statements: []
   invocation:
     !s0!invoke-closure
@@ -34,7 +35,18 @@ module:
     !s0!invoke-closure
     src: exit
 
-# TODO - invoke-closure cannot call a missing environment entry
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure cannot call a missing environment entry
+module:
+  inputs: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: call
+
 # TODO - invoke-closure cannot call an atom
 # TODO - invoke-closure cannot call a literal
 # TODO - invoke-closure cannot call a method
