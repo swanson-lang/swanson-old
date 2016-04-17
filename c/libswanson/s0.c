@@ -6,6 +6,7 @@
 #include "swanson.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ccan/likely/likely.h"
@@ -42,6 +43,12 @@ struct s0_name *
 s0_name_new_str(const void *content)
 {
     return s0_name_new(strlen(content), content);
+}
+
+struct s0_name *
+s0_name_new_copy(const struct s0_name *other)
+{
+    return s0_name_new(other->size, other->content);
 }
 
 void
@@ -211,6 +218,7 @@ s0_name_mapping_free(struct s0_name_mapping *mapping)
     for (i = 0; i < mapping->size; i++) {
         s0_name_free(mapping->entries[i].from);
         s0_name_free(mapping->entries[i].to);
+        s0_entity_type_free(mapping->entries[i].type);
     }
     free(mapping->entries);
     free(mapping);
@@ -218,7 +226,7 @@ s0_name_mapping_free(struct s0_name_mapping *mapping)
 
 int
 s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
-                    struct s0_name *to)
+                    struct s0_name *to, struct s0_entity_type *type)
 {
     struct s0_name_mapping_entry  *new_entry;
 
@@ -230,6 +238,7 @@ s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
         if (unlikely(new_entries == NULL)) {
             s0_name_free(from);
             s0_name_free(to);
+            s0_entity_type_free(type);
             return -1;
         }
         mapping->entries = new_entries;
@@ -239,6 +248,7 @@ s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
     new_entry = &mapping->entries[mapping->size++];
     new_entry->from = from;
     new_entry->to = to;
+    new_entry->type = type;
     return 0;
 }
 
@@ -248,34 +258,34 @@ s0_name_mapping_size(const struct s0_name_mapping *mapping)
     return mapping->size;
 }
 
-struct s0_name_mapping_entry
+const struct s0_name_mapping_entry *
 s0_name_mapping_at(const struct s0_name_mapping *mapping, size_t index)
 {
     assert(index < mapping->size);
-    return mapping->entries[index];
+    return &mapping->entries[index];
 }
 
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get(const struct s0_name_mapping *mapping,
                     const struct s0_name *from)
 {
     size_t  i;
     for (i = 0; i < mapping->size; i++) {
         if (s0_name_eq(mapping->entries[i].from, from)) {
-            return mapping->entries[i].to;
+            return &mapping->entries[i];
         }
     }
     return NULL;
 }
 
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get_from(const struct s0_name_mapping *mapping,
                          const struct s0_name *to)
 {
     size_t  i;
     for (i = 0; i < mapping->size; i++) {
         if (s0_name_eq(mapping->entries[i].to, to)) {
-            return mapping->entries[i].from;
+            return &mapping->entries[i];
         }
     }
     return NULL;
@@ -294,6 +304,7 @@ struct s0_environment_entry {
 
 struct s0_environment {
     struct s0_environment_entry  *head;
+    size_t  size;
 };
 
 struct s0_environment *
@@ -304,6 +315,7 @@ s0_environment_new(void)
         return NULL;
     }
     env->head = NULL;
+    env->size = 0;
     return env;
 }
 
@@ -324,12 +336,7 @@ s0_environment_free(struct s0_environment *env)
 size_t
 s0_environment_size(const struct s0_environment *env)
 {
-    size_t  size = 0;
-    struct s0_environment_entry  *curr;
-    for (curr = env->head; curr != NULL; curr = curr->next) {
-        size++;
-    }
-    return size;
+    return env->size;
 }
 
 int
@@ -358,6 +365,7 @@ s0_environment_add(struct s0_environment *env,
     entry->entity = entity;
     entry->next = env->head;
     env->head = entry;
+    env->size++;
     return 0;
 }
 
@@ -389,6 +397,7 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
             }
             s0_name_free(curr->name);
             free(curr);
+            env->size--;
             return entity;
         }
     }
@@ -553,7 +562,7 @@ s0_named_blocks_get(const struct s0_named_blocks *blocks,
  */
 
 struct s0_statement {
-    enum s0_statement_type  type;
+    enum s0_statement_kind  type;
     union {
         struct {
             struct s0_name  *dest;
@@ -585,7 +594,7 @@ s0_create_atom_new(struct s0_name *dest)
         s0_name_free(dest);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_ATOM;
+    stmt->type = S0_STATEMENT_KIND_CREATE_ATOM;
     stmt->_.create_atom.dest = dest;
     return stmt;
 }
@@ -599,7 +608,7 @@ s0_create_atom_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_atom_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_ATOM);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_ATOM);
     return stmt->_.create_atom.dest;
 }
 
@@ -615,7 +624,7 @@ s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
         s0_named_blocks_free(branches);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_CLOSURE;
+    stmt->type = S0_STATEMENT_KIND_CREATE_CLOSURE;
     stmt->_.create_closure.dest = dest;
     stmt->_.create_closure.closed_over = closed_over;
     stmt->_.create_closure.branches = branches;
@@ -633,21 +642,21 @@ s0_create_closure_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_closure_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.dest;
 }
 
 struct s0_name_set *
 s0_create_closure_closed_over(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.closed_over;
 }
 
 struct s0_named_blocks *
 s0_create_closure_branches(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.branches;
 }
 
@@ -660,7 +669,7 @@ s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
         s0_name_free(dest);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_LITERAL;
+    stmt->type = S0_STATEMENT_KIND_CREATE_LITERAL;
     stmt->_.create_literal.dest = dest;
     stmt->_.create_literal.size = size;
     stmt->_.create_literal.content = malloc(size);
@@ -683,21 +692,21 @@ s0_create_literal_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_literal_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.dest;
 }
 
 const void *
 s0_create_literal_content(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.content;
 }
 
 size_t
 s0_create_literal_size(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.size;
 }
 
@@ -713,7 +722,7 @@ s0_create_method_new(struct s0_name *dest, struct s0_name *self_input,
         s0_block_free(body);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_TYPE_CREATE_METHOD;
+    stmt->type = S0_STATEMENT_KIND_CREATE_METHOD;
     stmt->_.create_method.dest = dest;
     stmt->_.create_method.self_input = self_input;
     stmt->_.create_method.body = body;
@@ -731,21 +740,21 @@ s0_create_method_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_method_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.dest;
 }
 
 struct s0_name *
 s0_create_method_self_input(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.self_input;
 }
 
 struct s0_block *
 s0_create_method_body(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_TYPE_CREATE_METHOD);
+    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.body;
 }
 
@@ -754,16 +763,16 @@ void
 s0_statement_free(struct s0_statement *stmt)
 {
     switch (stmt->type) {
-        case S0_STATEMENT_TYPE_CREATE_ATOM:
+        case S0_STATEMENT_KIND_CREATE_ATOM:
             s0_create_atom_free(stmt);
             break;
-        case S0_STATEMENT_TYPE_CREATE_CLOSURE:
+        case S0_STATEMENT_KIND_CREATE_CLOSURE:
             s0_create_closure_free(stmt);
             break;
-        case S0_STATEMENT_TYPE_CREATE_LITERAL:
+        case S0_STATEMENT_KIND_CREATE_LITERAL:
             s0_create_literal_free(stmt);
             break;
-        case S0_STATEMENT_TYPE_CREATE_METHOD:
+        case S0_STATEMENT_KIND_CREATE_METHOD:
             s0_create_method_free(stmt);
             break;
         default:
@@ -773,8 +782,8 @@ s0_statement_free(struct s0_statement *stmt)
     free(stmt);
 }
 
-enum s0_statement_type
-s0_statement_type(const struct s0_statement *stmt)
+enum s0_statement_kind
+s0_statement_kind(const struct s0_statement *stmt)
 {
     return stmt->type;
 }
@@ -860,7 +869,7 @@ s0_statement_list_at(const struct s0_statement_list *list, size_t index)
  */
 
 struct s0_invocation {
-    enum s0_invocation_type  type;
+    enum s0_invocation_kind  type;
     union {
         struct {
             struct s0_name  *src;
@@ -883,7 +892,7 @@ s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch)
         s0_name_free(branch);
         return NULL;
     }
-    invocation->type = S0_INVOCATION_TYPE_INVOKE_CLOSURE;
+    invocation->type = S0_INVOCATION_KIND_INVOKE_CLOSURE;
     invocation->_.invoke_closure.src = src;
     invocation->_.invoke_closure.branch = branch;
     return invocation;
@@ -899,14 +908,14 @@ s0_invoke_closure_free(struct s0_invocation *invocation)
 struct s0_name *
 s0_invoke_closure_src(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.src;
 }
 
 struct s0_name *
 s0_invoke_closure_branch(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.branch;
 }
 
@@ -920,7 +929,7 @@ s0_invoke_method_new(struct s0_name *src, struct s0_name *method)
         s0_name_free(method);
         return NULL;
     }
-    invocation->type = S0_INVOCATION_TYPE_INVOKE_METHOD;
+    invocation->type = S0_INVOCATION_KIND_INVOKE_METHOD;
     invocation->_.invoke_method.src = src;
     invocation->_.invoke_method.method = method;
     return invocation;
@@ -936,14 +945,14 @@ s0_invoke_method_free(struct s0_invocation *invocation)
 struct s0_name *
 s0_invoke_method_src(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.src;
 }
 
 struct s0_name *
 s0_invoke_method_method(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.method;
 }
 
@@ -952,10 +961,10 @@ void
 s0_invocation_free(struct s0_invocation *invocation)
 {
     switch (invocation->type) {
-        case S0_INVOCATION_TYPE_INVOKE_CLOSURE:
+        case S0_INVOCATION_KIND_INVOKE_CLOSURE:
             s0_invoke_closure_free(invocation);
             break;
-        case S0_INVOCATION_TYPE_INVOKE_METHOD:
+        case S0_INVOCATION_KIND_INVOKE_METHOD:
             s0_invoke_method_free(invocation);
             break;
         default:
@@ -965,8 +974,8 @@ s0_invocation_free(struct s0_invocation *invocation)
     free(invocation);
 }
 
-enum s0_invocation_type
-s0_invocation_type(const struct s0_invocation *invocation)
+enum s0_invocation_kind
+s0_invocation_kind(const struct s0_invocation *invocation)
 {
     return invocation->type;
 }
@@ -977,7 +986,7 @@ s0_invocation_type(const struct s0_invocation *invocation)
  */
 
 struct s0_entity {
-    enum s0_entity_type  type;
+    enum s0_entity_kind  type;
     union {
         struct {
             struct s0_environment  *env;
@@ -1007,7 +1016,7 @@ s0_atom_new(void)
     if (unlikely(atom == NULL)) {
         return NULL;
     }
-    atom->type = S0_ENTITY_TYPE_ATOM;
+    atom->type = S0_ENTITY_KIND_ATOM;
     return atom;
 }
 
@@ -1020,8 +1029,8 @@ s0_atom_free(struct s0_entity *atom)
 bool
 s0_atom_eq(const struct s0_entity *a1, const struct s0_entity *a2)
 {
-    assert(a1->type == S0_ENTITY_TYPE_ATOM);
-    assert(a2->type == S0_ENTITY_TYPE_ATOM);
+    assert(a1->type == S0_ENTITY_KIND_ATOM);
+    assert(a2->type == S0_ENTITY_KIND_ATOM);
     return (a1 == a2);
 }
 
@@ -1035,7 +1044,7 @@ s0_closure_new(struct s0_environment *env, struct s0_named_blocks *blocks)
         s0_named_blocks_free(blocks);
         return NULL;
     }
-    closure->type = S0_ENTITY_TYPE_CLOSURE;
+    closure->type = S0_ENTITY_KIND_CLOSURE;
     closure->_.closure.env = env;
     closure->_.closure.blocks = blocks;
     return closure;
@@ -1051,14 +1060,14 @@ s0_closure_free(struct s0_entity *closure)
 struct s0_environment *
 s0_closure_environment(const struct s0_entity *closure)
 {
-    assert(closure->type == S0_ENTITY_TYPE_CLOSURE);
+    assert(closure->type == S0_ENTITY_KIND_CLOSURE);
     return closure->_.closure.env;
 }
 
 struct s0_named_blocks *
 s0_closure_named_blocks(const struct s0_entity *closure)
 {
-    assert(closure->type == S0_ENTITY_TYPE_CLOSURE);
+    assert(closure->type == S0_ENTITY_KIND_CLOSURE);
     return closure->_.closure.blocks;
 }
 
@@ -1070,7 +1079,7 @@ s0_literal_new(size_t size, const void *content)
     if (unlikely(literal == NULL)) {
         return NULL;
     }
-    literal->type = S0_ENTITY_TYPE_LITERAL;
+    literal->type = S0_ENTITY_KIND_LITERAL;
     literal->_.literal.size = size;
     literal->_.literal.content = malloc(size);
     if (unlikely(literal->_.literal.content == NULL)) {
@@ -1096,14 +1105,14 @@ s0_literal_free(struct s0_entity *literal)
 const char *
 s0_literal_content(const struct s0_entity *literal)
 {
-    assert(literal->type == S0_ENTITY_TYPE_LITERAL);
+    assert(literal->type == S0_ENTITY_KIND_LITERAL);
     return literal->_.literal.content;
 }
 
 size_t
 s0_literal_size(const struct s0_entity *literal)
 {
-    assert(literal->type == S0_ENTITY_TYPE_LITERAL);
+    assert(literal->type == S0_ENTITY_KIND_LITERAL);
     return literal->_.literal.size;
 }
 
@@ -1117,7 +1126,7 @@ s0_method_new(struct s0_name *self_name, struct s0_block *block)
         s0_block_free(block);
         return NULL;
     }
-    method->type = S0_ENTITY_TYPE_METHOD;
+    method->type = S0_ENTITY_KIND_METHOD;
     method->_.method.self_name = self_name;
     method->_.method.block = block;
     return method;
@@ -1133,14 +1142,14 @@ s0_method_free(struct s0_entity *method)
 struct s0_name *
 s0_method_self_name(const struct s0_entity *method)
 {
-    assert(method->type == S0_ENTITY_TYPE_METHOD);
+    assert(method->type == S0_ENTITY_KIND_METHOD);
     return method->_.method.self_name;
 }
 
 struct s0_block *
 s0_method_block(const struct s0_entity *method)
 {
-    assert(method->type == S0_ENTITY_TYPE_METHOD);
+    assert(method->type == S0_ENTITY_KIND_METHOD);
     return method->_.method.block;
 }
 
@@ -1154,7 +1163,7 @@ s0_object_new(void)
     if (unlikely(obj == NULL)) {
         return NULL;
     }
-    obj->type = S0_ENTITY_TYPE_OBJECT;
+    obj->type = S0_ENTITY_KIND_OBJECT;
     obj->_.obj.size = 0;
     obj->_.obj.allocated_size = DEFAULT_INITIAL_OBJECT_SIZE;
     obj->_.obj.entries =
@@ -1206,14 +1215,14 @@ s0_object_add(struct s0_entity *obj,
 size_t
 s0_object_size(const struct s0_entity *obj)
 {
-    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(obj->type == S0_ENTITY_KIND_OBJECT);
     return obj->_.obj.size;
 }
 
 struct s0_object_entry
 s0_object_at(const struct s0_entity *obj, size_t index)
 {
-    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(obj->type == S0_ENTITY_KIND_OBJECT);
     assert(index < obj->_.obj.size);
     return obj->_.obj.entries[index];
 }
@@ -1222,7 +1231,7 @@ struct s0_entity *
 s0_object_get(const struct s0_entity *obj, const struct s0_name *name)
 {
     size_t  i;
-    assert(obj->type == S0_ENTITY_TYPE_OBJECT);
+    assert(obj->type == S0_ENTITY_KIND_OBJECT);
     for (i = 0; i < obj->_.obj.size; i++) {
         if (s0_name_eq(obj->_.obj.entries[i].name, name)) {
             return obj->_.obj.entries[i].entity;
@@ -1236,19 +1245,19 @@ void
 s0_entity_free(struct s0_entity *entity)
 {
     switch (entity->type) {
-        case S0_ENTITY_TYPE_ATOM:
+        case S0_ENTITY_KIND_ATOM:
             s0_atom_free(entity);
             break;
-        case S0_ENTITY_TYPE_CLOSURE:
+        case S0_ENTITY_KIND_CLOSURE:
             s0_closure_free(entity);
             break;
-        case S0_ENTITY_TYPE_LITERAL:
+        case S0_ENTITY_KIND_LITERAL:
             s0_literal_free(entity);
             break;
-        case S0_ENTITY_TYPE_METHOD:
+        case S0_ENTITY_KIND_METHOD:
             s0_method_free(entity);
             break;
-        case S0_ENTITY_TYPE_OBJECT:
+        case S0_ENTITY_KIND_OBJECT:
             s0_object_free(entity);
             break;
         default:
@@ -1258,8 +1267,456 @@ s0_entity_free(struct s0_entity *entity)
     free(entity);
 }
 
-enum s0_entity_type
-s0_entity_type(const struct s0_entity *entity)
+enum s0_entity_kind
+s0_entity_kind(const struct s0_entity *entity)
 {
     return entity->type;
+}
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entity types
+ */
+
+struct s0_entity_type {
+    enum s0_entity_type_kind  kind;
+};
+
+struct s0_entity_type *
+s0_any_entity_type_new(void)
+{
+    struct s0_entity_type  *any = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(any == NULL)) {
+        return NULL;
+    }
+    any->kind = S0_ENTITY_TYPE_KIND_ANY;
+    return any;
+}
+
+static struct s0_entity_type *
+s0_any_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    return s0_any_entity_type_new();
+}
+
+static void
+s0_any_entity_type_free(struct s0_entity_type *any)
+{
+    /* Nothing to do */
+}
+
+static bool
+s0_any_entity_type_satisfied_by(const struct s0_entity_type *any,
+                                const struct s0_entity *entity)
+{
+    return true;
+}
+
+struct s0_entity_type *
+s0_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    switch (other->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            return s0_any_entity_type_new_copy(other);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+void
+s0_entity_type_free(struct s0_entity_type *type)
+{
+    switch (type->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            s0_any_entity_type_free(type);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    free(type);
+}
+
+enum s0_entity_type_kind
+s0_entity_type_kind(const struct s0_entity_type *type)
+{
+    return type->kind;
+}
+
+bool
+s0_entity_type_satisfied_by(const struct s0_entity_type *type,
+                            const struct s0_entity *entity)
+{
+    switch (type->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            return s0_any_entity_type_satisfied_by(type, entity);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Environment types
+ */
+
+struct s0_environment_type {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_environment_type_entry  *entries;
+};
+
+#define DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE  4
+
+struct s0_environment_type *
+s0_environment_type_new(void)
+{
+    struct s0_environment_type  *type =
+        malloc(sizeof(struct s0_environment_type));
+    if (unlikely(type == NULL)) {
+        return NULL;
+    }
+    type->size = 0;
+    type->allocated_size = DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE;
+    type->entries =
+        malloc(DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE *
+               sizeof(struct s0_environment_type_entry));
+    if (unlikely(type->entries == NULL)) {
+        free(type);
+        return NULL;
+    }
+    return type;
+}
+
+void
+s0_environment_type_free(struct s0_environment_type *type)
+{
+    size_t  i;
+    for (i = 0; i < type->size; i++) {
+        s0_name_free(type->entries[i].name);
+        s0_entity_type_free(type->entries[i].type);
+    }
+    free(type->entries);
+    free(type);
+}
+
+int
+s0_environment_type_add(struct s0_environment_type *type,
+                        struct s0_name *name, struct s0_entity_type *etype)
+{
+    struct s0_environment_type_entry  *new_entry;
+
+    if (unlikely(type->size == type->allocated_size)) {
+        size_t  new_size = type->allocated_size * 2;
+        struct s0_environment_type_entry  *new_entries =
+            realloc(type->entries,
+                    new_size * sizeof(struct s0_environment_type_entry));
+        if (unlikely(new_entries == NULL)) {
+            s0_name_free(name);
+            s0_entity_type_free(etype);
+            return -1;
+        }
+        type->entries = new_entries;
+        type->allocated_size = new_size;
+    }
+
+    new_entry = &type->entries[type->size++];
+    new_entry->name = name;
+    new_entry->type = etype;
+    return 0;
+}
+
+size_t
+s0_environment_type_size(const struct s0_environment_type *type)
+{
+    return type->size;
+}
+
+struct s0_environment_type_entry
+s0_environment_type_at(const struct s0_environment_type *type, size_t index)
+{
+    assert(index < type->size);
+    return type->entries[index];
+}
+
+struct s0_entity_type *
+s0_environment_type_get(const struct s0_environment_type *type,
+                        const struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < type->size; i++) {
+        if (s0_name_eq(type->entries[i].name, name)) {
+            return type->entries[i].type;
+        }
+    }
+    return NULL;
+}
+
+struct s0_entity_type *
+s0_environment_type_delete(struct s0_environment_type *type,
+                           const struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < type->size; i++) {
+        if (s0_name_eq(type->entries[i].name, name)) {
+            struct s0_entity_type  *result = type->entries[i].type;
+            s0_name_free(type->entries[i].name);
+            memmove(&type->entries[i], &type->entries[i + 1],
+                    sizeof(type->entries[i]) * (type->size - i - 1));
+            type->size--;
+            return result;
+        }
+    }
+    return NULL;
+}
+
+int
+s0_environment_type_extract(struct s0_environment_type *dest,
+                            struct s0_environment_type *src,
+                            const struct s0_name_set *set)
+{
+    size_t  i;
+    for (i = 0; i < set->size; i++) {
+        const struct s0_name  *name = set->names[i];
+        struct s0_entity_type  *etype;
+
+        if (unlikely(s0_environment_type_get(dest, name) != NULL)) {
+            return -1;
+        }
+
+        etype = s0_environment_type_delete(src, name);
+        if (etype == NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                s0_entity_type_free(etype);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_type_add(dest, name_copy, etype);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
+}
+
+static int
+s0_environment_type_add_create_atom(struct s0_environment_type *type,
+                                    const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_atom.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+static int
+s0_environment_type_add_create_closure(struct s0_environment_type *type,
+                                       const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_closure.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+static int
+s0_environment_type_add_create_literal(struct s0_environment_type *type,
+                                       const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_literal.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+static int
+s0_environment_type_add_create_method(struct s0_environment_type *type,
+                                      const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_method.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+int
+s0_environment_type_add_statement(struct s0_environment_type *type,
+                                  const struct s0_statement *stmt)
+{
+    switch (stmt->type) {
+        case S0_STATEMENT_KIND_CREATE_ATOM:
+            return s0_environment_type_add_create_atom(type, stmt);
+        case S0_STATEMENT_KIND_CREATE_CLOSURE:
+            return s0_environment_type_add_create_closure(type, stmt);
+        case S0_STATEMENT_KIND_CREATE_LITERAL:
+            return s0_environment_type_add_create_literal(type, stmt);
+        case S0_STATEMENT_KIND_CREATE_METHOD:
+            return s0_environment_type_add_create_method(type, stmt);
+        default:
+            assert(false);
+            break;
+    }
+}
+
+int
+s0_environment_type_add_external_inputs(struct s0_environment_type *type,
+                                        const struct s0_name_mapping *inputs)
+{
+    size_t  i;
+    for (i = 0; i < inputs->size; i++) {
+        const struct s0_name  *name = inputs->entries[i].from;
+        if (s0_environment_type_get(type, name) != NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy;
+            struct s0_entity_type  *etype_copy;
+
+            name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                return ENOMEM;
+            }
+
+            etype_copy = s0_entity_type_new_copy(inputs->entries[i].type);
+            if (unlikely(etype_copy == NULL)) {
+                s0_name_free(name_copy);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_type_add(type, name_copy, etype_copy);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
+}
+
+int
+s0_environment_type_add_internal_inputs(struct s0_environment_type *type,
+                                        const struct s0_name_mapping *inputs)
+{
+    size_t  i;
+    for (i = 0; i < inputs->size; i++) {
+        const struct s0_name  *name = inputs->entries[i].to;
+        if (s0_environment_type_get(type, name) != NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy;
+            struct s0_entity_type  *etype_copy;
+
+            name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                return ENOMEM;
+            }
+
+            etype_copy = s0_entity_type_new_copy(inputs->entries[i].type);
+            if (unlikely(etype_copy == NULL)) {
+                s0_name_free(name_copy);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_type_add(type, name_copy, etype_copy);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
+}
+
+bool
+s0_environment_type_satisfied_by(const struct s0_environment_type *type,
+                                 const struct s0_environment *env)
+{
+    size_t  i;
+
+    if (type->size != env->size) {
+        return false;
+    }
+
+    for (i = 0; i < type->size; i++) {
+        const struct s0_name  *name = type->entries[i].name;
+        const struct s0_entity_type  *etype = type->entries[i].type;
+        struct s0_entity  *element = s0_environment_get(env, name);
+        if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+            return false;
+        }
+    }
+
+    return true;
 }

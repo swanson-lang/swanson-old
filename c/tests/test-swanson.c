@@ -58,6 +58,18 @@ TEST_CASE("can create name with embedded NUL") {
     s0_name_free(name);
 }
 
+TEST_CASE("can create copy of name") {
+    struct s0_name  *name1;
+    struct s0_name  *name2;
+    check_alloc(name1, s0_name_new(6, "hello\x00"));
+    check_alloc(name2, s0_name_new_copy(name1));
+    check(s0_name_size(name2) == 6);
+    check(memcmp(s0_name_content(name2), "hello\x00", 6) == 0);
+    check(s0_name_eq(name1, name2));
+    s0_name_free(name1);
+    s0_name_free(name2);
+}
+
 TEST_CASE("can compare names") {
     struct s0_name  *n1;
     struct s0_name  *n2;
@@ -206,27 +218,32 @@ TEST_CASE("can add names to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     s0_name_mapping_free(mapping);
 }
 
 TEST_CASE("non-empty name mapping has accurate size") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
+    struct s0_entity_type  *type;
     struct s0_name  *to;
     check_alloc(mapping, s0_name_mapping_new());
 
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check(s0_name_mapping_size(mapping) == 1);
 
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check(s0_name_mapping_size(mapping) == 2);
 
     s0_name_mapping_free(mapping);
@@ -236,23 +253,31 @@ TEST_CASE("can check which names belong to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
+    const struct s0_name_mapping_entry  *entry;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
 
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check(s0_name_eq(s0_name_mapping_get(mapping, from), to));
+    check_nonnull(entry = s0_name_mapping_get(mapping, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check(s0_name_eq(s0_name_mapping_get(mapping, from), to));
+    check_nonnull(entry = s0_name_mapping_get(mapping, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
@@ -265,33 +290,38 @@ TEST_CASE("can check which names belong to mapping") {
 
 TEST_CASE("can iterate through names in mapping") {
     struct s0_name_mapping  *mapping;
-    struct s0_name_mapping_entry  entry;
+    const struct s0_name_mapping_entry  *entry;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
 
     /* This test assumes that the names are returned in the same order that they
      * were added to the mapping. */
 
-    entry = s0_name_mapping_at(mapping, 0);
+    check_nonnull(entry = s0_name_mapping_at(mapping, 0));
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check(s0_name_eq(entry.from, from));
-    check(s0_name_eq(entry.to, to));
+    check(s0_name_eq(entry->from, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
-    entry = s0_name_mapping_at(mapping, 1);
+    check_nonnull(entry = s0_name_mapping_at(mapping, 1));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check(s0_name_eq(entry.from, from));
-    check(s0_name_eq(entry.to, to));
+    check(s0_name_eq(entry->from, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
@@ -397,7 +427,7 @@ TEST_CASE("can create `create-atom` statement") {
 
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(stmt, s0_create_atom_new(dest));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_ATOM);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_ATOM);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_atom_dest(stmt), dest));
@@ -416,7 +446,7 @@ TEST_CASE("can create `create-closure` statement") {
     check_alloc(closed_over, s0_name_set_new());
     check_alloc(branches, s0_named_blocks_new());
     check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_CLOSURE);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_CLOSURE);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_closure_dest(stmt), dest));
@@ -434,7 +464,7 @@ TEST_CASE("can create `create-literal` statement") {
 
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_LITERAL);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_LITERAL);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_literal_dest(stmt), dest));
@@ -456,7 +486,7 @@ TEST_CASE("can create `create-method` statement") {
     check_alloc(self_input, s0_name_new_str("self"));
     check_alloc(body, create_empty_block());
     check_alloc(stmt, s0_create_method_new(dest, self_input, body));
-    check(s0_statement_type(stmt) == S0_STATEMENT_TYPE_CREATE_METHOD);
+    check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_METHOD);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_method_dest(stmt), dest));
@@ -553,7 +583,7 @@ TEST_CASE("can create `invoke-closure` invocation") {
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("body"));
     check_alloc(invocation, s0_invoke_closure_new(src, branch));
-    check(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_CLOSURE);
+    check(s0_invocation_kind(invocation) == S0_INVOCATION_KIND_INVOKE_CLOSURE);
 
     check_alloc(src, s0_name_new_str("a"));
     check(s0_name_eq(s0_invoke_closure_src(invocation), src));
@@ -574,7 +604,7 @@ TEST_CASE("can create `invoke-method` invocation") {
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(method, s0_name_new_str("run"));
     check_alloc(invocation, s0_invoke_method_new(src, method));
-    check(s0_invocation_type(invocation) == S0_INVOCATION_TYPE_INVOKE_METHOD);
+    check(s0_invocation_kind(invocation) == S0_INVOCATION_KIND_INVOKE_METHOD);
 
     check_alloc(src, s0_name_new_str("a"));
     check(s0_name_eq(s0_invoke_method_src(invocation), src));
@@ -621,7 +651,7 @@ TEST_CASE_GROUP("S₀ atoms");
 TEST_CASE("can create atom") {
     struct s0_entity  *atom;
     check_alloc(atom, s0_atom_new());
-    check(s0_entity_type(atom) == S0_ENTITY_TYPE_ATOM);
+    check(s0_entity_kind(atom) == S0_ENTITY_KIND_ATOM);
     s0_entity_free(atom);
 }
 
@@ -668,7 +698,7 @@ TEST_CASE("can create closure") {
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
     check_alloc(closure, s0_closure_new(env, blocks));
-    check(s0_entity_type(closure) == S0_ENTITY_TYPE_CLOSURE);
+    check(s0_entity_kind(closure) == S0_ENTITY_KIND_CLOSURE);
     check(s0_closure_environment(closure) == env);
     check(s0_closure_named_blocks(closure) == blocks);
     s0_entity_free(closure);
@@ -683,7 +713,7 @@ TEST_CASE_GROUP("S₀ literals");
 TEST_CASE("can create literal from C string") {
     struct s0_entity  *literal;
     check_alloc(literal, s0_literal_new_str("hello"));
-    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_entity_kind(literal) == S0_ENTITY_KIND_LITERAL);
     check(s0_literal_size(literal) == 5);
     check(memcmp(s0_literal_content(literal), "hello", 5) == 0);
     s0_entity_free(literal);
@@ -692,7 +722,7 @@ TEST_CASE("can create literal from C string") {
 TEST_CASE("can create literal with explicit length") {
     struct s0_entity  *literal;
     check_alloc(literal, s0_literal_new(5, "hello"));
-    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_entity_kind(literal) == S0_ENTITY_KIND_LITERAL);
     check(s0_literal_size(literal) == 5);
     check(memcmp(s0_literal_content(literal), "hello", 5) == 0);
     s0_entity_free(literal);
@@ -701,7 +731,7 @@ TEST_CASE("can create literal with explicit length") {
 TEST_CASE("can create literal with embedded NUL") {
     struct s0_entity  *literal;
     check_alloc(literal, s0_literal_new(6, "hello\x00"));
-    check(s0_entity_type(literal) == S0_ENTITY_TYPE_LITERAL);
+    check(s0_entity_kind(literal) == S0_ENTITY_KIND_LITERAL);
     check(s0_literal_size(literal) == 6);
     check(memcmp(s0_literal_content(literal), "hello\x00", 6) == 0);
     s0_entity_free(literal);
@@ -720,7 +750,7 @@ TEST_CASE("can create method") {
     check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
     check_alloc(method, s0_method_new(self_name, block));
-    check(s0_entity_type(method) == S0_ENTITY_TYPE_METHOD);
+    check(s0_entity_kind(method) == S0_ENTITY_KIND_METHOD);
     check_alloc(self_name, s0_name_new_str("self"));
     check(s0_name_eq(s0_method_self_name(method), self_name));
     s0_name_free(self_name);
@@ -969,6 +999,631 @@ TEST_CASE("can delete entries from environment") {
     s0_name_free(name);
 
     s0_environment_free(env);
+}
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entity types: Any
+ */
+
+TEST_CASE_GROUP("S₀ entity types: any");
+
+TEST_CASE("can copy `any` type") {
+    struct s0_entity_type  *any1;
+    struct s0_entity_type  *any2;
+    check_alloc(any1, s0_any_entity_type_new());
+    check_alloc(any2, s0_entity_type_new_copy(any1));
+    check(s0_entity_type_kind(any1) == s0_entity_type_kind(any2));
+    s0_entity_type_free(any1);
+    s0_entity_type_free(any2);
+}
+
+TEST_CASE("atom : any") {
+    struct s0_entity_type  *any;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(entity, s0_atom_new());
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("closure : any") {
+    struct s0_entity_type  *any;
+    struct s0_environment  *env;
+    struct s0_named_blocks  *blocks;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(env, s0_environment_new());
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(entity, s0_closure_new(env, blocks));
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("literal : any") {
+    struct s0_entity_type  *any;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(entity, s0_literal_new_str("hello"));
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("method : any") {
+    struct s0_entity_type  *any;
+    struct s0_name  *self_name;
+    struct s0_block  *block;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(self_name, s0_name_new_str("self"));
+    check_alloc(block, create_empty_block());
+    check_alloc(entity, s0_method_new(self_name, block));
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+TEST_CASE("object : any") {
+    struct s0_entity_type  *any;
+    struct s0_entity  *entity;
+    check_alloc(any, s0_any_entity_type_new());
+    check_alloc(entity, s0_object_new());
+    check(s0_entity_type_satisfied_by(any, entity));
+    s0_entity_free(entity);
+    s0_entity_type_free(any);
+}
+
+/*-----------------------------------------------------------------------------
+ * S₀: Environment types
+ */
+
+TEST_CASE_GROUP("S₀ environment types");
+
+TEST_CASE("can create empty environment type") {
+    struct s0_environment_type  *type;
+    check_alloc(type, s0_environment_type_new());
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("empty environment type has zero elements") {
+    struct s0_environment_type  *type;
+    check_alloc(type, s0_environment_type_new());
+    check(s0_environment_type_size(type) == 0);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("empty environment type doesn't contain anything") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(type, name) == NULL);
+    s0_name_free(name);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can add entries to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("non-empty environment type has accurate size") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check(s0_environment_type_size(type) == 1);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check(s0_environment_type_size(type) == 2);
+
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can check which names belong to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype1;
+    struct s0_entity_type  *etype2;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype1, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype2, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype2));
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(type, name) == etype1);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(type, name) == etype2);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_type_get(type, name) == NULL);
+    s0_name_free(name);
+
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can iterate through names in type") {
+    struct s0_environment_type  *type;
+    struct s0_environment_type_entry  entry;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype1;
+    struct s0_entity_type  *etype2;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype1, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype2, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype2));
+
+    /* This test assumes that the entries are returned in the same order that
+     * they were added to the type. */
+
+    entry = s0_environment_type_at(type, 0);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_name_eq(entry.name, name));
+    check(entry.type == etype1);
+    s0_name_free(name);
+
+    entry = s0_environment_type_at(type, 1);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_name_eq(entry.name, name));
+    check(entry.type == etype2);
+    s0_name_free(name);
+
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can delete entries from environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_delete(type, name) == etype);
+    s0_name_free(name);
+    s0_entity_type_free(etype);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can extract entries from environment type") {
+    struct s0_environment_type  *src;
+    struct s0_environment_type  *dest;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype1;
+    struct s0_entity_type  *etype2;
+    struct s0_name_set  *set;
+
+    /* Construct {a: any, b: any} */
+    check_alloc(src, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype1, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype2, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype2));
+
+    /* Extract `a` into a separate type */
+    check_alloc(dest, s0_environment_type_new());
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check0(s0_environment_type_extract(dest, src, set));
+    s0_name_set_free(set);
+
+    /* Verify that dest == {b: any} */
+    check(s0_environment_type_size(dest) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(dest, name) == etype1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(dest, name) == NULL);
+    s0_name_free(name);
+
+    /* Verify that src == {b: any} */
+    check(s0_environment_type_size(src) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(src, name) == etype2);
+    s0_name_free(name);
+
+    s0_environment_type_free(src);
+    s0_environment_type_free(dest);
+}
+
+TEST_CASE("cannot extract duplicate entries from environment type") {
+    struct s0_environment_type  *src;
+    struct s0_environment_type  *dest;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    struct s0_name_set  *set;
+
+    /* Construct {a: any, b: any} */
+    check_alloc(src, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype));
+
+    /* Extract `a` into a separate type that already contains `a` */
+    check_alloc(dest, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(dest, name, etype));
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check(s0_environment_type_extract(dest, src, set) == -1);
+    s0_name_set_free(set);
+
+    s0_environment_type_free(src);
+    s0_environment_type_free(dest);
+}
+
+TEST_CASE("cannot get deleted entries from environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_delete(type, name) == etype);
+    s0_name_free(name);
+    s0_entity_type_free(etype);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(type, name) == NULL);
+    s0_name_free(name);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("cannot iterate deleted entries from environment type") {
+    struct s0_environment_type  *type;
+    struct s0_environment_type_entry  entry;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype1;
+    struct s0_entity_type  *etype2;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype1, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype2, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype2));
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_delete(type, name) == etype1);
+    s0_name_free(name);
+    s0_entity_type_free(etype1);
+    entry = s0_environment_type_at(type, 0);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_name_eq(entry.name, name));
+    check(entry.type == etype2);
+    s0_name_free(name);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("env() : {}") {
+    struct s0_environment_type  *type;
+    struct s0_environment  *env;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(env, s0_environment_new());
+    check(s0_environment_type_satisfied_by(type, env));
+    s0_environment_type_free(type);
+    s0_environment_free(env);
+}
+
+TEST_CASE("env(a,b) !: {}") {
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+    struct s0_environment  *env;
+    struct s0_entity  *atom;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check(!s0_environment_type_satisfied_by(type, env));
+    s0_environment_type_free(type);
+    s0_environment_free(env);
+}
+
+TEST_CASE("env(a,b) !: {a: any}") {
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+    struct s0_entity_type  *etype;
+    struct s0_environment  *env;
+    struct s0_entity  *atom;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check(!s0_environment_type_satisfied_by(type, env));
+    s0_environment_type_free(type);
+    s0_environment_free(env);
+}
+
+TEST_CASE("env(a,b) : {a: any, b: any}") {
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+    struct s0_entity_type  *etype;
+    struct s0_environment  *env;
+    struct s0_entity  *atom;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check(s0_environment_type_satisfied_by(type, env));
+    s0_environment_type_free(type);
+    s0_environment_free(env);
+}
+
+TEST_CASE("can add `create-atom` to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_environment_type_add_statement(type, stmt));
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    s0_statement_free(stmt);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can add `create-closure` to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *dest;
+    struct s0_name_set  *closed_over;
+    struct s0_named_blocks  *branches;
+    struct s0_statement  *stmt;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(closed_over, s0_name_set_new());
+    check_alloc(branches, s0_named_blocks_new());
+    check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
+    check0(s0_environment_type_add_statement(type, stmt));
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    s0_statement_free(stmt);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can add `create-literal` to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
+    check0(s0_environment_type_add_statement(type, stmt));
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    s0_statement_free(stmt);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can add `create-method` to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *dest;
+    struct s0_name  *self_input;
+    struct s0_block  *body;
+    struct s0_statement  *stmt;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(self_input, s0_name_new_str("self"));
+    check_alloc(body, create_empty_block());
+    check_alloc(stmt, s0_create_method_new(dest, self_input, body));
+    check0(s0_environment_type_add_statement(type, stmt));
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    s0_statement_free(stmt);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can create external environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type from the mapping */
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_add_external_inputs(type, mapping));
+
+    /* Result should be {a: any, c: any} */
+    check(s0_environment_type_size(type) == 2);
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("c"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("cannot overwrite external environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type with entries that overlap what we'd add from
+     * the mapping. */
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("c"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check(s0_environment_type_add_external_inputs(type, mapping) == -1);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("can create internal environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type from the mapping */
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_add_internal_inputs(type, mapping));
+
+    /* Result should be {b: any, d: any} */
+    check(s0_environment_type_size(type) == 2);
+    check_alloc(name, s0_name_new_str("b"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("d"));
+    check_nonnull(etype = s0_environment_type_get(type, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("cannot overwrite internal environment type from input mappings") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Create the mapping */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, etype));
+
+    /* Create an environment type with entries that overlap what we'd add from
+     * the mapping. */
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("d"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check(s0_environment_type_add_internal_inputs(type, mapping) == -1);
+
+    s0_environment_type_free(type);
+    s0_name_mapping_free(mapping);
 }
 
 /*-----------------------------------------------------------------------------

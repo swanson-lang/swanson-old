@@ -325,6 +325,7 @@ s0_load_name_mapping(struct s0_yaml_node node)
         struct s0_yaml_node  item;
         struct s0_name  *from;
         struct s0_name  *to;
+        struct s0_entity_type  *type;
 
         item = s0_yaml_node_mapping_key_at(node, i);
         from = s0_load_name(item);
@@ -363,7 +364,16 @@ s0_load_name_mapping(struct s0_yaml_node node)
             return NULL;
         }
 
-        if (unlikely(s0_name_mapping_add(mapping, from, to))) {
+        type = s0_any_entity_type_new();
+        if (unlikely(type == NULL)) {
+            fill_memory_error(node.stream);
+            s0_name_free(from);
+            s0_name_free(to);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_name_mapping_add(mapping, from, to, type))) {
             fill_memory_error(node.stream);
             s0_name_mapping_free(mapping);
             return NULL;
@@ -656,7 +666,8 @@ s0_load_statement(struct s0_yaml_node node)
 }
 
 static struct s0_statement_list *
-s0_load_statement_list(struct s0_yaml_node node)
+s0_load_statement_list(struct s0_yaml_node node,
+                       struct s0_environment_type *type)
 {
     struct s0_statement_list  *list;
     size_t  i;
@@ -666,6 +677,7 @@ s0_load_statement_list(struct s0_yaml_node node)
     count = s0_yaml_node_sequence_size(node);
     list = s0_statement_list_new();
     for (i = 0; i < count; i++) {
+        int  rc;
         struct s0_yaml_node  item = s0_yaml_node_sequence_at(node, i);
         struct s0_statement  *statement = s0_load_statement(item);
         if (unlikely(statement == NULL)) {
@@ -673,7 +685,18 @@ s0_load_statement_list(struct s0_yaml_node node)
             return NULL;
         }
 
-        if (unlikely(s0_statement_list_add(list, statement))) {
+        rc = s0_environment_type_add_statement(type, statement);
+        if (unlikely(rc != 0)) {
+            fill_error(node.stream, "Statement has invalid type at %zu:%zu",
+                       s0_yaml_node_get_node(node)->start_mark.line,
+                       s0_yaml_node_get_node(node)->start_mark.column);
+            s0_statement_free(statement);
+            s0_statement_list_free(list);
+            return NULL;
+        }
+
+        rc = s0_statement_list_add(list, statement);
+        if (unlikely(rc != 0)) {
             s0_statement_list_free(list);
             return NULL;
         }
@@ -787,8 +810,10 @@ s0_load_invocation(struct s0_yaml_node node)
 static struct s0_block *
 s0_load_block(struct s0_yaml_node node)
 {
+    int  rc;
     struct s0_yaml_node  item;
     struct s0_name_mapping  *inputs;
+    struct s0_environment_type  *type;
     struct s0_statement_list  *statements;
     struct s0_invocation  *invocation;
 
@@ -809,6 +834,23 @@ s0_load_block(struct s0_yaml_node node)
         return NULL;
     }
 
+    type = s0_environment_type_new();
+    if (unlikely(type == NULL)) {
+        fill_memory_error(node.stream);
+        s0_name_mapping_free(inputs);
+        return NULL;
+    }
+
+    rc = s0_environment_type_add_internal_inputs(type, inputs);
+    if (unlikely(rc != 0)) {
+        fill_error(node.stream, "Block has invalid inputs type at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        s0_name_mapping_free(inputs);
+        s0_environment_type_free(type);
+        return NULL;
+    }
+
     /* statements */
 
     item = s0_yaml_node_mapping_get(node, "statements");
@@ -817,12 +859,14 @@ s0_load_block(struct s0_yaml_node node)
                    s0_yaml_node_get_node(node)->start_mark.line,
                    s0_yaml_node_get_node(node)->start_mark.column);
         s0_name_mapping_free(inputs);
+        s0_environment_type_free(type);
         return NULL;
     }
 
-    statements = s0_load_statement_list(item);
+    statements = s0_load_statement_list(item, type);
     if (unlikely(statements == NULL)) {
         s0_name_mapping_free(inputs);
+        s0_environment_type_free(type);
         return NULL;
     }
 
@@ -835,6 +879,7 @@ s0_load_block(struct s0_yaml_node node)
                    s0_yaml_node_get_node(node)->start_mark.column);
         s0_name_mapping_free(inputs);
         s0_statement_list_free(statements);
+        s0_environment_type_free(type);
         return NULL;
     }
 
@@ -842,9 +887,11 @@ s0_load_block(struct s0_yaml_node node)
     if (unlikely(invocation == NULL)) {
         s0_name_mapping_free(inputs);
         s0_statement_list_free(statements);
+        s0_environment_type_free(type);
         return NULL;
     }
 
+    s0_environment_type_free(type);
     return s0_block_new(inputs, statements, invocation);
 }
 

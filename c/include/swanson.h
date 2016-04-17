@@ -29,6 +29,9 @@ s0_name_new(size_t size, const void *content);
 struct s0_name *
 s0_name_new_str(const void *content);
 
+struct s0_name *
+s0_name_new_copy(const struct s0_name *other);
+
 void
 s0_name_free(struct s0_name *);
 
@@ -79,10 +82,12 @@ s0_name_set_at(const struct s0_name_set *, size_t index);
  */
 
 struct s0_name_mapping;
+struct s0_entity_type;
 
 struct s0_name_mapping_entry {
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
 };
 
 struct s0_name_mapping *
@@ -91,28 +96,28 @@ s0_name_mapping_new(void);
 void
 s0_name_mapping_free(struct s0_name_mapping *);
 
-/* Takes ownership of from and to.  from MUST not already be present in the
- * mapping's domain, and to MUST not already be present in the mapping's range.
- * Returns 0 if name was added; -1 if we couldn't allocate space for the new
- * entry. */
+/* Takes ownership of from, to, and type.  from MUST not already be present in
+ * the mapping's domain, and to MUST not already be present in the mapping's
+ * range.  Returns 0 if name was added; -1 if we couldn't allocate space for the
+ * new entry. */
 int
 s0_name_mapping_add(struct s0_name_mapping *, struct s0_name *from,
-                    struct s0_name *to);
+                    struct s0_name *to, struct s0_entity_type *type);
 
 size_t
 s0_name_mapping_size(const struct s0_name_mapping *);
 
 /* Returns entries in order that they were added to the set.  index MUST be <
  * size of mapping.  Set still owns the names; you must not free it. */
-struct s0_name_mapping_entry
+const struct s0_name_mapping_entry *
 s0_name_mapping_at(const struct s0_name_mapping *, size_t index);
 
 /* Returns NULL if from is not in the mapping's domain. */
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get(const struct s0_name_mapping *, const struct s0_name *from);
 
 /* Returns NULL if from is not in the mapping's range. */
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get_from(const struct s0_name_mapping *,
                          const struct s0_name *to);
 
@@ -183,18 +188,18 @@ s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
 
 struct s0_statement;
 
-enum s0_statement_type {
-    S0_STATEMENT_TYPE_CREATE_ATOM,
-    S0_STATEMENT_TYPE_CREATE_CLOSURE,
-    S0_STATEMENT_TYPE_CREATE_LITERAL,
-    S0_STATEMENT_TYPE_CREATE_METHOD
+enum s0_statement_kind {
+    S0_STATEMENT_KIND_CREATE_ATOM,
+    S0_STATEMENT_KIND_CREATE_CLOSURE,
+    S0_STATEMENT_KIND_CREATE_LITERAL,
+    S0_STATEMENT_KIND_CREATE_METHOD
 };
 
 void
 s0_statement_free(struct s0_statement *);
 
-enum s0_statement_type
-s0_statement_type(const struct s0_statement *);
+enum s0_statement_kind
+s0_statement_kind(const struct s0_statement *);
 
 
 /* Takes control of dest */
@@ -291,16 +296,16 @@ s0_statement_list_at(const struct s0_statement_list *, size_t index);
 
 struct s0_invocation;
 
-enum s0_invocation_type {
-    S0_INVOCATION_TYPE_INVOKE_CLOSURE,
-    S0_INVOCATION_TYPE_INVOKE_METHOD
+enum s0_invocation_kind {
+    S0_INVOCATION_KIND_INVOKE_CLOSURE,
+    S0_INVOCATION_KIND_INVOKE_METHOD
 };
 
 void
 s0_invocation_free(struct s0_invocation *);
 
-enum s0_invocation_type
-s0_invocation_type(const struct s0_invocation *);
+enum s0_invocation_kind
+s0_invocation_kind(const struct s0_invocation *);
 
 
 /* Takes control of src and branch */
@@ -356,19 +361,19 @@ s0_block_invocation(const struct s0_block *);
  * S₀: Entities
  */
 
-enum s0_entity_type {
-    S0_ENTITY_TYPE_ATOM,
-    S0_ENTITY_TYPE_CLOSURE,
-    S0_ENTITY_TYPE_LITERAL,
-    S0_ENTITY_TYPE_METHOD,
-    S0_ENTITY_TYPE_OBJECT
+enum s0_entity_kind {
+    S0_ENTITY_KIND_ATOM,
+    S0_ENTITY_KIND_CLOSURE,
+    S0_ENTITY_KIND_LITERAL,
+    S0_ENTITY_KIND_METHOD,
+    S0_ENTITY_KIND_OBJECT
 };
 
 void
 s0_entity_free(struct s0_entity *);
 
-enum s0_entity_type
-s0_entity_type(const struct s0_entity *);
+enum s0_entity_kind
+s0_entity_kind(const struct s0_entity *);
 
 
 struct s0_entity *
@@ -449,6 +454,128 @@ s0_object_at(const struct s0_entity *, size_t index);
 /* Entity MUST be an object.  Returns NULL if name is not in object. */
 struct s0_entity *
 s0_object_get(const struct s0_entity *, const struct s0_name *name);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entity types
+ */
+
+struct s0_entity_type;
+
+enum s0_entity_type_kind {
+    S0_ENTITY_TYPE_KIND_ANY
+};
+
+struct s0_entity_type *
+s0_entity_type_new_copy(const struct s0_entity_type *other);
+
+void
+s0_entity_type_free(struct s0_entity_type *);
+
+enum s0_entity_type_kind
+s0_entity_type_kind(const struct s0_entity_type *);
+
+bool
+s0_entity_type_satisfied_by(const struct s0_entity_type *,
+                            const struct s0_entity *);
+
+
+struct s0_entity_type *
+s0_any_entity_type_new(void);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Environment types
+ */
+
+struct s0_environment_type;
+
+struct s0_environment_type_entry {
+    struct s0_name  *name;
+    struct s0_entity_type  *type;
+};
+
+struct s0_environment_type *
+s0_environment_type_new(void);
+
+void
+s0_environment_type_free(struct s0_environment_type *);
+
+/* Takes ownership of name and type.  name MUST not already be present in
+ * environment type.  Returns 0 if name was added; -1 if we couldn't allocate
+ * space for the new entry. */
+int
+s0_environment_type_add(struct s0_environment_type *,
+                        struct s0_name *name, struct s0_entity_type *type);
+
+size_t
+s0_environment_type_size(const struct s0_environment_type *);
+
+/* Returns entries in order that they were added to the set.  index MUST be <
+ * size of environment_type.  Set still owns the name and entity type; you must
+ * not free them. */
+struct s0_environment_type_entry
+s0_environment_type_at(const struct s0_environment_type *, size_t index);
+
+/* Returns NULL if name is not in environment type. */
+struct s0_entity_type *
+s0_environment_type_get(const struct s0_environment_type *,
+                        const struct s0_name *name);
+
+/* Returns NULL if name is not in environment type. */
+struct s0_entity_type *
+s0_environment_type_delete(struct s0_environment_type *,
+                           const struct s0_name *name);
+
+/* Extracts entries from `src`, moving them into `dest`.  The entries to extract
+ * are given by a name set.  This is used for closure sets when constructing a
+ * closure, since the entries described by the type are moved from the
+ * containing environment into the closure's environment.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error moving the entries. */
+int
+s0_environment_type_extract(struct s0_environment_type *dest,
+                            struct s0_environment_type *src,
+                            const struct s0_name_set *set);
+
+/* Ensures that an environment type satisfies the prerequisites of `stmt`, and
+ * then updates the environment type based on what `stmt` would do.
+ *
+ * Returns 0 if the prereqs were satisfied and the type was updated
+ * successfully; returns -1 otherwise. */
+int
+s0_environment_type_add_statement(struct s0_environment_type *,
+                                  const struct s0_statement *stmt);
+
+/* Adds an entry to the environment type for each entry in a name mapping, using
+ * the mapping entry's `from` name and `type`.  This type describes the
+ * environment that the caller must provide when invoking a block.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error creating the environment type. */
+int
+s0_environment_type_add_external_inputs(struct s0_environment_type *,
+                                        const struct s0_name_mapping *inputs);
+
+/* Adds an entry to the environment type for each entry in a name mapping, using
+ * the mapping entry's `to` name and `type`.  This type describes the
+ * environment a block is given when it first starts executing.
+ *
+ * You should have already filled in the environment type with entries
+ * representing any closure set that the block will operate under (to ensure
+ * that there are no name clashes between the closure set and the input
+ * mapping).
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error creating the environment type. */
+int
+s0_environment_type_add_internal_inputs(struct s0_environment_type *,
+                                        const struct s0_name_mapping *inputs);
+
+bool
+s0_environment_type_satisfied_by(const struct s0_environment_type *,
+                                 const struct s0_environment *);
 
 
 /*-----------------------------------------------------------------------------
