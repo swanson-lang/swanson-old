@@ -1508,6 +1508,129 @@ s0_environment_type_extract(struct s0_environment_type *dest,
     return 0;
 }
 
+static int
+s0_environment_type_add_create_atom(struct s0_environment_type *type,
+                                    const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_atom.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+static int
+s0_environment_type_add_create_closure(struct s0_environment_type *type,
+                                       const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_closure.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+static int
+s0_environment_type_add_create_literal(struct s0_environment_type *type,
+                                       const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_literal.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+static int
+s0_environment_type_add_create_method(struct s0_environment_type *type,
+                                      const struct s0_statement *stmt)
+{
+    struct s0_entity_type  *dest_type;
+    struct s0_name  *dest_name;
+
+    dest_type = s0_environment_type_get(type, stmt->_.create_method.dest);
+    if (unlikely(dest_type != NULL)) {
+        return -1;
+    }
+
+    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    if (unlikely(dest_name == NULL)) {
+        return -1;
+    }
+
+    dest_type = s0_any_entity_type_new();
+    if (unlikely(dest_type == NULL)) {
+        s0_name_free(dest_name);
+        return -1;
+    }
+
+    return s0_environment_type_add(type, dest_name, dest_type);
+}
+
+int
+s0_environment_type_add_statement(struct s0_environment_type *type,
+                                  const struct s0_statement *stmt)
+{
+    switch (stmt->type) {
+        case S0_STATEMENT_KIND_CREATE_ATOM:
+            return s0_environment_type_add_create_atom(type, stmt);
+        case S0_STATEMENT_KIND_CREATE_CLOSURE:
+            return s0_environment_type_add_create_closure(type, stmt);
+        case S0_STATEMENT_KIND_CREATE_LITERAL:
+            return s0_environment_type_add_create_literal(type, stmt);
+        case S0_STATEMENT_KIND_CREATE_METHOD:
+            return s0_environment_type_add_create_method(type, stmt);
+        default:
+            assert(false);
+            break;
+    }
+}
+
 int
 s0_environment_type_add_external_inputs(struct s0_environment_type *type,
                                         const struct s0_name_mapping *inputs)
