@@ -464,6 +464,9 @@ enum s0_entity_type_kind {
     S0_ENTITY_TYPE_KIND_ANY
 };
 
+struct s0_entity_type *
+s0_entity_type_new_copy(const struct s0_entity_type *other);
+
 void
 s0_entity_type_free(struct s0_entity_type *);
 

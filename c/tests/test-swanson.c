@@ -989,6 +989,16 @@ TEST_CASE("can delete entries from environment") {
 
 TEST_CASE_GROUP("S₀ entity types: any");
 
+TEST_CASE("can copy `any` type") {
+    struct s0_entity_type  *any1;
+    struct s0_entity_type  *any2;
+    check_alloc(any1, s0_any_entity_type_new());
+    check_alloc(any2, s0_entity_type_new_copy(any1));
+    check(s0_entity_type_kind(any1) == s0_entity_type_kind(any2));
+    s0_entity_type_free(any1);
+    s0_entity_type_free(any2);
+}
+
 TEST_CASE("atom : any") {
     struct s0_entity_type  *any;
     struct s0_entity  *entity;

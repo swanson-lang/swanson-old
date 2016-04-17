@@ -1289,6 +1289,12 @@ s0_any_entity_type_new(void)
     return any;
 }
 
+static struct s0_entity_type *
+s0_any_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    return s0_any_entity_type_new();
+}
+
 static void
 s0_any_entity_type_free(struct s0_entity_type *any)
 {
@@ -1300,6 +1306,19 @@ s0_any_entity_type_satisfied_by(const struct s0_entity_type *any,
                                 const struct s0_entity *entity)
 {
     return true;
+}
+
+struct s0_entity_type *
+s0_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    switch (other->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            return s0_any_entity_type_new_copy(other);
+            break;
+        default:
+            assert(false);
+            break;
+    }
 }
 
 void
