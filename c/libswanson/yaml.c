@@ -325,6 +325,7 @@ s0_load_name_mapping(struct s0_yaml_node node)
         struct s0_yaml_node  item;
         struct s0_name  *from;
         struct s0_name  *to;
+        struct s0_entity_type  *type;
 
         item = s0_yaml_node_mapping_key_at(node, i);
         from = s0_load_name(item);
@@ -363,7 +364,16 @@ s0_load_name_mapping(struct s0_yaml_node node)
             return NULL;
         }
 
-        if (unlikely(s0_name_mapping_add(mapping, from, to))) {
+        type = s0_any_entity_type_new();
+        if (unlikely(type == NULL)) {
+            fill_memory_error(node.stream);
+            s0_name_free(from);
+            s0_name_free(to);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_name_mapping_add(mapping, from, to, type))) {
             fill_memory_error(node.stream);
             s0_name_mapping_free(mapping);
             return NULL;

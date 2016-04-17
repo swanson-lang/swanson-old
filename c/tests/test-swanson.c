@@ -218,27 +218,32 @@ TEST_CASE("can add names to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     s0_name_mapping_free(mapping);
 }
 
 TEST_CASE("non-empty name mapping has accurate size") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
+    struct s0_entity_type  *type;
     struct s0_name  *to;
     check_alloc(mapping, s0_name_mapping_new());
 
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check(s0_name_mapping_size(mapping) == 1);
 
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check(s0_name_mapping_size(mapping) == 2);
 
     s0_name_mapping_free(mapping);
@@ -248,23 +253,31 @@ TEST_CASE("can check which names belong to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
+    const struct s0_name_mapping_entry  *entry;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
 
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check(s0_name_eq(s0_name_mapping_get(mapping, from), to));
+    check_nonnull(entry = s0_name_mapping_get(mapping, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check(s0_name_eq(s0_name_mapping_get(mapping, from), to));
+    check_nonnull(entry = s0_name_mapping_get(mapping, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
@@ -277,33 +290,38 @@ TEST_CASE("can check which names belong to mapping") {
 
 TEST_CASE("can iterate through names in mapping") {
     struct s0_name_mapping  *mapping;
-    struct s0_name_mapping_entry  entry;
+    const struct s0_name_mapping_entry  *entry;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(mapping, from, to, type));
 
     /* This test assumes that the names are returned in the same order that they
      * were added to the mapping. */
 
-    entry = s0_name_mapping_at(mapping, 0);
+    check_nonnull(entry = s0_name_mapping_at(mapping, 0));
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check(s0_name_eq(entry.from, from));
-    check(s0_name_eq(entry.to, to));
+    check(s0_name_eq(entry->from, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
-    entry = s0_name_mapping_at(mapping, 1);
+    check_nonnull(entry = s0_name_mapping_at(mapping, 1));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check(s0_name_eq(entry.from, from));
-    check(s0_name_eq(entry.to, to));
+    check(s0_name_eq(entry->from, from));
+    check(s0_name_eq(entry->to, to));
+    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 

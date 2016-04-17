@@ -217,6 +217,7 @@ s0_name_mapping_free(struct s0_name_mapping *mapping)
     for (i = 0; i < mapping->size; i++) {
         s0_name_free(mapping->entries[i].from);
         s0_name_free(mapping->entries[i].to);
+        s0_entity_type_free(mapping->entries[i].type);
     }
     free(mapping->entries);
     free(mapping);
@@ -224,7 +225,7 @@ s0_name_mapping_free(struct s0_name_mapping *mapping)
 
 int
 s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
-                    struct s0_name *to)
+                    struct s0_name *to, struct s0_entity_type *type)
 {
     struct s0_name_mapping_entry  *new_entry;
 
@@ -236,6 +237,7 @@ s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
         if (unlikely(new_entries == NULL)) {
             s0_name_free(from);
             s0_name_free(to);
+            s0_entity_type_free(type);
             return -1;
         }
         mapping->entries = new_entries;
@@ -245,6 +247,7 @@ s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
     new_entry = &mapping->entries[mapping->size++];
     new_entry->from = from;
     new_entry->to = to;
+    new_entry->type = type;
     return 0;
 }
 
@@ -254,34 +257,34 @@ s0_name_mapping_size(const struct s0_name_mapping *mapping)
     return mapping->size;
 }
 
-struct s0_name_mapping_entry
+const struct s0_name_mapping_entry *
 s0_name_mapping_at(const struct s0_name_mapping *mapping, size_t index)
 {
     assert(index < mapping->size);
-    return mapping->entries[index];
+    return &mapping->entries[index];
 }
 
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get(const struct s0_name_mapping *mapping,
                     const struct s0_name *from)
 {
     size_t  i;
     for (i = 0; i < mapping->size; i++) {
         if (s0_name_eq(mapping->entries[i].from, from)) {
-            return mapping->entries[i].to;
+            return &mapping->entries[i];
         }
     }
     return NULL;
 }
 
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get_from(const struct s0_name_mapping *mapping,
                          const struct s0_name *to)
 {
     size_t  i;
     for (i = 0; i < mapping->size; i++) {
         if (s0_name_eq(mapping->entries[i].to, to)) {
-            return mapping->entries[i].from;
+            return &mapping->entries[i];
         }
     }
     return NULL;

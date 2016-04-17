@@ -82,10 +82,12 @@ s0_name_set_at(const struct s0_name_set *, size_t index);
  */
 
 struct s0_name_mapping;
+struct s0_entity_type;
 
 struct s0_name_mapping_entry {
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *type;
 };
 
 struct s0_name_mapping *
@@ -94,28 +96,28 @@ s0_name_mapping_new(void);
 void
 s0_name_mapping_free(struct s0_name_mapping *);
 
-/* Takes ownership of from and to.  from MUST not already be present in the
- * mapping's domain, and to MUST not already be present in the mapping's range.
- * Returns 0 if name was added; -1 if we couldn't allocate space for the new
- * entry. */
+/* Takes ownership of from, to, and type.  from MUST not already be present in
+ * the mapping's domain, and to MUST not already be present in the mapping's
+ * range.  Returns 0 if name was added; -1 if we couldn't allocate space for the
+ * new entry. */
 int
 s0_name_mapping_add(struct s0_name_mapping *, struct s0_name *from,
-                    struct s0_name *to);
+                    struct s0_name *to, struct s0_entity_type *type);
 
 size_t
 s0_name_mapping_size(const struct s0_name_mapping *);
 
 /* Returns entries in order that they were added to the set.  index MUST be <
  * size of mapping.  Set still owns the names; you must not free it. */
-struct s0_name_mapping_entry
+const struct s0_name_mapping_entry *
 s0_name_mapping_at(const struct s0_name_mapping *, size_t index);
 
 /* Returns NULL if from is not in the mapping's domain. */
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get(const struct s0_name_mapping *, const struct s0_name *from);
 
 /* Returns NULL if from is not in the mapping's range. */
-struct s0_name *
+const struct s0_name_mapping_entry *
 s0_name_mapping_get_from(const struct s0_name_mapping *,
                          const struct s0_name *to);
 

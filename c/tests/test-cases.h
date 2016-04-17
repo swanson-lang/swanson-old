@@ -198,6 +198,16 @@ exit_status(void)
 
 #define check0(call)  check0_with_msg(call, "Error occurred")
 
+#define check_nonnull_with_msg(call, msg) \
+    do { \
+        if (unlikely((call) == NULL)) { \
+            fail_at(msg, __FILE__, __LINE__); \
+            return; \
+        } \
+    } while (0)
+
+#define check_nonnull(call)  check_nonnull_with_msg(call, "Error occurred")
+
 
 #ifdef __cplusplus
 } /* extern "C" */
