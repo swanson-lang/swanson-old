@@ -588,6 +588,46 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *,
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Environment type mappings
+ */
+
+struct s0_environment_type_mapping;
+
+struct s0_environment_type_mapping_entry {
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+};
+
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new(void);
+
+void
+s0_environment_type_mapping_free(struct s0_environment_type_mapping *);
+
+/* Takes ownership of name and type.  name MUST not already be present in
+ * mapping.  Returns 0 if type was added; -1 if we couldn't allocate space for
+ * the new entry. */
+int
+s0_environment_type_mapping_add(struct s0_environment_type_mapping *,
+                                struct s0_name *name,
+                                struct s0_environment_type *type);
+
+size_t
+s0_environment_type_mapping_size(const struct s0_environment_type_mapping *);
+
+/* Returns entries in order that they were added to mapping.  index MUST be <
+ * size of object. */
+const struct s0_environment_type_mapping_entry *
+s0_environment_type_mapping_at(const struct s0_environment_type_mapping *,
+                               size_t index);
+
+/* Returns NULL if name is not in mapping. */
+struct s0_environment_type *
+s0_environment_type_mapping_get(const struct s0_environment_type_mapping *,
+                                const struct s0_name *name);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: YAML
  */
 

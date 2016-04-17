@@ -1671,6 +1671,125 @@ TEST_CASE("cannot overwrite internal environment type from input mappings") {
 }
 
 /*-----------------------------------------------------------------------------
+ * S₀: Environment type mappings
+ */
+
+TEST_CASE_GROUP("S₀ environment type mappings");
+
+TEST_CASE("can create empty environment type mapping") {
+    struct s0_environment_type_mapping  *mapping;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    s0_environment_type_mapping_free(mapping);
+}
+
+TEST_CASE("empty environment type mapping has zero elements") {
+    struct s0_environment_type_mapping  *mapping;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    check(s0_environment_type_mapping_size(mapping) == 0);
+    s0_environment_type_mapping_free(mapping);
+}
+
+TEST_CASE("empty environment type mapping doesn't contain anything") {
+    struct s0_environment_type_mapping  *mapping;
+    struct s0_name  *name;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_mapping_get(mapping, name) == NULL);
+    s0_name_free(name);
+    s0_environment_type_mapping_free(mapping);
+}
+
+TEST_CASE("can add environment types to mapping") {
+    struct s0_environment_type_mapping  *mapping;
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type));
+    s0_environment_type_mapping_free(mapping);
+}
+
+TEST_CASE("non-empty environment type mapping has accurate size") {
+    struct s0_environment_type_mapping  *mapping;
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type));
+    check(s0_environment_type_mapping_size(mapping) == 1);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type));
+    check(s0_environment_type_mapping_size(mapping) == 2);
+
+    s0_environment_type_mapping_free(mapping);
+}
+
+TEST_CASE("can check which names belong to mapping") {
+    struct s0_environment_type_mapping  *mapping;
+    struct s0_name  *name;
+    struct s0_environment_type  *type1;
+    struct s0_environment_type  *type2;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(type1, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(type2, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type2));
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_mapping_get(mapping, name) == type1);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_mapping_get(mapping, name) == type2);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_type_mapping_get(mapping, name) == NULL);
+    s0_name_free(name);
+
+    s0_environment_type_mapping_free(mapping);
+}
+
+TEST_CASE("can iterate through names in mapping") {
+    struct s0_environment_type_mapping  *mapping;
+    const struct s0_environment_type_mapping_entry  *entry;
+    struct s0_name  *name;
+    struct s0_environment_type  *type1;
+    struct s0_environment_type  *type2;
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(type1, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(type2, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type2));
+
+    /* This test assumes that the names are returned in the same order that they
+     * were added to the mapping. */
+
+    check_nonnull(entry = s0_environment_type_mapping_at(mapping, 0));
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_name_eq(entry->name, name));
+    check(entry->type == type1);
+    s0_name_free(name);
+
+    check_nonnull(entry = s0_environment_type_mapping_at(mapping, 1));
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_name_eq(entry->name, name));
+    check(entry->type == type2);
+    s0_name_free(name);
+
+    s0_environment_type_mapping_free(mapping);
+}
+
+/*-----------------------------------------------------------------------------
  * Harness
  */
 

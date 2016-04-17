@@ -1767,3 +1767,104 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *type,
 
     return true;
 }
+
+
+/*-----------------------------------------------------------------------------
+ * Environment type mappings
+ */
+
+struct s0_environment_type_mapping {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_environment_type_mapping_entry  *entries;
+};
+
+#define DEFAULT_INITIAL_ENVIRONMENT_TYPE_MAPPING_SIZE  4
+
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new(void)
+{
+    struct s0_environment_type_mapping  *mapping =
+        malloc(sizeof(struct s0_environment_type_mapping));
+    if (unlikely(mapping == NULL)) {
+        return NULL;
+    }
+    mapping->size = 0;
+    mapping->allocated_size = DEFAULT_INITIAL_ENVIRONMENT_TYPE_MAPPING_SIZE;
+    mapping->entries =
+        malloc(DEFAULT_INITIAL_ENVIRONMENT_TYPE_MAPPING_SIZE *
+               sizeof(struct s0_environment_type_mapping_entry));
+    if (unlikely(mapping->entries == NULL)) {
+        free(mapping);
+        return NULL;
+    }
+    return mapping;
+}
+
+void
+s0_environment_type_mapping_free(struct s0_environment_type_mapping *mapping)
+{
+    size_t  i;
+    for (i = 0; i < mapping->size; i++) {
+        s0_name_free(mapping->entries[i].name);
+        s0_environment_type_free(mapping->entries[i].type);
+    }
+    free(mapping->entries);
+    free(mapping);
+}
+
+int
+s0_environment_type_mapping_add(struct s0_environment_type_mapping *mapping,
+                                struct s0_name *name,
+                                struct s0_environment_type *type)
+{
+    struct s0_environment_type_mapping_entry  *new_entry;
+
+    if (unlikely(mapping->size == mapping->allocated_size)) {
+        size_t  new_size = mapping->allocated_size * 2;
+        struct s0_environment_type_mapping_entry  *new_entries = realloc
+            (mapping->entries,
+             new_size * sizeof(struct s0_environment_type_mapping_entry));
+        if (unlikely(new_entries == NULL)) {
+            s0_name_free(name);
+            s0_environment_type_free(type);
+            return -1;
+        }
+        mapping->entries = new_entries;
+        mapping->allocated_size = new_size;
+    }
+
+    new_entry = &mapping->entries[mapping->size++];
+    new_entry->name = name;
+    new_entry->type = type;
+    return 0;
+}
+
+size_t
+s0_environment_type_mapping_size(
+        const struct s0_environment_type_mapping *mapping)
+{
+    return mapping->size;
+}
+
+const struct s0_environment_type_mapping_entry *
+s0_environment_type_mapping_at(
+        const struct s0_environment_type_mapping *mapping, size_t index)
+{
+    assert(index < mapping->size);
+    return &mapping->entries[index];
+}
+
+struct s0_environment_type *
+s0_environment_type_mapping_get(
+        const struct s0_environment_type_mapping *mapping,
+        const struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < mapping->size; i++) {
+        if (s0_name_eq(mapping->entries[i].name, name)) {
+            return mapping->entries[i].type;
+        }
+    }
+    return NULL;
+}
