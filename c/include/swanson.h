@@ -548,6 +548,15 @@ int
 s0_environment_type_add_statement(struct s0_environment_type *,
                                   const struct s0_statement *stmt);
 
+/* Ensures that an environment type satisfies the prerequisites of `invocation`,
+ * and then updates the environment type based on what `invocation` would do.
+ *
+ * Returns 0 if the prereqs were satisfied and the type was updated
+ * successfully; returns -1 otherwise. */
+int
+s0_environment_type_add_invocation(struct s0_environment_type *,
+                                   const struct s0_invocation *invocation);
+
 /* Adds an entry to the environment type for each entry in a name mapping, using
  * the mapping entry's `from` name and `type`.  This type describes the
  * environment that the caller must provide when invoking a block.

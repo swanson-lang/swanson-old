@@ -1482,6 +1482,50 @@ TEST_CASE("can add `create-method` to environment type") {
     s0_environment_type_free(type);
 }
 
+TEST_CASE("can add `invoke-closure` to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_invocation  *invocation;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check0(s0_environment_type_add_invocation(type, invocation));
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(type, name) == NULL);
+    s0_name_free(name);
+    s0_invocation_free(invocation);
+    s0_environment_type_free(type);
+}
+
+TEST_CASE("can add `invoke-method` to environment type") {
+    struct s0_environment_type  *type;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    struct s0_name  *src;
+    struct s0_name  *method;
+    struct s0_invocation  *invocation;
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(method, s0_name_new_str("run"));
+    check_alloc(invocation, s0_invoke_method_new(src, method));
+    check0(s0_environment_type_add_invocation(type, invocation));
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(type, name) == NULL);
+    s0_name_free(name);
+    s0_invocation_free(invocation);
+    s0_environment_type_free(type);
+}
+
 TEST_CASE("can create external environment type from input mappings") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;

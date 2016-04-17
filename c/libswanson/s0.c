@@ -1631,6 +1631,53 @@ s0_environment_type_add_statement(struct s0_environment_type *type,
     }
 }
 
+static int
+s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
+                                       const struct s0_invocation *invocation)
+{
+    struct s0_entity_type  *src_type;
+
+    src_type = s0_environment_type_delete
+        (type, invocation->_.invoke_closure.src);
+    if (unlikely(src_type == NULL)) {
+        return -1;
+    }
+
+    s0_entity_type_free(src_type);
+    return 0;
+}
+
+static int
+s0_environment_type_add_invoke_method(struct s0_environment_type *type,
+                                      const struct s0_invocation *invocation)
+{
+    struct s0_entity_type  *src_type;
+
+    src_type = s0_environment_type_delete
+        (type, invocation->_.invoke_method.src);
+    if (unlikely(src_type == NULL)) {
+        return -1;
+    }
+
+    s0_entity_type_free(src_type);
+    return 0;
+}
+
+int
+s0_environment_type_add_invocation(struct s0_environment_type *type,
+                                   const struct s0_invocation *invocation)
+{
+    switch (invocation->type) {
+        case S0_INVOCATION_KIND_INVOKE_CLOSURE:
+            return s0_environment_type_add_invoke_closure(type, invocation);
+        case S0_INVOCATION_KIND_INVOKE_METHOD:
+            return s0_environment_type_add_invoke_method(type, invocation);
+        default:
+            assert(false);
+            break;
+    }
+}
+
 int
 s0_environment_type_add_external_inputs(struct s0_environment_type *type,
                                         const struct s0_name_mapping *inputs)
