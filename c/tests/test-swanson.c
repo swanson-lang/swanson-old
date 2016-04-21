@@ -1162,6 +1162,40 @@ TEST_CASE("can check which names belong to environment type") {
     s0_environment_type_free(type);
 }
 
+TEST_CASE("can copy environment type") {
+    struct s0_environment_type  *type;
+    struct s0_environment_type  *type_copy;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+
+    /* Construct {a: any, b: any} and then make a copy of it. */
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type_copy, s0_environment_type_new_copy(type));
+    s0_environment_type_free(type);
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(etype = s0_environment_type_get(type_copy, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_nonnull(etype = s0_environment_type_get(type_copy, name));
+    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_type_get(type_copy, name) == NULL);
+    s0_name_free(name);
+
+    s0_environment_type_free(type_copy);
+}
+
 TEST_CASE("can iterate through names in type") {
     struct s0_environment_type  *type;
     struct s0_environment_type_entry  entry;

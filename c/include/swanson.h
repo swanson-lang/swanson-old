@@ -498,6 +498,9 @@ struct s0_environment_type_entry {
 struct s0_environment_type *
 s0_environment_type_new(void);
 
+struct s0_environment_type *
+s0_environment_type_new_copy(const struct s0_environment_type *other);
+
 void
 s0_environment_type_free(struct s0_environment_type *);
 
