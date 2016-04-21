@@ -1791,6 +1791,38 @@ TEST_CASE("can check which names belong to mapping") {
     s0_environment_type_mapping_free(mapping);
 }
 
+TEST_CASE("can copy environment type mapping") {
+    struct s0_environment_type_mapping  *mapping;
+    struct s0_environment_type_mapping  *mapping_copy;
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+
+    /* Create a mapping and then create a copy it it. */
+    check_alloc(mapping, s0_environment_type_mapping_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(type, s0_environment_type_new());
+    check0(s0_environment_type_mapping_add(mapping, name, type));
+    check_alloc(mapping_copy, s0_environment_type_mapping_new_copy(mapping));
+    s0_environment_type_mapping_free(mapping);
+
+    check_alloc(name, s0_name_new_str("a"));
+    check_nonnull(s0_environment_type_mapping_get(mapping_copy, name));
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check_nonnull(s0_environment_type_mapping_get(mapping_copy, name));
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_type_mapping_get(mapping_copy, name) == NULL);
+    s0_name_free(name);
+
+    s0_environment_type_mapping_free(mapping_copy);
+}
+
 TEST_CASE("can iterate through names in mapping") {
     struct s0_environment_type_mapping  *mapping;
     const struct s0_environment_type_mapping_entry  *entry;

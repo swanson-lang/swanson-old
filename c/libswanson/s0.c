@@ -1837,6 +1837,44 @@ s0_environment_type_mapping_new(void)
     return mapping;
 }
 
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new_copy(
+        const struct s0_environment_type_mapping *other)
+{
+    size_t  i;
+    struct s0_environment_type_mapping  *mapping =
+        s0_environment_type_mapping_new();
+    if (unlikely(mapping == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < other->size; i++) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_environment_type  *type_copy;
+
+        name_copy = s0_name_new_copy(other->entries[i].name);
+        if (unlikely(name_copy == NULL)) {
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        type_copy = s0_environment_type_new_copy(other->entries[i].type);
+        if (unlikely(type_copy == NULL)) {
+            s0_name_free(name_copy);
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        rc = s0_environment_type_mapping_add(mapping, name_copy, type_copy);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+    }
+    return mapping;
+}
+
 void
 s0_environment_type_mapping_free(struct s0_environment_type_mapping *mapping)
 {

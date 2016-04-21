@@ -604,6 +604,10 @@ struct s0_environment_type_mapping_entry {
 struct s0_environment_type_mapping *
 s0_environment_type_mapping_new(void);
 
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new_copy(
+        const struct s0_environment_type_mapping *other);
+
 void
 s0_environment_type_mapping_free(struct s0_environment_type_mapping *);
 
