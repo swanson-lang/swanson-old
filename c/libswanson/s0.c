@@ -1312,6 +1312,14 @@ s0_any_entity_type_satisfied_by(const struct s0_entity_type *any,
     return true;
 }
 
+static bool
+s0_any_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                     const struct s0_entity_type *have)
+{
+    return true;
+}
+
+
 struct s0_entity_type *
 s0_entity_type_new_copy(const struct s0_entity_type *other)
 {
@@ -1352,6 +1360,20 @@ s0_entity_type_satisfied_by(const struct s0_entity_type *type,
     switch (type->kind) {
         case S0_ENTITY_TYPE_KIND_ANY:
             return s0_any_entity_type_satisfied_by(type, entity);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+bool
+s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                 const struct s0_entity_type *have)
+{
+    switch (requires->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            return s0_any_entity_type_satisfied_by_type(requires, have);
             break;
         default:
             assert(false);
@@ -1797,6 +1819,30 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *type,
         const struct s0_entity_type  *etype = type->entries[i].type;
         struct s0_entity  *element = s0_environment_get(env, name);
         if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool
+s0_environment_type_satisfied_by_type(
+        const struct s0_environment_type *requires,
+        const struct s0_environment_type *have)
+{
+    size_t  i;
+
+    if (requires->size != have->size) {
+        return false;
+    }
+
+    for (i = 0; i < requires->size; i++) {
+        const struct s0_name  *name = requires->entries[i].name;
+        const struct s0_entity_type  *rtype = requires->entries[i].type;
+        const struct s0_entity_type  *htype =
+            s0_environment_type_get(have, name);
+        if (htype == NULL || !s0_entity_type_satisfied_by_type(rtype, htype)) {
             return false;
         }
     }

@@ -475,9 +475,16 @@ s0_entity_type_free(struct s0_entity_type *);
 enum s0_entity_type_kind
 s0_entity_type_kind(const struct s0_entity_type *);
 
+/* Returns whether the entity is an instance of the type (entity ∈ type). */
 bool
 s0_entity_type_satisfied_by(const struct s0_entity_type *,
                             const struct s0_entity *);
+
+/* Returns whether any entity that satisfies `have` would also satisfy
+ * `requires` (have ⊆ requires). */
+bool
+s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                 const struct s0_entity_type *have);
 
 
 struct s0_entity_type *
@@ -585,9 +592,20 @@ int
 s0_environment_type_add_internal_inputs(struct s0_environment_type *,
                                         const struct s0_name_mapping *inputs);
 
+/* Returns whether an environment satisfies a type (env ∈ type).  We're stricter
+ * than you might expect!  The set of names in the type and environment must be
+ * exactly the same, and each entry in the environment must satisfy the
+ * corresponding entity type. */
 bool
 s0_environment_type_satisfied_by(const struct s0_environment_type *,
                                  const struct s0_environment *);
+
+/* Returns whether every environment that satisfies `have` would also satsify
+ * `requires` (have ⊆ requires). */
+bool
+s0_environment_type_satisfied_by_type(
+        const struct s0_environment_type *requires,
+        const struct s0_environment_type *have);
 
 
 /*-----------------------------------------------------------------------------

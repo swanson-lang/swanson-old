@@ -1017,7 +1017,7 @@ TEST_CASE("can copy `any` type") {
     s0_entity_type_free(any2);
 }
 
-TEST_CASE("atom : any") {
+TEST_CASE("⋄ ∈ *") {
     struct s0_entity_type  *any;
     struct s0_entity  *entity;
     check_alloc(any, s0_any_entity_type_new());
@@ -1027,7 +1027,7 @@ TEST_CASE("atom : any") {
     s0_entity_type_free(any);
 }
 
-TEST_CASE("closure : any") {
+TEST_CASE("closure ∈ *") {
     struct s0_entity_type  *any;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
@@ -1041,7 +1041,7 @@ TEST_CASE("closure : any") {
     s0_entity_type_free(any);
 }
 
-TEST_CASE("literal : any") {
+TEST_CASE("literal ∈ *") {
     struct s0_entity_type  *any;
     struct s0_entity  *entity;
     check_alloc(any, s0_any_entity_type_new());
@@ -1051,7 +1051,7 @@ TEST_CASE("literal : any") {
     s0_entity_type_free(any);
 }
 
-TEST_CASE("method : any") {
+TEST_CASE("method ∈ *") {
     struct s0_entity_type  *any;
     struct s0_name  *self_name;
     struct s0_block  *block;
@@ -1065,7 +1065,7 @@ TEST_CASE("method : any") {
     s0_entity_type_free(any);
 }
 
-TEST_CASE("object : any") {
+TEST_CASE("object ∈ *") {
     struct s0_entity_type  *any;
     struct s0_entity  *entity;
     check_alloc(any, s0_any_entity_type_new());
@@ -1073,6 +1073,16 @@ TEST_CASE("object : any") {
     check(s0_entity_type_satisfied_by(any, entity));
     s0_entity_free(entity);
     s0_entity_type_free(any);
+}
+
+TEST_CASE("* ⊆ *") {
+    struct s0_entity_type  *requires;
+    struct s0_entity_type  *have;
+    check_alloc(requires, s0_any_entity_type_new());
+    check_alloc(have, s0_any_entity_type_new());
+    check(s0_entity_type_satisfied_by_type(requires, have));
+    s0_entity_type_free(requires);
+    s0_entity_type_free(have);
 }
 
 /*-----------------------------------------------------------------------------
@@ -1168,7 +1178,7 @@ TEST_CASE("can copy environment type") {
     struct s0_name  *name;
     struct s0_entity_type  *etype;
 
-    /* Construct {a: any, b: any} and then make a copy of it. */
+    /* Construct ⦃a:*, b:*⦄ and then make a copy of it. */
     check_alloc(type, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype, s0_any_entity_type_new());
@@ -1251,7 +1261,7 @@ TEST_CASE("can extract entries from environment type") {
     struct s0_entity_type  *etype2;
     struct s0_name_set  *set;
 
-    /* Construct {a: any, b: any} */
+    /* Construct ⦃a:*, b:*⦄ */
     check_alloc(src, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype1, s0_any_entity_type_new());
@@ -1268,7 +1278,7 @@ TEST_CASE("can extract entries from environment type") {
     check0(s0_environment_type_extract(dest, src, set));
     s0_name_set_free(set);
 
-    /* Verify that dest == {b: any} */
+    /* Verify that dest == ⦃b:*⦄ */
     check(s0_environment_type_size(dest) == 1);
     check_alloc(name, s0_name_new_str("a"));
     check(s0_environment_type_get(dest, name) == etype1);
@@ -1277,7 +1287,7 @@ TEST_CASE("can extract entries from environment type") {
     check(s0_environment_type_get(dest, name) == NULL);
     s0_name_free(name);
 
-    /* Verify that src == {b: any} */
+    /* Verify that src == ⦃b:*⦄ */
     check(s0_environment_type_size(src) == 1);
     check_alloc(name, s0_name_new_str("a"));
     check(s0_environment_type_get(src, name) == NULL);
@@ -1297,7 +1307,7 @@ TEST_CASE("cannot extract duplicate entries from environment type") {
     struct s0_entity_type  *etype;
     struct s0_name_set  *set;
 
-    /* Construct {a: any, b: any} */
+    /* Construct ⦃a:*, b:*⦄ */
     check_alloc(src, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype, s0_any_entity_type_new());
@@ -1361,22 +1371,28 @@ TEST_CASE("cannot iterate deleted entries from environment type") {
     s0_environment_type_free(type);
 }
 
-TEST_CASE("env() : {}") {
+TEST_CASE("{} ∈ ⦃⦄") {
     struct s0_environment_type  *type;
     struct s0_environment  *env;
+    /* type = ⦃⦄ */
     check_alloc(type, s0_environment_type_new());
+    /* env = {} */
     check_alloc(env, s0_environment_new());
+    /* Verify {} ∈ ⦃⦄ */
     check(s0_environment_type_satisfied_by(type, env));
+    /* Free everything */
     s0_environment_type_free(type);
     s0_environment_free(env);
 }
 
-TEST_CASE("env(a,b) !: {}") {
+TEST_CASE("{a:⋄, b:⋄} ∉ ⦃⦄") {
     struct s0_name  *name;
     struct s0_environment_type  *type;
     struct s0_environment  *env;
     struct s0_entity  *atom;
+    /* type = ⦃⦄ */
     check_alloc(type, s0_environment_type_new());
+    /* env = {a:⋄, b:⋄} */
     check_alloc(env, s0_environment_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(atom, s0_atom_new());
@@ -1384,21 +1400,25 @@ TEST_CASE("env(a,b) !: {}") {
     check_alloc(name, s0_name_new_str("b"));
     check_alloc(atom, s0_atom_new());
     check0(s0_environment_add(env, name, atom));
+    /* Verify {a:⋄, b:⋄} ∈ ⦃⦄ */
     check(!s0_environment_type_satisfied_by(type, env));
+    /* Free everything */
     s0_environment_type_free(type);
     s0_environment_free(env);
 }
 
-TEST_CASE("env(a,b) !: {a: any}") {
+TEST_CASE("{a:⋄, b:⋄} ∉ ⦃a:*⦄") {
     struct s0_name  *name;
     struct s0_environment_type  *type;
     struct s0_entity_type  *etype;
     struct s0_environment  *env;
     struct s0_entity  *atom;
+    /* type = ⦃a:*⦄ */
     check_alloc(type, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_environment_type_add(type, name, etype));
+    /* env = {a:⋄, b:⋄} */
     check_alloc(env, s0_environment_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(atom, s0_atom_new());
@@ -1406,17 +1426,20 @@ TEST_CASE("env(a,b) !: {a: any}") {
     check_alloc(name, s0_name_new_str("b"));
     check_alloc(atom, s0_atom_new());
     check0(s0_environment_add(env, name, atom));
+    /* Verify {a:⋄, b:⋄} ∈ ⦃a:*⦄ */
     check(!s0_environment_type_satisfied_by(type, env));
+    /* Free everything */
     s0_environment_type_free(type);
     s0_environment_free(env);
 }
 
-TEST_CASE("env(a,b) : {a: any, b: any}") {
+TEST_CASE("{a:⋄, b:⋄} ∈ ⦃a:*, b:*⦄") {
     struct s0_name  *name;
     struct s0_environment_type  *type;
     struct s0_entity_type  *etype;
     struct s0_environment  *env;
     struct s0_entity  *atom;
+    /* type = ⦃a:*, b:*⦄ */
     check_alloc(type, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype, s0_any_entity_type_new());
@@ -1424,6 +1447,7 @@ TEST_CASE("env(a,b) : {a: any, b: any}") {
     check_alloc(name, s0_name_new_str("b"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_environment_type_add(type, name, etype));
+    /* env = {a:⋄, b:⋄} */
     check_alloc(env, s0_environment_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(atom, s0_atom_new());
@@ -1431,7 +1455,40 @@ TEST_CASE("env(a,b) : {a: any, b: any}") {
     check_alloc(name, s0_name_new_str("b"));
     check_alloc(atom, s0_atom_new());
     check0(s0_environment_add(env, name, atom));
+    /* Verify {a:⋄, b:⋄} ∈ ⦃a:*, b:*⦄ */
     check(s0_environment_type_satisfied_by(type, env));
+    /* Free everything */
+    s0_environment_type_free(type);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄, b:⋄} ∉ ⦃a:*, b:*, c:*⦄") {
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+    struct s0_entity_type  *etype;
+    struct s0_environment  *env;
+    struct s0_entity  *atom;
+    /* type = ⦃a:*, b:*, c:*⦄ */
+    check_alloc(type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(name, s0_name_new_str("c"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(type, name, etype));
+    /* env = {a:⋄, b:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Verify {a:⋄, b:⋄} ∈ ⦃a:*, b:*, c:*⦄ */
+    check(!s0_environment_type_satisfied_by(type, env));
     s0_environment_type_free(type);
     s0_environment_free(env);
 }
@@ -1583,7 +1640,7 @@ TEST_CASE("can create external environment type from input mappings") {
     check_alloc(type, s0_environment_type_new());
     check0(s0_environment_type_add_external_inputs(type, mapping));
 
-    /* Result should be {a: any, c: any} */
+    /* Result should be ⦃a:*, c:*⦄ */
     check(s0_environment_type_size(type) == 2);
     check_alloc(name, s0_name_new_str("a"));
     check_nonnull(etype = s0_environment_type_get(type, name));
@@ -1639,7 +1696,6 @@ TEST_CASE("can create internal environment type from input mappings") {
     struct s0_environment_type  *type;
     struct s0_name  *name;
     struct s0_entity_type  *etype;
-
     /* Create the mapping */
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
@@ -1650,12 +1706,10 @@ TEST_CASE("can create internal environment type from input mappings") {
     check_alloc(to, s0_name_new_str("d"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_name_mapping_add(mapping, from, to, etype));
-
     /* Create an environment type from the mapping */
     check_alloc(type, s0_environment_type_new());
     check0(s0_environment_type_add_internal_inputs(type, mapping));
-
-    /* Result should be {b: any, d: any} */
+    /* Result should be ⦃b:*, d:*⦄ */
     check(s0_environment_type_size(type) == 2);
     check_alloc(name, s0_name_new_str("b"));
     check_nonnull(etype = s0_environment_type_get(type, name));
@@ -1665,7 +1719,7 @@ TEST_CASE("can create internal environment type from input mappings") {
     check_nonnull(etype = s0_environment_type_get(type, name));
     check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(name);
-
+    /* Free everything */
     s0_environment_type_free(type);
     s0_name_mapping_free(mapping);
 }
@@ -1677,7 +1731,6 @@ TEST_CASE("cannot overwrite internal environment type from input mappings") {
     struct s0_environment_type  *type;
     struct s0_name  *name;
     struct s0_entity_type  *etype;
-
     /* Create the mapping */
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
@@ -1688,7 +1741,6 @@ TEST_CASE("cannot overwrite internal environment type from input mappings") {
     check_alloc(to, s0_name_new_str("d"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_name_mapping_add(mapping, from, to, etype));
-
     /* Create an environment type with entries that overlap what we'd add from
      * the mapping. */
     check_alloc(type, s0_environment_type_new());
@@ -1699,9 +1751,245 @@ TEST_CASE("cannot overwrite internal environment type from input mappings") {
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_environment_type_add(type, name, etype));
     check(s0_environment_type_add_internal_inputs(type, mapping) == -1);
-
+    /* Free everything */
     s0_environment_type_free(type);
     s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("⦃⦄ ⊆ ⦃⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    /* requires = ⦃⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    /* have = ⦃⦄ */
+    check_alloc(have, s0_environment_type_new());
+    /* Verify have ⊆ requires */
+    check(s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃⦄ ⊈ ⦃a:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃a:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃⦄ */
+    check_alloc(have, s0_environment_type_new());
+    /* Verify have ⊈ requires */
+    check(!s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*⦄ ⊈ ⦃⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    /* have = ⦃a:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊈ requires */
+    check(!s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*⦄ ⊆ ⦃a:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃a:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃a:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊆ requires */
+    check(s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*⦄ ⊈ ⦃a:*,b:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃a:*,b:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃a:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊈ requires */
+    check(!s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*,b:*⦄ ⊈ ⦃a:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃a:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃a:*,b:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊈ requires */
+    check(!s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*,b:*⦄ ⊆ ⦃a:*,b:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃a:*,b:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃a:*,b:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊆ requires */
+    check(s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*,b:*⦄ ⊆ ⦃b:*,a:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃b:*,a:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃a:*,b:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊆ requires */
+    check(s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃b:*,a:*⦄ ⊆ ⦃a:*,b:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃a:*,b:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃b:*,a:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊆ requires */
+    check(s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃b:*,a:*⦄ ⊆ ⦃b:*,a:*⦄") {
+    struct s0_environment_type  *requires;
+    struct s0_environment_type  *have;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* requires = ⦃b:*,a:*⦄ */
+    check_alloc(requires, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(requires, name, etype));
+    /* have = ⦃b:*,a:*⦄ */
+    check_alloc(have, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(have, name, etype));
+    /* Verify have ⊆ requires */
+    check(s0_environment_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_environment_type_free(requires);
+    s0_environment_type_free(have);
 }
 
 /*-----------------------------------------------------------------------------
