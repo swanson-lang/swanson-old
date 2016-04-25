@@ -461,9 +461,11 @@ s0_object_get(const struct s0_entity *, const struct s0_name *name);
  */
 
 struct s0_entity_type;
+struct s0_environment_type_mapping;
 
 enum s0_entity_type_kind {
-    S0_ENTITY_TYPE_KIND_ANY
+    S0_ENTITY_TYPE_KIND_ANY,
+    S0_ENTITY_TYPE_KIND_CLOSURE
 };
 
 struct s0_entity_type *
@@ -489,6 +491,23 @@ s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
 
 struct s0_entity_type *
 s0_any_entity_type_new(void);
+
+
+/* Takes ownership of branches */
+struct s0_entity_type *
+s0_closure_entity_type_new(struct s0_environment_type_mapping *branches);
+
+/* Entity MUST be a closure */
+struct s0_entity_type *
+s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks);
+
+/* Entity MUST be a closure */
+struct s0_entity_type *
+s0_closure_entity_type_new_from_closure(struct s0_entity *entity);
+
+/* Retains ownership of result.  Type MUST be a closure type. */
+const struct s0_environment_type_mapping *
+s0_closure_entity_type_mapping(const struct s0_entity_type *);
 
 
 /*-----------------------------------------------------------------------------
@@ -611,8 +630,6 @@ s0_environment_type_satisfied_by_type(
 /*-----------------------------------------------------------------------------
  * S₀: Environment type mappings
  */
-
-struct s0_environment_type_mapping;
 
 struct s0_environment_type_mapping_entry {
     struct s0_name  *name;

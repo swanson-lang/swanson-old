@@ -1007,80 +1007,456 @@ TEST_CASE("can delete entries from environment") {
 
 TEST_CASE_GROUP("S₀ entity types: any");
 
-TEST_CASE("can copy `any` type") {
-    struct s0_entity_type  *any1;
-    struct s0_entity_type  *any2;
-    check_alloc(any1, s0_any_entity_type_new());
-    check_alloc(any2, s0_entity_type_new_copy(any1));
-    check(s0_entity_type_kind(any1) == s0_entity_type_kind(any2));
-    s0_entity_type_free(any1);
-    s0_entity_type_free(any2);
+TEST_CASE("can copy *") {
+    struct s0_entity_type  *type1;
+    struct s0_entity_type  *type2;
+    /* type1 = * */
+    check_alloc(type1, s0_any_entity_type_new());
+    /* type2 = type1 */
+    check_alloc(type2, s0_entity_type_new_copy(type1));
+    /* Verify (as much as we can) type1 == type2 */
+    check(s0_entity_type_kind(type1) == s0_entity_type_kind(type2));
+    /* Free everything */
+    s0_entity_type_free(type1);
+    s0_entity_type_free(type2);
 }
 
 TEST_CASE("⋄ ∈ *") {
-    struct s0_entity_type  *any;
+    struct s0_entity_type  *type;
     struct s0_entity  *entity;
-    check_alloc(any, s0_any_entity_type_new());
+    /* type = * */
+    check_alloc(type, s0_any_entity_type_new());
+    /* entity = ⋄ */
     check_alloc(entity, s0_atom_new());
-    check(s0_entity_type_satisfied_by(any, entity));
+    /* Verify entity ∈ type */
+    check(s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
     s0_entity_free(entity);
-    s0_entity_type_free(any);
+    s0_entity_type_free(type);
 }
 
-TEST_CASE("closure ∈ *") {
-    struct s0_entity_type  *any;
+TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ *") {
+    struct s0_entity_type  *type;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
+    struct s0_name_mapping  *inputs;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_entity_type  *input_type;
+    struct s0_statement_list  *statements;
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_invocation  *invocation;
+    struct s0_block  *block;
+    struct s0_name  *name;
     struct s0_entity  *entity;
-    check_alloc(any, s0_any_entity_type_new());
+    /* type = * */
+    check_alloc(type, s0_any_entity_type_new());
+    /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(inputs, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(inputs, from, to, input_type));
+    check_alloc(statements, s0_statement_list_new());
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("cont"));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(block, s0_block_new(inputs, statements, invocation));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_named_blocks_add(blocks, name, block));
     check_alloc(entity, s0_closure_new(env, blocks));
-    check(s0_entity_type_satisfied_by(any, entity));
+    /* Verify entity ∈ type */
+    check(s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
     s0_entity_free(entity);
-    s0_entity_type_free(any);
+    s0_entity_type_free(type);
 }
 
 TEST_CASE("literal ∈ *") {
-    struct s0_entity_type  *any;
+    struct s0_entity_type  *type;
     struct s0_entity  *entity;
-    check_alloc(any, s0_any_entity_type_new());
+    /* type = * */
+    check_alloc(type, s0_any_entity_type_new());
+    /* entity = literal */
     check_alloc(entity, s0_literal_new_str("hello"));
-    check(s0_entity_type_satisfied_by(any, entity));
+    /* Verify entity ∈ type */
+    check(s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
     s0_entity_free(entity);
-    s0_entity_type_free(any);
+    s0_entity_type_free(type);
 }
 
 TEST_CASE("method ∈ *") {
-    struct s0_entity_type  *any;
+    struct s0_entity_type  *type;
     struct s0_name  *self_name;
     struct s0_block  *block;
     struct s0_entity  *entity;
-    check_alloc(any, s0_any_entity_type_new());
+    /* type = * */
+    check_alloc(type, s0_any_entity_type_new());
+    /* entity = method */
     check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
     check_alloc(entity, s0_method_new(self_name, block));
-    check(s0_entity_type_satisfied_by(any, entity));
+    /* Verify entity ∈ type */
+    check(s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
     s0_entity_free(entity);
-    s0_entity_type_free(any);
+    s0_entity_type_free(type);
 }
 
 TEST_CASE("object ∈ *") {
-    struct s0_entity_type  *any;
+    struct s0_entity_type  *type;
     struct s0_entity  *entity;
-    check_alloc(any, s0_any_entity_type_new());
+    /* type = * */
+    check_alloc(type, s0_any_entity_type_new());
+    /* entity = object */
     check_alloc(entity, s0_object_new());
-    check(s0_entity_type_satisfied_by(any, entity));
+    /* Verify entity ∈ type */
+    check(s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
     s0_entity_free(entity);
-    s0_entity_type_free(any);
+    s0_entity_type_free(type);
 }
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entity types: Closures
+ */
+
+TEST_CASE_GROUP("S₀ entity types: closures");
+
+TEST_CASE("can copy ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type1;
+    struct s0_entity_type  *type2;
+    /* type1 = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type1, s0_closure_entity_type_new(branches));
+    /* type2 = type1 */
+    check_alloc(type2, s0_entity_type_new_copy(type1));
+    /* Verify (as much as we can) type1 == type2 */
+    check(s0_entity_type_kind(type1) == s0_entity_type_kind(type2));
+    /* Free everything */
+    s0_entity_type_free(type1);
+    s0_entity_type_free(type2);
+}
+
+TEST_CASE("⋄ ∉ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type;
+    struct s0_entity  *entity;
+    /* type = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type, s0_closure_entity_type_new(branches));
+    /* entity = ⋄ */
+    check_alloc(entity, s0_atom_new());
+    /* Verify entity ∉ type */
+    check(!s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
+    s0_entity_free(entity);
+    s0_entity_type_free(type);
+}
+
+TEST_CASE("literal ∉ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type;
+    struct s0_entity  *entity;
+    /* type = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type, s0_closure_entity_type_new(branches));
+    /* entity = literal */
+    check_alloc(entity, s0_literal_new_str("hello"));
+    /* Verify entity ∉ type */
+    check(!s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
+    s0_entity_free(entity);
+    s0_entity_type_free(type);
+}
+
+TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type;
+    struct s0_name  *self_name;
+    struct s0_block  *block;
+    struct s0_entity  *entity;
+    /* type = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type, s0_closure_entity_type_new(branches));
+    /* entity = method */
+    check_alloc(self_name, s0_name_new_str("self"));
+    check_alloc(block, create_empty_block());
+    check_alloc(entity, s0_method_new(self_name, block));
+    /* Verify entity ∉ type */
+    check(!s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
+    s0_entity_free(entity);
+    s0_entity_type_free(type);
+}
+
+TEST_CASE("object ∉ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type;
+    struct s0_entity  *entity;
+    /* type = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type, s0_closure_entity_type_new(branches));
+    /* entity = object */
+    check_alloc(entity, s0_object_new());
+    /* Verify entity ∉ type */
+    check(!s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
+    s0_entity_free(entity);
+    s0_entity_type_free(type);
+}
+
+TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type;
+    struct s0_environment  *env;
+    struct s0_named_blocks  *blocks;
+    struct s0_name_mapping  *inputs;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_statement_list  *statements;
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_invocation  *invocation;
+    struct s0_block  *block;
+    struct s0_entity  *entity;
+    /* type = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type, s0_closure_entity_type_new(branches));
+    /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
+    check_alloc(env, s0_environment_new());
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(inputs, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(inputs, from, to, input_type));
+    check_alloc(statements, s0_statement_list_new());
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("cont"));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(block, s0_block_new(inputs, statements, invocation));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_named_blocks_add(blocks, name, block));
+    check_alloc(entity, s0_closure_new(env, blocks));
+    /* Verify entity ∈ type */
+    check(s0_entity_type_satisfied_by(type, entity));
+    /* Free everything */
+    s0_entity_free(entity);
+    s0_entity_type_free(type);
+}
+
+TEST_CASE("type of ⟨⤿ ⦃a:*⦄ ...⟩ = ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *type;
+    struct s0_environment  *env;
+    struct s0_named_blocks  *blocks;
+    struct s0_name_mapping  *inputs;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_statement_list  *statements;
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_invocation  *invocation;
+    struct s0_block  *block;
+    struct s0_entity  *entity;
+    struct s0_entity_type  *calculated_type;
+    /* type = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(type, s0_closure_entity_type_new(branches));
+    /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
+    check_alloc(env, s0_environment_new());
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(inputs, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_name_mapping_add(inputs, from, to, input_type));
+    check_alloc(statements, s0_statement_list_new());
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("cont"));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(block, s0_block_new(inputs, statements, invocation));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_named_blocks_add(blocks, name, block));
+    check_alloc(entity, s0_closure_new(env, blocks));
+    /* Verify type(entity) = type */
+    check_alloc(calculated_type,
+                s0_closure_entity_type_new_from_closure(entity));
+    check(s0_entity_type_satisfied_by_type(type, calculated_type));
+    check(s0_entity_type_satisfied_by_type(calculated_type, type));
+    /* Free everything */
+    s0_entity_free(entity);
+    s0_entity_type_free(type);
+    s0_entity_type_free(calculated_type);
+}
+
+/*-----------------------------------------------------------------------------
+ * S₀: Entity types: Subtyping
+ */
+
+TEST_CASE_GROUP("S₀ entity types: subtyping");
 
 TEST_CASE("* ⊆ *") {
     struct s0_entity_type  *requires;
     struct s0_entity_type  *have;
+    /* requires = * */
     check_alloc(requires, s0_any_entity_type_new());
+    /* have = * */
     check_alloc(have, s0_any_entity_type_new());
+    /* Verify have ⊆ requires */
     check(s0_entity_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_entity_type_free(requires);
+    s0_entity_type_free(have);
+}
+
+TEST_CASE("⤿ ⦃a:*⦄ ⊆ *") {
+    struct s0_entity_type  *requires;
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *have;
+    /* requires = * */
+    check_alloc(requires, s0_any_entity_type_new());
+    /* have = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(have, s0_closure_entity_type_new(branches));
+    /* Verify have ⊆ requires */
+    check(s0_entity_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_entity_type_free(requires);
+    s0_entity_type_free(have);
+}
+
+TEST_CASE("* ⊈ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *requires;
+    struct s0_entity_type  *have;
+    /* requires = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(requires, s0_closure_entity_type_new(branches));
+    /* have = * */
+    check_alloc(have, s0_any_entity_type_new());
+    /* Verify have ⊈ requires */
+    check(!s0_entity_type_satisfied_by_type(requires, have));
+    /* Free everything */
+    s0_entity_type_free(requires);
+    s0_entity_type_free(have);
+}
+
+TEST_CASE("⤿ ⦃a:*⦄ ⊆ ⤿ ⦃a:*⦄") {
+    struct s0_environment_type_mapping  *branches;
+    struct s0_environment_type  *branch_type;
+    struct s0_name  *name;
+    struct s0_entity_type  *input_type;
+    struct s0_entity_type  *requires;
+    struct s0_entity_type  *have;
+    /* requires = * */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(requires, s0_closure_entity_type_new(branches));
+    /* have = ⤿ ⦃a:*⦄ */
+    check_alloc(branches, s0_environment_type_mapping_new());
+    check_alloc(branch_type, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(input_type, s0_any_entity_type_new());
+    check0(s0_environment_type_add(branch_type, name, input_type));
+    check_alloc(name, s0_name_new_str("cont"));
+    check0(s0_environment_type_mapping_add(branches, name, branch_type));
+    check_alloc(have, s0_closure_entity_type_new(branches));
+    /* Verify have ⊆ requires */
+    check(s0_entity_type_satisfied_by_type(requires, have));
+    /* Free everything */
     s0_entity_type_free(requires);
     s0_entity_type_free(have);
 }
