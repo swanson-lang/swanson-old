@@ -1816,12 +1816,13 @@ s0_environment_type_add_create_closure(struct s0_environment_type *type,
         return -1;
     }
 
-    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    dest_name = s0_name_new_copy(stmt->_.create_closure.dest);
     if (unlikely(dest_name == NULL)) {
         return -1;
     }
 
-    dest_type = s0_any_entity_type_new();
+    dest_type = s0_closure_entity_type_new_from_named_blocks
+        (stmt->_.create_closure.branches);
     if (unlikely(dest_type == NULL)) {
         s0_name_free(dest_name);
         return -1;
@@ -1842,7 +1843,7 @@ s0_environment_type_add_create_literal(struct s0_environment_type *type,
         return -1;
     }
 
-    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    dest_name = s0_name_new_copy(stmt->_.create_literal.dest);
     if (unlikely(dest_name == NULL)) {
         return -1;
     }
@@ -1868,7 +1869,7 @@ s0_environment_type_add_create_method(struct s0_environment_type *type,
         return -1;
     }
 
-    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    dest_name = s0_name_new_copy(stmt->_.create_method.dest);
     if (unlikely(dest_name == NULL)) {
         return -1;
     }

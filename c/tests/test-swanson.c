@@ -1862,17 +1862,24 @@ TEST_CASE("can add `create-atom` to environment type") {
     struct s0_name  *dest;
     struct s0_statement  *stmt;
     struct s0_name  *name;
-    struct s0_entity_type  *etype;
+    struct s0_entity_type  *actual;
+    struct s0_entity_type  *expected;
+    /* Create environment from statement */
     check_alloc(type, s0_environment_type_new());
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(stmt, s0_create_atom_new(dest));
     check0(s0_environment_type_add_statement(type, stmt));
+    /* expected = * */
+    check_alloc(expected, s0_any_entity_type_new());
+    /* Verify actual == expected */
     check_alloc(name, s0_name_new_str("a"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    check_nonnull(actual = s0_environment_type_get(type, name));
+    check(s0_entity_type_equiv(actual, expected));
     s0_name_free(name);
+    /* Free everything */
     s0_statement_free(stmt);
     s0_environment_type_free(type);
+    s0_entity_type_free(expected);
 }
 
 TEST_CASE("can add `create-closure` to environment type") {
@@ -1882,19 +1889,28 @@ TEST_CASE("can add `create-closure` to environment type") {
     struct s0_named_blocks  *branches;
     struct s0_statement  *stmt;
     struct s0_name  *name;
-    struct s0_entity_type  *etype;
+    struct s0_entity_type  *actual;
+    struct s0_environment_type_mapping  *branch_types;
+    struct s0_entity_type  *expected;
+    /* Create environment from statement */
     check_alloc(type, s0_environment_type_new());
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(closed_over, s0_name_set_new());
     check_alloc(branches, s0_named_blocks_new());
     check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
     check0(s0_environment_type_add_statement(type, stmt));
+    /* expected = ⤿ */
+    check_alloc(branch_types, s0_environment_type_mapping_new());
+    check_alloc(expected, s0_closure_entity_type_new(branch_types));
+    /* Verify actual == expected */
     check_alloc(name, s0_name_new_str("a"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    check_nonnull(actual = s0_environment_type_get(type, name));
+    check(s0_entity_type_equiv(actual, expected));
     s0_name_free(name);
+    /* Free everything */
     s0_statement_free(stmt);
     s0_environment_type_free(type);
+    s0_entity_type_free(expected);
 }
 
 TEST_CASE("can add `create-literal` to environment type") {
@@ -1902,17 +1918,24 @@ TEST_CASE("can add `create-literal` to environment type") {
     struct s0_name  *dest;
     struct s0_statement  *stmt;
     struct s0_name  *name;
-    struct s0_entity_type  *etype;
+    struct s0_entity_type  *actual;
+    struct s0_entity_type  *expected;
+    /* Create environment from statement */
     check_alloc(type, s0_environment_type_new());
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
     check0(s0_environment_type_add_statement(type, stmt));
+    /* expected = * */
+    check_alloc(expected, s0_any_entity_type_new());
+    /* Verify actual == expected */
     check_alloc(name, s0_name_new_str("a"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    check_nonnull(actual = s0_environment_type_get(type, name));
+    check(s0_entity_type_equiv(actual, expected));
     s0_name_free(name);
+    /* Free everything */
     s0_statement_free(stmt);
     s0_environment_type_free(type);
+    s0_entity_type_free(expected);
 }
 
 TEST_CASE("can add `create-method` to environment type") {
@@ -1922,19 +1945,26 @@ TEST_CASE("can add `create-method` to environment type") {
     struct s0_block  *body;
     struct s0_statement  *stmt;
     struct s0_name  *name;
-    struct s0_entity_type  *etype;
+    struct s0_entity_type  *actual;
+    struct s0_entity_type  *expected;
+    /* Create environment from statement */
     check_alloc(type, s0_environment_type_new());
     check_alloc(dest, s0_name_new_str("a"));
     check_alloc(self_input, s0_name_new_str("self"));
     check_alloc(body, create_empty_block());
     check_alloc(stmt, s0_create_method_new(dest, self_input, body));
     check0(s0_environment_type_add_statement(type, stmt));
+    /* expected = * */
+    check_alloc(expected, s0_any_entity_type_new());
+    /* Verify actual == expected */
     check_alloc(name, s0_name_new_str("a"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
+    check_nonnull(actual = s0_environment_type_get(type, name));
+    check(s0_entity_type_equiv(actual, expected));
     s0_name_free(name);
+    /* Free everything */
     s0_statement_free(stmt);
     s0_environment_type_free(type);
+    s0_entity_type_free(expected);
 }
 
 TEST_CASE("can add `invoke-closure` to environment type") {
