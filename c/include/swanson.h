@@ -488,6 +488,11 @@ bool
 s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
                                  const struct s0_entity_type *have);
 
+/* Two types are equivalent if they both satisfy each other. */
+bool
+s0_entity_type_equiv(const struct s0_entity_type *,
+                     const struct s0_entity_type *);
+
 
 struct s0_entity_type *
 s0_any_entity_type_new(void);
@@ -625,6 +630,11 @@ bool
 s0_environment_type_satisfied_by_type(
         const struct s0_environment_type *requires,
         const struct s0_environment_type *have);
+
+/* Two types are equivalent if they both satisfy each other. */
+bool
+s0_environment_type_equiv(const struct s0_environment_type *,
+                          const struct s0_environment_type *);
 
 
 /*-----------------------------------------------------------------------------

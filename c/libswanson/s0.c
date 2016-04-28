@@ -1591,6 +1591,14 @@ s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
     }
 }
 
+bool
+s0_entity_type_equiv(const struct s0_entity_type *type1,
+                     const struct s0_entity_type *type2)
+{
+    return s0_entity_type_satisfied_by_type(type1, type2)
+        && s0_entity_type_satisfied_by_type(type2, type1);
+}
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Environment types
@@ -2052,6 +2060,14 @@ s0_environment_type_satisfied_by_type(
     }
 
     return true;
+}
+
+bool
+s0_environment_type_equiv(const struct s0_environment_type *type1,
+                          const struct s0_environment_type *type2)
+{
+    return s0_environment_type_satisfied_by_type(type1, type2)
+        && s0_environment_type_satisfied_by_type(type2, type1);
 }
 
 

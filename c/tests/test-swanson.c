@@ -1014,8 +1014,8 @@ TEST_CASE("can copy *") {
     check_alloc(type1, s0_any_entity_type_new());
     /* type2 = type1 */
     check_alloc(type2, s0_entity_type_new_copy(type1));
-    /* Verify (as much as we can) type1 == type2 */
-    check(s0_entity_type_kind(type1) == s0_entity_type_kind(type2));
+    /* Verify type1 == type2 */
+    check(s0_entity_type_equiv(type1, type2));
     /* Free everything */
     s0_entity_type_free(type1);
     s0_entity_type_free(type2);
@@ -1145,8 +1145,8 @@ TEST_CASE("can copy ⤿ ⦃a:*⦄") {
     check_alloc(type1, s0_closure_entity_type_new(branches));
     /* type2 = type1 */
     check_alloc(type2, s0_entity_type_new_copy(type1));
-    /* Verify (as much as we can) type1 == type2 */
-    check(s0_entity_type_kind(type1) == s0_entity_type_kind(type2));
+    /* Verify type1 == type2 */
+    check(s0_entity_type_equiv(type1, type2));
     /* Free everything */
     s0_entity_type_free(type1);
     s0_entity_type_free(type2);
@@ -1553,8 +1553,7 @@ TEST_CASE("can copy environment type") {
     struct s0_environment_type  *type_copy;
     struct s0_name  *name;
     struct s0_entity_type  *etype;
-
-    /* Construct ⦃a:*, b:*⦄ and then make a copy of it. */
+    /* Construct ⦃a:*, b:*⦄ */
     check_alloc(type, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype, s0_any_entity_type_new());
@@ -1562,23 +1561,12 @@ TEST_CASE("can copy environment type") {
     check_alloc(name, s0_name_new_str("b"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_environment_type_add(type, name, etype));
+    /* Make a copy of it */
     check_alloc(type_copy, s0_environment_type_new_copy(type));
+    /* Verify that they're equal */
+    check(s0_environment_type_equiv(type, type_copy));
+    /* Free everything */
     s0_environment_type_free(type);
-
-    check_alloc(name, s0_name_new_str("a"));
-    check_nonnull(etype = s0_environment_type_get(type_copy, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
-    s0_name_free(name);
-
-    check_alloc(name, s0_name_new_str("b"));
-    check_nonnull(etype = s0_environment_type_get(type_copy, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
-    s0_name_free(name);
-
-    check_alloc(name, s0_name_new_str("c"));
-    check(s0_environment_type_get(type_copy, name) == NULL);
-    s0_name_free(name);
-
     s0_environment_type_free(type_copy);
 }
 
@@ -1654,7 +1642,7 @@ TEST_CASE("can extract entries from environment type") {
     check0(s0_environment_type_extract(dest, src, set));
     s0_name_set_free(set);
 
-    /* Verify that dest == ⦃b:*⦄ */
+    /* Verify that dest == ⦃a:*⦄ */
     check(s0_environment_type_size(dest) == 1);
     check_alloc(name, s0_name_new_str("a"));
     check(s0_environment_type_get(dest, name) == etype1);
