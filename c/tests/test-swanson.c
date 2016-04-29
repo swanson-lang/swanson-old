@@ -28,6 +28,62 @@ create_empty_block(void)
     return s0_block_new(inputs, statements, invocation);
 }
 
+#define YAML "%TAG !s0! tag:swanson-lang.org,2016:\n---\n"
+
+static struct s0_entity_type *
+entity_type(const char *str)
+{
+    struct s0_yaml_stream  *stream;
+    struct s0_yaml_node  node;
+    struct s0_entity_type  *type;
+
+    stream = s0_yaml_stream_new_from_string(str);
+    if (unlikely(stream == NULL)) {
+        return NULL;
+    }
+
+    node = s0_yaml_stream_parse_document(stream);
+    if (s0_yaml_node_is_error(node)) {
+        fail(s0_yaml_stream_last_error(stream));
+        s0_yaml_stream_free(stream);
+        return NULL;
+    }
+
+    type = s0_yaml_document_parse_entity_type(node);
+    if (type == NULL) {
+        fail(s0_yaml_stream_last_error(stream));
+    }
+    s0_yaml_stream_free(stream);
+    return type;
+}
+
+static struct s0_environment_type *
+environment_type(const char *str)
+{
+    struct s0_yaml_stream  *stream;
+    struct s0_yaml_node  node;
+    struct s0_environment_type  *type;
+
+    stream = s0_yaml_stream_new_from_string(str);
+    if (unlikely(stream == NULL)) {
+        return NULL;
+    }
+
+    node = s0_yaml_stream_parse_document(stream);
+    if (s0_yaml_node_is_error(node)) {
+        fail(s0_yaml_stream_last_error(stream));
+        s0_yaml_stream_free(stream);
+        return NULL;
+    }
+
+    type = s0_yaml_document_parse_environment_type(node);
+    if (type == NULL) {
+        fail(s0_yaml_stream_last_error(stream));
+    }
+    s0_yaml_stream_free(stream);
+    return type;
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Names
  */
@@ -1007,6 +1063,20 @@ TEST_CASE("can delete entries from environment") {
 
 TEST_CASE_GROUP("S₀ entity types: any");
 
+TEST_CASE("can load * from string") {
+    struct s0_entity_type  *expected;
+    struct s0_entity_type  *actual;
+    /* expected = * */
+    check_alloc(expected, s0_any_entity_type_new());
+    /* Load type from YAML string */
+    check_alloc(actual, entity_type(YAML "!s0!any {}"));
+    /* Verify actual == expected */
+    check(s0_entity_type_equiv(actual, expected));
+    /* Free everything */
+    s0_entity_type_free(actual);
+    s0_entity_type_free(expected);
+}
+
 TEST_CASE("can copy *") {
     struct s0_entity_type  *type1;
     struct s0_entity_type  *type2;
@@ -1127,14 +1197,14 @@ TEST_CASE("object ∈ *") {
 
 TEST_CASE_GROUP("S₀ entity types: closures");
 
-TEST_CASE("can copy ⤿ ⦃a:*⦄") {
+TEST_CASE("can load ⤿ ⦃a:*⦄ from string") {
     struct s0_environment_type_mapping  *branches;
     struct s0_environment_type  *branch_type;
     struct s0_name  *name;
     struct s0_entity_type  *input_type;
-    struct s0_entity_type  *type1;
-    struct s0_entity_type  *type2;
-    /* type1 = ⤿ ⦃a:*⦄ */
+    struct s0_entity_type  *expected;
+    struct s0_entity_type  *actual;
+    /* expected = ⤿ ⦃a:*⦄ */
     check_alloc(branches, s0_environment_type_mapping_new());
     check_alloc(branch_type, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
@@ -1142,7 +1212,33 @@ TEST_CASE("can copy ⤿ ⦃a:*⦄") {
     check0(s0_environment_type_add(branch_type, name, input_type));
     check_alloc(name, s0_name_new_str("cont"));
     check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type1, s0_closure_entity_type_new(branches));
+    check_alloc(expected, s0_closure_entity_type_new(branches));
+    /* Load type from YAML string */
+    check_alloc(actual, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
+    /* Verify actual == expected */
+    check(s0_entity_type_equiv(actual, expected));
+    /* Free everything */
+    s0_entity_type_free(actual);
+    s0_entity_type_free(expected);
+}
+
+TEST_CASE("can copy ⤿ ⦃a:*⦄") {
+    struct s0_entity_type  *type1;
+    struct s0_entity_type  *type2;
+    /* type1 = ⤿ ⦃a:*⦄ */
+    check_alloc(type1, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* type2 = type1 */
     check_alloc(type2, s0_entity_type_new_copy(type1));
     /* Verify type1 == type2 */
@@ -1153,21 +1249,16 @@ TEST_CASE("can copy ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("⋄ ∉ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *type;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type, s0_closure_entity_type_new(branches));
+    check_alloc(type, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* entity = ⋄ */
     check_alloc(entity, s0_atom_new());
     /* Verify entity ∉ type */
@@ -1178,21 +1269,16 @@ TEST_CASE("⋄ ∉ ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("literal ∉ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *type;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type, s0_closure_entity_type_new(branches));
+    check_alloc(type, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* entity = literal */
     check_alloc(entity, s0_literal_new_str("hello"));
     /* Verify entity ∉ type */
@@ -1203,23 +1289,18 @@ TEST_CASE("literal ∉ ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *type;
     struct s0_name  *self_name;
     struct s0_block  *block;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type, s0_closure_entity_type_new(branches));
+    check_alloc(type, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* entity = method */
     check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
@@ -1232,21 +1313,16 @@ TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("object ∉ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *type;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type, s0_closure_entity_type_new(branches));
+    check_alloc(type, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* entity = object */
     check_alloc(entity, s0_object_new());
     /* Verify entity ∉ type */
@@ -1257,31 +1333,28 @@ TEST_CASE("object ∉ ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *type;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
     struct s0_name_mapping  *inputs;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *input_type;
     struct s0_statement_list  *statements;
     struct s0_name  *src;
     struct s0_name  *branch;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
+    struct s0_name  *name;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type, s0_closure_entity_type_new(branches));
+    check_alloc(type, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
@@ -1306,32 +1379,29 @@ TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("type of ⟨⤿ ⦃a:*⦄ ...⟩ = ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *type;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
     struct s0_name_mapping  *inputs;
     struct s0_name  *from;
     struct s0_name  *to;
+    struct s0_entity_type  *input_type;
     struct s0_statement_list  *statements;
     struct s0_name  *src;
     struct s0_name  *branch;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
+    struct s0_name  *name;
     struct s0_entity  *entity;
     struct s0_entity_type  *calculated_type;
     /* type = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(type, s0_closure_entity_type_new(branches));
+    check_alloc(type, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
@@ -1381,22 +1451,17 @@ TEST_CASE("* ⊆ *") {
 
 TEST_CASE("⤿ ⦃a:*⦄ ⊆ *") {
     struct s0_entity_type  *requires;
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *have;
     /* requires = * */
     check_alloc(requires, s0_any_entity_type_new());
     /* have = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(have, s0_closure_entity_type_new(branches));
+    check_alloc(have, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_entity_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -1405,21 +1470,16 @@ TEST_CASE("⤿ ⦃a:*⦄ ⊆ *") {
 }
 
 TEST_CASE("* ⊈ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *requires;
     struct s0_entity_type  *have;
     /* requires = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(requires, s0_closure_entity_type_new(branches));
+    check_alloc(requires, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* have = * */
     check_alloc(have, s0_any_entity_type_new());
     /* Verify have ⊈ requires */
@@ -1430,30 +1490,24 @@ TEST_CASE("* ⊈ ⤿ ⦃a:*⦄") {
 }
 
 TEST_CASE("⤿ ⦃a:*⦄ ⊆ ⤿ ⦃a:*⦄") {
-    struct s0_environment_type_mapping  *branches;
-    struct s0_environment_type  *branch_type;
-    struct s0_name  *name;
-    struct s0_entity_type  *input_type;
     struct s0_entity_type  *requires;
     struct s0_entity_type  *have;
     /* requires = * */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(requires, s0_closure_entity_type_new(branches));
+    check_alloc(requires, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* have = ⤿ ⦃a:*⦄ */
-    check_alloc(branches, s0_environment_type_mapping_new());
-    check_alloc(branch_type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_environment_type_add(branch_type, name, input_type));
-    check_alloc(name, s0_name_new_str("cont"));
-    check0(s0_environment_type_mapping_add(branches, name, branch_type));
-    check_alloc(have, s0_closure_entity_type_new(branches));
+    check_alloc(have, entity_type(
+                YAML
+                "!s0!closure\n"
+                "branches:\n"
+                "  cont:\n"
+                "    a: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_entity_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -1548,19 +1602,15 @@ TEST_CASE("can check which names belong to environment type") {
     s0_environment_type_free(type);
 }
 
-TEST_CASE("can copy environment type") {
+TEST_CASE("can copy ⦃a:*, b:*⦄") {
     struct s0_environment_type  *type;
     struct s0_environment_type  *type_copy;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* Construct ⦃a:*, b:*⦄ */
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* Make a copy of it */
     check_alloc(type_copy, s0_environment_type_new_copy(type));
     /* Verify that they're equal */
@@ -1774,14 +1824,13 @@ TEST_CASE("{a:⋄, b:⋄} ∉ ⦃⦄") {
 TEST_CASE("{a:⋄, b:⋄} ∉ ⦃a:*⦄") {
     struct s0_name  *name;
     struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
     struct s0_environment  *env;
     struct s0_entity  *atom;
     /* type = ⦃a:*⦄ */
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* env = {a:⋄, b:⋄} */
     check_alloc(env, s0_environment_new());
     check_alloc(name, s0_name_new_str("a"));
@@ -1800,17 +1849,14 @@ TEST_CASE("{a:⋄, b:⋄} ∉ ⦃a:*⦄") {
 TEST_CASE("{a:⋄, b:⋄} ∈ ⦃a:*, b:*⦄") {
     struct s0_name  *name;
     struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
     struct s0_environment  *env;
     struct s0_entity  *atom;
     /* type = ⦃a:*, b:*⦄ */
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* env = {a:⋄, b:⋄} */
     check_alloc(env, s0_environment_new());
     check_alloc(name, s0_name_new_str("a"));
@@ -1829,20 +1875,15 @@ TEST_CASE("{a:⋄, b:⋄} ∈ ⦃a:*, b:*⦄") {
 TEST_CASE("{a:⋄, b:⋄} ∉ ⦃a:*, b:*, c:*⦄") {
     struct s0_name  *name;
     struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
     struct s0_environment  *env;
     struct s0_entity  *atom;
     /* type = ⦃a:*, b:*, c:*⦄ */
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
-    check_alloc(name, s0_name_new_str("c"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                "c: !s0!any {}\n"
+                ));
     /* env = {a:⋄, b:⋄} */
     check_alloc(env, s0_environment_new());
     check_alloc(name, s0_name_new_str("a"));
@@ -2016,9 +2057,8 @@ TEST_CASE("can create external environment type from input mappings") {
     struct s0_name  *from;
     struct s0_name  *to;
     struct s0_environment_type  *type;
-    struct s0_name  *name;
     struct s0_entity_type  *etype;
-
+    struct s0_environment_type  *expected;
     /* Create the mapping */
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
@@ -2029,23 +2069,19 @@ TEST_CASE("can create external environment type from input mappings") {
     check_alloc(to, s0_name_new_str("d"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_name_mapping_add(mapping, from, to, etype));
-
     /* Create an environment type from the mapping */
     check_alloc(type, s0_environment_type_new());
     check0(s0_environment_type_add_external_inputs(type, mapping));
-
     /* Result should be ⦃a:*, c:*⦄ */
-    check(s0_environment_type_size(type) == 2);
-    check_alloc(name, s0_name_new_str("a"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
-    s0_name_free(name);
-    check_alloc(name, s0_name_new_str("c"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
-    s0_name_free(name);
-
+    check_alloc(expected, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "c: !s0!any {}\n"
+                ));
+    check(s0_environment_type_equiv(type, expected));
+    /* Free everything */
     s0_environment_type_free(type);
+    s0_environment_type_free(expected);
     s0_name_mapping_free(mapping);
 }
 
@@ -2054,9 +2090,7 @@ TEST_CASE("cannot overwrite external environment type from input mappings") {
     struct s0_name  *from;
     struct s0_name  *to;
     struct s0_environment_type  *type;
-    struct s0_name  *name;
     struct s0_entity_type  *etype;
-
     /* Create the mapping */
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
@@ -2067,18 +2101,15 @@ TEST_CASE("cannot overwrite external environment type from input mappings") {
     check_alloc(to, s0_name_new_str("d"));
     check_alloc(etype, s0_any_entity_type_new());
     check0(s0_name_mapping_add(mapping, from, to, etype));
-
     /* Create an environment type with entries that overlap what we'd add from
      * the mapping. */
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
-    check_alloc(name, s0_name_new_str("c"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "c: !s0!any {}\n"
+                ));
     check(s0_environment_type_add_external_inputs(type, mapping) == -1);
-
+    /* Free everything */
     s0_environment_type_free(type);
     s0_name_mapping_free(mapping);
 }
@@ -2088,8 +2119,8 @@ TEST_CASE("can create internal environment type from input mappings") {
     struct s0_name  *from;
     struct s0_name  *to;
     struct s0_environment_type  *type;
-    struct s0_name  *name;
     struct s0_entity_type  *etype;
+    struct s0_environment_type  *expected;
     /* Create the mapping */
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
@@ -2104,17 +2135,15 @@ TEST_CASE("can create internal environment type from input mappings") {
     check_alloc(type, s0_environment_type_new());
     check0(s0_environment_type_add_internal_inputs(type, mapping));
     /* Result should be ⦃b:*, d:*⦄ */
-    check(s0_environment_type_size(type) == 2);
-    check_alloc(name, s0_name_new_str("b"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
-    s0_name_free(name);
-    check_alloc(name, s0_name_new_str("d"));
-    check_nonnull(etype = s0_environment_type_get(type, name));
-    check(s0_entity_type_kind(etype) == S0_ENTITY_TYPE_KIND_ANY);
-    s0_name_free(name);
+    check_alloc(expected, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                "d: !s0!any {}\n"
+                ));
+    check(s0_environment_type_equiv(type, expected));
     /* Free everything */
     s0_environment_type_free(type);
+    s0_environment_type_free(expected);
     s0_name_mapping_free(mapping);
 }
 
@@ -2123,7 +2152,6 @@ TEST_CASE("cannot overwrite internal environment type from input mappings") {
     struct s0_name  *from;
     struct s0_name  *to;
     struct s0_environment_type  *type;
-    struct s0_name  *name;
     struct s0_entity_type  *etype;
     /* Create the mapping */
     check_alloc(mapping, s0_name_mapping_new());
@@ -2137,13 +2165,11 @@ TEST_CASE("cannot overwrite internal environment type from input mappings") {
     check0(s0_name_mapping_add(mapping, from, to, etype));
     /* Create an environment type with entries that overlap what we'd add from
      * the mapping. */
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
-    check_alloc(name, s0_name_new_str("d"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    check_alloc(type, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                "d: !s0!any {}\n"
+                ));
     check(s0_environment_type_add_internal_inputs(type, mapping) == -1);
     /* Free everything */
     s0_environment_type_free(type);
@@ -2167,13 +2193,11 @@ TEST_CASE("⦃⦄ ⊆ ⦃⦄") {
 TEST_CASE("⦃⦄ ⊈ ⦃a:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃a:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* have = ⦃⦄ */
     check_alloc(have, s0_environment_type_new());
     /* Verify have ⊈ requires */
@@ -2186,15 +2210,13 @@ TEST_CASE("⦃⦄ ⊈ ⦃a:*⦄") {
 TEST_CASE("⦃a:*⦄ ⊈ ⦃⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃⦄ */
     check_alloc(requires, s0_environment_type_new());
     /* have = ⦃a:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* Verify have ⊈ requires */
     check(!s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2205,18 +2227,16 @@ TEST_CASE("⦃a:*⦄ ⊈ ⦃⦄") {
 TEST_CASE("⦃a:*⦄ ⊆ ⦃a:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃a:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* have = ⦃a:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2227,21 +2247,17 @@ TEST_CASE("⦃a:*⦄ ⊆ ⦃a:*⦄") {
 TEST_CASE("⦃a:*⦄ ⊈ ⦃a:*,b:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃a:*,b:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* have = ⦃a:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* Verify have ⊈ requires */
     check(!s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2252,21 +2268,17 @@ TEST_CASE("⦃a:*⦄ ⊈ ⦃a:*,b:*⦄") {
 TEST_CASE("⦃a:*,b:*⦄ ⊈ ⦃a:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃a:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
     /* have = ⦃a:*,b:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* Verify have ⊈ requires */
     check(!s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2277,24 +2289,18 @@ TEST_CASE("⦃a:*,b:*⦄ ⊈ ⦃a:*⦄") {
 TEST_CASE("⦃a:*,b:*⦄ ⊆ ⦃a:*,b:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃a:*,b:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* have = ⦃a:*,b:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2305,24 +2311,18 @@ TEST_CASE("⦃a:*,b:*⦄ ⊆ ⦃a:*,b:*⦄") {
 TEST_CASE("⦃a:*,b:*⦄ ⊆ ⦃b:*,a:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃b:*,a:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                "a: !s0!any {}\n"
+                ));
     /* have = ⦃a:*,b:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2333,24 +2333,18 @@ TEST_CASE("⦃a:*,b:*⦄ ⊆ ⦃b:*,a:*⦄") {
 TEST_CASE("⦃b:*,a:*⦄ ⊆ ⦃a:*,b:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃a:*,b:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
     /* have = ⦃b:*,a:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                "a: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */
@@ -2361,24 +2355,18 @@ TEST_CASE("⦃b:*,a:*⦄ ⊆ ⦃a:*,b:*⦄") {
 TEST_CASE("⦃b:*,a:*⦄ ⊆ ⦃b:*,a:*⦄") {
     struct s0_environment_type  *requires;
     struct s0_environment_type  *have;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     /* requires = ⦃b:*,a:*⦄ */
-    check_alloc(requires, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(requires, name, etype));
+    check_alloc(requires, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                "a: !s0!any {}\n"
+                ));
     /* have = ⦃b:*,a:*⦄ */
-    check_alloc(have, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(have, name, etype));
+    check_alloc(have, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                "a: !s0!any {}\n"
+                ));
     /* Verify have ⊆ requires */
     check(s0_environment_type_satisfied_by_type(requires, have));
     /* Free everything */

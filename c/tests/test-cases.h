@@ -103,11 +103,13 @@ shorten_filename(const char *filename)
 static void
 fail_at(const char *msg, const char *filename, unsigned int line)
 {
+    if (!test_case_failed) {
+        printf("not ok %u - %s\n", test_case_number,
+               current_test_case->description);
+    }
+    printf("# %s at %s:%u\n", msg, shorten_filename(filename), line);
     test_case_failed = true;
     any_test_case_failed = true;
-    printf("not ok %u - %s\n", test_case_number,
-           current_test_case->description);
-    printf("# %s at %s:%u\n", msg, shorten_filename(filename), line);
 }
 
 static void
@@ -165,6 +167,8 @@ exit_status(void)
 /*-----------------------------------------------------------------------------
  * Helper macros
  */
+
+#define fail(msg)  fail_at(msg, __FILE__, __LINE__)
 
 #define check_alloc_with_msg(var, call, msg) \
     do { \

@@ -685,6 +685,8 @@ s0_environment_type_mapping_get(const struct s0_environment_type_mapping *,
 
 
 #define SWANSON_TAG_PREFIX  "tag:swanson-lang.org,2016:"
+#define S0_ANY_TAG             SWANSON_TAG_PREFIX "any"
+#define S0_CLOSURE_TAG         SWANSON_TAG_PREFIX "closure"
 #define S0_CREATE_ATOM_TAG     SWANSON_TAG_PREFIX "create-atom"
 #define S0_CREATE_CLOSURE_TAG  SWANSON_TAG_PREFIX "create-closure"
 #define S0_CREATE_LITERAL_TAG  SWANSON_TAG_PREFIX "create-literal"
@@ -760,6 +762,10 @@ s0_yaml_stream_new_from_file(FILE *fp, const char *filename,
 struct s0_yaml_stream *
 s0_yaml_stream_new_from_filename(const char *filename);
 
+/* You must ensure `str` outlives the stream. */
+struct s0_yaml_stream *
+s0_yaml_stream_new_from_string(const char *str);
+
 void
 s0_yaml_stream_free(struct s0_yaml_stream *);
 
@@ -783,6 +789,20 @@ s0_yaml_stream_parse_document(struct s0_yaml_stream *);
  * are responsible for freeing it. */
 struct s0_entity *
 s0_yaml_document_parse_module(struct s0_yaml_node node);
+
+/* Loads an S₀ entity type from a YAML node.  If the YAML node doesn't conform
+ * to the S₀ YAML entity type schema, then we return NULL, and fill in an error
+ * on the stream that the node came from.  You take ownership of the return
+ * value and are responsible for freeing it. */
+struct s0_entity_type *
+s0_yaml_document_parse_entity_type(struct s0_yaml_node node);
+
+/* Loads an S₀ environment type from a YAML node.  If the YAML node doesn't
+ * conform to the S₀ YAML environment type schema, then we return NULL, and fill
+ * in an error on the stream that the node came from.  You take ownership of the
+ * return value and are responsible for freeing it. */
+struct s0_environment_type *
+s0_yaml_document_parse_environment_type(struct s0_yaml_node node);
 
 
 #ifdef __cplusplus

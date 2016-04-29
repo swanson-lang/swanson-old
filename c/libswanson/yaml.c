@@ -90,6 +90,29 @@ s0_yaml_stream_new_from_filename(const char *filename)
     return stream;
 }
 
+struct s0_yaml_stream *
+s0_yaml_stream_new_from_string(const char *str)
+{
+    struct s0_yaml_stream  *stream = malloc(sizeof(struct s0_yaml_stream));
+    if (unlikely(stream == NULL)) {
+        return NULL;
+    }
+
+    if (unlikely(!yaml_parser_initialize(&stream->parser))) {
+        free(stream);
+        return NULL;
+    }
+
+    yaml_parser_set_input_string
+        (&stream->parser, (unsigned char *) str, strlen(str));
+    stream->filename = NULL;
+    stream->fp = NULL;
+    stream->document_created = false;
+    stream->should_close_fp = false;
+    stream->error[0] = '\0';
+    return stream;
+}
+
 void
 s0_yaml_stream_free(struct s0_yaml_stream *stream)
 {
@@ -100,7 +123,9 @@ s0_yaml_stream_free(struct s0_yaml_stream *stream)
         fclose(stream->fp);
     }
     yaml_parser_delete(&stream->parser);
-    free((void *) stream->filename);
+    if (stream->filename != NULL) {
+        free((void *) stream->filename);
+    }
     free(stream);
 }
 
@@ -309,6 +334,156 @@ s0_load_name_set(struct s0_yaml_node node)
     }
 
     return set;
+}
+
+static struct s0_environment_type *
+s0_load_environment_type(struct s0_yaml_node node);
+
+static struct s0_environment_type_mapping *
+s0_load_environment_type_mapping(struct s0_yaml_node node)
+{
+    struct s0_environment_type_mapping  *mapping;
+    size_t  i;
+    size_t  count;
+
+    ensure_mapping(node, "environment type mapping");
+    count = s0_yaml_node_mapping_size(node);
+    mapping = s0_environment_type_mapping_new();
+    for (i = 0; i < count; i++) {
+        struct s0_yaml_node  item;
+        struct s0_name  *name;
+        struct s0_environment_type  *type;
+
+        item = s0_yaml_node_mapping_key_at(node, i);
+        name = s0_load_name(item);
+        if (unlikely(name == NULL)) {
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_environment_type_mapping_get(mapping, name) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already a branch type named `%s`.",
+                 s0_name_human_readable(name));
+            s0_name_free(name);
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        item = s0_yaml_node_mapping_value_at(node, i);
+        type = s0_load_environment_type(item);
+        if (unlikely(type == NULL)) {
+            s0_name_free(name);
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_environment_type_mapping_add(mapping, name, type))) {
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+    }
+
+    return mapping;
+}
+
+static struct s0_entity_type *
+s0_load_any_entity_type(struct s0_yaml_node node)
+{
+    /* We've already verified that this is a !s0!any mapping node. */
+    return s0_any_entity_type_new();
+}
+
+static struct s0_entity_type *
+s0_load_closure_entity_type(struct s0_yaml_node node)
+{
+    /* We've already verified that this is a !s0!closure mapping node. */
+    struct s0_yaml_node  item;
+    struct s0_environment_type_mapping  *mapping;
+
+    /* branches */
+
+    item = s0_yaml_node_mapping_get(node, "branches");
+    if (unlikely(s0_yaml_node_is_missing(item))) {
+        fill_error(node.stream,
+                   "closure entity type requires a branches at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        return NULL;
+    }
+
+    mapping = s0_load_environment_type_mapping(item);
+    if (unlikely(mapping == NULL)) {
+        return NULL;
+    }
+
+    return s0_closure_entity_type_new(mapping);
+}
+
+static struct s0_entity_type *
+s0_load_entity_type(struct s0_yaml_node node)
+{
+    ensure_mapping(node, "entity type");
+    if (s0_yaml_node_has_tag(node, S0_ANY_TAG)) {
+        return s0_load_any_entity_type(node);
+    } else if (s0_yaml_node_has_tag(node, S0_CLOSURE_TAG)) {
+        return s0_load_closure_entity_type(node);
+    } else {
+        fill_error(node.stream, "Unknown entity type at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        return NULL;
+    }
+}
+
+static struct s0_environment_type *
+s0_load_environment_type(struct s0_yaml_node node)
+{
+    struct s0_environment_type  *type;
+    size_t  i;
+    size_t  count;
+
+    ensure_mapping(node, "environment type");
+    count = s0_yaml_node_mapping_size(node);
+    type = s0_environment_type_new();
+    for (i = 0; i < count; i++) {
+        struct s0_yaml_node  item;
+        struct s0_name  *name;
+        struct s0_entity_type  *etype;
+
+        item = s0_yaml_node_mapping_key_at(node, i);
+        name = s0_load_name(item);
+        if (unlikely(name == NULL)) {
+            s0_environment_type_free(type);
+            return NULL;
+        }
+
+        if (unlikely(s0_environment_type_get(type, name) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already an environment type entry named `%s`.",
+                 s0_name_human_readable(name));
+            s0_name_free(name);
+            s0_environment_type_free(type);
+            return NULL;
+        }
+
+        item = s0_yaml_node_mapping_value_at(node, i);
+        etype = s0_load_entity_type(item);
+        if (unlikely(etype == NULL)) {
+            s0_name_free(name);
+            s0_environment_type_free(type);
+            return NULL;
+        }
+
+        if (unlikely(s0_environment_type_add(type, name, etype))) {
+            s0_environment_type_free(type);
+            return NULL;
+        }
+    }
+
+    return type;
 }
 
 static struct s0_name_mapping *
@@ -948,7 +1123,7 @@ s0_yaml_stream_parse_document(struct s0_yaml_stream *stream)
         yaml_document_delete(&stream->document);
     }
 
-    if (unlikely(stream->fp == NULL)) {
+    if (unlikely(stream->fp == NULL && stream->filename != NULL)) {
         stream->fp = fopen(stream->filename, "r");
         if (stream->fp == NULL) {
             fill_error(stream, "Cannot open %s: %s",
@@ -981,4 +1156,16 @@ struct s0_entity *
 s0_yaml_document_parse_module(struct s0_yaml_node node)
 {
     return s0_load_module(node);
+}
+
+struct s0_entity_type *
+s0_yaml_document_parse_entity_type(struct s0_yaml_node node)
+{
+    return s0_load_entity_type(node);
+}
+
+struct s0_environment_type *
+s0_yaml_document_parse_environment_type(struct s0_yaml_node node)
+{
+    return s0_load_environment_type(node);
 }
