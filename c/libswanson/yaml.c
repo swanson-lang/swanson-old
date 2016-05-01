@@ -487,69 +487,113 @@ s0_load_environment_type(struct s0_yaml_node node)
 }
 
 static struct s0_name_mapping *
+s0_load_name_mapping_entry(struct s0_yaml_node node,
+                           struct s0_name_mapping *mapping)
+{
+    struct s0_yaml_node  item;
+    struct s0_name  *external;
+    struct s0_name  *internal;
+    struct s0_entity_type  *type;
+
+    ensure_mapping(node, "name mapping entry");
+
+    /* external */
+
+    item = s0_yaml_node_mapping_get(node, "external");
+    if (unlikely(s0_yaml_node_is_missing(item))) {
+        fill_error(node.stream,
+                   "Name mapping entry requires a external at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        return NULL;
+    }
+
+    external = s0_load_name(item);
+    if (unlikely(external == NULL)) {
+        return NULL;
+    }
+
+    /* internal */
+
+    item = s0_yaml_node_mapping_get(node, "internal");
+    if (unlikely(s0_yaml_node_is_missing(item))) {
+        fill_error(node.stream,
+                   "Name mapping entry requires a internal at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        return NULL;
+    }
+
+    internal = s0_load_name(item);
+    if (unlikely(internal == NULL)) {
+        s0_name_free(external);
+        return NULL;
+    }
+
+    /* type */
+
+    item = s0_yaml_node_mapping_get(node, "type");
+    if (unlikely(s0_yaml_node_is_missing(item))) {
+        fill_error(node.stream,
+                   "Name mapping entry requires a type at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        return NULL;
+    }
+
+    type = s0_load_entity_type(item);
+    if (unlikely(type == NULL)) {
+        s0_name_free(external);
+        s0_name_free(internal);
+        return NULL;
+    }
+
+    /* Sanity-check values */
+
+    if (unlikely(s0_name_mapping_get(mapping, external) != NULL)) {
+        fill_error(node.stream, "There is already an input named `%s`.",
+                   s0_name_human_readable(external));
+        s0_name_free(external);
+        s0_name_free(internal);
+        s0_entity_type_free(type);
+        return NULL;
+    }
+
+    if (unlikely(s0_name_mapping_get_from(mapping, internal) != NULL)) {
+        fill_error(node.stream,
+                   "There is already an input that is renamed to `%s`.",
+                   s0_name_human_readable(internal));
+        s0_name_free(external);
+        s0_name_free(internal);
+        s0_entity_type_free(type);
+        return NULL;
+    }
+
+    /* Add the new entry */
+
+    if (unlikely(s0_name_mapping_add(mapping, external, internal, type))) {
+        fill_memory_error(node.stream);
+        return NULL;
+    }
+
+    return mapping;
+}
+
+static struct s0_name_mapping *
 s0_load_name_mapping(struct s0_yaml_node node)
 {
     struct s0_name_mapping  *mapping;
     size_t  i;
     size_t  count;
 
-    ensure_mapping(node, "name mapping");
-    count = s0_yaml_node_mapping_size(node);
+    ensure_sequence(node, "name mapping");
+    count = s0_yaml_node_sequence_size(node);
     mapping = s0_name_mapping_new();
     for (i = 0; i < count; i++) {
         struct s0_yaml_node  item;
-        struct s0_name  *from;
-        struct s0_name  *to;
-        struct s0_entity_type  *type;
 
-        item = s0_yaml_node_mapping_key_at(node, i);
-        from = s0_load_name(item);
-        if (unlikely(from == NULL)) {
-            s0_name_mapping_free(mapping);
-            return NULL;
-        }
-
-        item = s0_yaml_node_mapping_value_at(node, i);
-        to = s0_load_name(item);
-        if (unlikely(to == NULL)) {
-            s0_name_free(from);
-            s0_name_mapping_free(mapping);
-            return NULL;
-        }
-
-        if (unlikely(s0_name_mapping_get(mapping, from) != NULL)) {
-            fill_error
-                (node.stream,
-                 "There is already an input named `%s`.",
-                 s0_name_human_readable(from));
-            s0_name_free(from);
-            s0_name_free(to);
-            s0_name_mapping_free(mapping);
-            return NULL;
-        }
-
-        if (unlikely(s0_name_mapping_get_from(mapping, to) != NULL)) {
-            fill_error
-                (node.stream,
-                 "There is already an input that is renamed to `%s`.",
-                 s0_name_human_readable(to));
-            s0_name_free(from);
-            s0_name_free(to);
-            s0_name_mapping_free(mapping);
-            return NULL;
-        }
-
-        type = s0_any_entity_type_new();
-        if (unlikely(type == NULL)) {
-            fill_memory_error(node.stream);
-            s0_name_free(from);
-            s0_name_free(to);
-            s0_name_mapping_free(mapping);
-            return NULL;
-        }
-
-        if (unlikely(s0_name_mapping_add(mapping, from, to, type))) {
-            fill_memory_error(node.stream);
+        item = s0_yaml_node_sequence_at(node, i);
+        if (unlikely(s0_load_name_mapping_entry(item, mapping) == NULL)) {
             s0_name_mapping_free(mapping);
             return NULL;
         }

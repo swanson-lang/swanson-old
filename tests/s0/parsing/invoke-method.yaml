@@ -4,7 +4,9 @@
 name: invoke-method can call a method in the environment
 module:
   inputs:
-    self: self
+    - external: self
+      internal: self
+      type: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
@@ -17,7 +19,11 @@ module:
 name: invoke-method needs a source
 module:
   inputs:
-    self: self
+module:
+  inputs:
+    - external: self
+      internal: self
+      type: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
@@ -29,7 +35,9 @@ module:
 name: invoke-method needs a method
 module:
   inputs:
-    self: self
+    - external: self
+      internal: self
+      type: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method

@@ -4,7 +4,9 @@
 name: create-literal can create a new environment entry
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -12,7 +14,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -20,7 +22,9 @@ module:
 name: create-literal content can be a number
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -28,7 +32,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -36,7 +40,9 @@ module:
 name: create-literal content can include spaces
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -44,7 +50,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -52,7 +58,9 @@ module:
 name: create-literal content can include any kind of punctuation
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -61,7 +69,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -69,7 +77,9 @@ module:
 name: create-literal content can include Unicode control characters
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -78,7 +88,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -86,14 +96,16 @@ module:
 name: create-literal needs a destination
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       content: stuff
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -101,14 +113,16 @@ module:
 name: create-literal needs content
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -116,7 +130,9 @@ module:
 name: create-literal content cannot be a sequence
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -124,7 +140,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -132,7 +148,9 @@ module:
 name: create-literal content cannot be a mapping
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -140,7 +158,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -148,8 +166,12 @@ module:
 name: create-literal cannot overwrite an input
 module:
   inputs:
-    x: x
-    exit: exit
+    - external: x
+      internal: x
+      type: !s0!any {}
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -157,7 +179,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -165,7 +187,9 @@ module:
 name: create-literal cannot overwrite an existing environment entry
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -176,4 +200,4 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return

@@ -4,23 +4,27 @@
 name: create-method can create a new environment entry
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          exit: exit
+          - external: exit
+            internal: exit
+            type: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
-          branch: call
+          branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -28,7 +32,9 @@ module:
 name: create-method needs a destination
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-method
       self-input: self
@@ -39,11 +45,11 @@ module:
         invocation:
           !s0!invoke-closure
           src: exit
-          branch: call
+          branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -51,22 +57,26 @@ module:
 name: create-method needs a self input
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       body:
         inputs:
-          exit: exit
+          - external: exit
+            internal: exit
+            type: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
-          branch: call
+          branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -74,7 +84,9 @@ module:
 name: create-method needs a body
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
@@ -82,7 +94,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -90,24 +102,30 @@ module:
 name: create-method cannot overwrite an input
 module:
   inputs:
-    x: x
-    exit: exit
+    - external: x
+      internal: x
+      type: !s0!any {}
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          exit: exit
+          - external: exit
+            internal: exit
+            type: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
-          branch: call
+          branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -115,31 +133,37 @@ module:
 name: create-method cannot overwrite an existing environment entry
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          exit: exit
+          - external: exit
+            internal: exit
+            type: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
-          branch: call
+          branch: return
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          exit: exit
+          - external: exit
+            internal: exit
+            type: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
-          branch: call
+          branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return

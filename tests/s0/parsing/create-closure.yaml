@@ -4,7 +4,9 @@
 name: create-closure can create a new environment entry
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -12,16 +14,18 @@ module:
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -29,23 +33,27 @@ module:
 name: create-closure needs a destination
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       closed-over: []
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -53,23 +61,27 @@ module:
 name: create-closure needs a closure set
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -77,7 +89,9 @@ module:
 name: create-closure needs a branches section
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -85,7 +99,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -93,7 +107,9 @@ module:
 name: create-closure needs at least one branch
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -102,7 +118,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -110,8 +126,12 @@ module:
 name: create-closure cannot overwrite an input
 module:
   inputs:
-    x: x
-    exit: exit
+    - external: x
+      internal: x
+      type: !s0!any {}
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -119,16 +139,18 @@ module:
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -136,7 +158,9 @@ module:
 name: create-closure cannot overwrite an existing environment entry
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -144,28 +168,32 @@ module:
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
     - !s0!create-closure
       dest: x
       closed-over: []
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -173,7 +201,9 @@ module:
 name: create-closure closure set cannot contain duplicates
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -183,16 +213,18 @@ module:
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -200,7 +232,9 @@ module:
 name: create-closure branch list cannot contain duplicates
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -209,21 +243,25 @@ module:
       branches:
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
         body:
           inputs:
-            exit: exit
+            - external: exit
+              internal: exit
+              type: !s0!any {}
           statements: []
           invocation:
             !s0!invoke-closure
             src: exit
-            branch: call
+            branch: return
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return

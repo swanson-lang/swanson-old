@@ -4,12 +4,14 @@
 name: invoke-closure can call a closure in the environment
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -17,11 +19,13 @@ module:
 name: invoke-closure needs a source
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-closure
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -29,7 +33,9 @@ module:
 name: invoke-closure needs a branch
 module:
   inputs:
-    exit: exit
+    - external: exit
+      internal: exit
+      type: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -45,7 +51,7 @@ module:
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 # TODO - invoke-closure cannot call an atom
 # TODO - invoke-closure cannot call a literal
