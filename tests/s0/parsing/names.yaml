@@ -6,7 +6,9 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          1337: {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -21,7 +23,9 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          "call function": {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -36,7 +40,11 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          ? |
+            call !@#$%^&*()-=_+[]{}|\;':",./<>?`~
+          : {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -52,7 +60,9 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          "call\x1ffunction": {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -68,7 +78,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          ? []
+          : {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -83,9 +96,12 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          ? {}
+          : {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: []
+    branch: {}

@@ -4,12 +4,11 @@
 name: The name of an input doesn't need to change
 module:
   inputs:
-    - external: self
-      internal: self
-      type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -30,7 +29,11 @@ module:
       type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            a: !s0!any {}
+            b: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -51,7 +54,9 @@ module:
       type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -74,7 +79,9 @@ module:
       type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure

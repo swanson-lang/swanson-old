@@ -6,7 +6,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-atom
       dest: x
@@ -23,7 +26,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-atom {}
   invocation:
@@ -42,7 +48,10 @@ module:
       type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-atom
       dest: x
@@ -59,7 +68,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-atom
       dest: x

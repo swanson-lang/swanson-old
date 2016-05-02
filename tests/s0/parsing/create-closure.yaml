@@ -6,7 +6,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -16,7 +19,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -35,7 +40,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       closed-over: []
@@ -44,7 +52,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -63,7 +73,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -72,7 +85,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -91,7 +106,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -109,7 +127,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -131,7 +152,10 @@ module:
       type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -141,7 +165,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -160,7 +186,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -170,7 +199,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -184,7 +215,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -203,7 +236,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -215,7 +251,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -234,7 +272,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-closure
       dest: x
@@ -245,7 +286,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure
@@ -255,7 +298,9 @@ module:
           inputs:
             - external: exit
               internal: exit
-              type: !s0!any {}
+              type: !s0!closure
+                branches:
+                  return: {}
           statements: []
           invocation:
             !s0!invoke-closure

@@ -1907,10 +1907,28 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
                                        const struct s0_invocation *invocation)
 {
     struct s0_entity_type  *src_type;
+    struct s0_environment_type  *branch_inputs;
 
     src_type = s0_environment_type_delete
         (type, invocation->_.invoke_closure.src);
     if (unlikely(src_type == NULL)) {
+        return -1;
+    }
+
+    if (src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE) {
+        s0_entity_type_free(src_type);
+        return -1;
+    }
+
+    branch_inputs = s0_environment_type_mapping_get
+        (src_type->_.closure.branches, invocation->_.invoke_closure.branch);
+    if (branch_inputs == NULL) {
+        s0_entity_type_free(src_type);
+        return -1;
+    }
+
+    if (!s0_environment_type_satisfied_by_type(branch_inputs, type)) {
+        s0_entity_type_free(src_type);
         return -1;
     }
 

@@ -6,7 +6,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -24,7 +27,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -42,7 +48,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -60,7 +69,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -79,7 +91,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -98,7 +113,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       content: stuff
@@ -115,7 +133,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -132,7 +153,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -150,7 +174,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -171,7 +198,10 @@ module:
       type: !s0!any {}
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x
@@ -189,7 +219,10 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return:
+            x: !s0!any {}
   statements:
     - !s0!create-literal
       dest: x

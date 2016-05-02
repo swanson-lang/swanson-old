@@ -2010,22 +2010,24 @@ TEST_CASE("can add `create-method` to environment type") {
 
 TEST_CASE("can add `invoke-closure` to environment type") {
     struct s0_environment_type  *type;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     struct s0_name  *src;
     struct s0_name  *branch;
     struct s0_invocation  *invocation;
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    /* initial env = ⦃a:⤿ ⦃b:*⦄, b:*⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!closure\n"
+                "  branches:\n"
+                "    cont:\n"
+                "      b: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
+    /* Then add the invocation */
     check_alloc(src, s0_name_new_str("a"));
-    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(branch, s0_name_new_str("cont"));
     check_alloc(invocation, s0_invoke_closure_new(src, branch));
     check0(s0_environment_type_add_invocation(type, invocation));
-    check_alloc(name, s0_name_new_str("a"));
-    check(s0_environment_type_get(type, name) == NULL);
-    s0_name_free(name);
+    /* Free everything */
     s0_invocation_free(invocation);
     s0_environment_type_free(type);
 }

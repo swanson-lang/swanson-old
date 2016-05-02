@@ -6,7 +6,9 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -21,7 +23,9 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -35,7 +39,9 @@ module:
   inputs:
     - external: exit
       internal: exit
-      type: !s0!any {}
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
