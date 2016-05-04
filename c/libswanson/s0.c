@@ -13,13 +13,146 @@
 
 
 /*-----------------------------------------------------------------------------
- * Names
+ * Structs
  */
 
 struct s0_name {
     size_t  size;
     const void  *content;
 };
+
+struct s0_name_set {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_name  **names;
+};
+
+struct s0_name_mapping {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_name_mapping_entry  *entries;
+};
+
+struct s0_environment_entry {
+    struct s0_environment_entry  *next;
+    struct s0_name  *name;
+    struct s0_entity  *entity;
+};
+
+struct s0_environment {
+    struct s0_environment_entry  *head;
+    size_t  size;
+};
+
+struct s0_block {
+    struct s0_name_mapping  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_invocation  *invocation;
+};
+
+struct s0_named_blocks_entry {
+    struct s0_named_blocks_entry  *next;
+    struct s0_name  *name;
+    struct s0_block  *block;
+};
+
+struct s0_named_blocks {
+    struct s0_named_blocks_entry  *head;
+    size_t  size;
+};
+
+struct s0_statement {
+    enum s0_statement_kind  type;
+    union {
+        struct {
+            struct s0_name  *dest;
+        } create_atom;
+        struct {
+            struct s0_name  *dest;
+            struct s0_name_set  *closed_over;
+            struct s0_named_blocks  *branches;
+        } create_closure;
+        struct {
+            struct s0_name  *dest;
+            size_t  size;
+            const void  *content;
+        } create_literal;
+        struct {
+            struct s0_name  *dest;
+            struct s0_name  *self_input;
+            struct s0_block  *body;
+        } create_method;
+    } _;
+};
+
+struct s0_statement_list {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_statement  **statements;
+};
+
+struct s0_invocation {
+    enum s0_invocation_kind  type;
+    union {
+        struct {
+            struct s0_name  *src;
+            struct s0_name  *branch;
+        } invoke_closure;
+        struct {
+            struct s0_name  *src;
+            struct s0_name  *method;
+        } invoke_method;
+    } _;
+};
+
+struct s0_entity {
+    enum s0_entity_kind  type;
+    union {
+        struct {
+            struct s0_environment  *env;
+            struct s0_named_blocks  *blocks;
+        } closure;
+        struct {
+            size_t  size;
+            const void  *content;
+        } literal;
+        struct {
+            struct s0_name  *self_name;
+            struct s0_block  *block;
+        } method;
+        struct {
+            size_t  size;
+            size_t  allocated_size;
+            struct s0_object_entry  *entries;
+        } obj;
+    } _;
+};
+
+struct s0_entity_type {
+    enum s0_entity_type_kind  kind;
+    union {
+        struct {
+            struct s0_environment_type_mapping  *branches;
+        } closure;
+    } _;
+};
+
+struct s0_environment_type {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_environment_type_entry  *entries;
+};
+
+struct s0_environment_type_mapping {
+    size_t  size;
+    size_t  allocated_size;
+    struct s0_environment_type_mapping_entry  *entries;
+};
+
+
+/*-----------------------------------------------------------------------------
+ * Names
+ */
 
 struct s0_name *
 s0_name_new(size_t size, const void *content)
@@ -88,12 +221,6 @@ s0_name_eq(const struct s0_name *n1, const struct s0_name *n2)
 /*-----------------------------------------------------------------------------
  * Name sets
  */
-
-struct s0_name_set {
-    size_t  size;
-    size_t  allocated_size;
-    struct s0_name  **names;
-};
 
 #define DEFAULT_INITIAL_NAME_SET_SIZE  4
 
@@ -183,12 +310,6 @@ s0_name_set_at(const struct s0_name_set *set, size_t index)
 /*-----------------------------------------------------------------------------
  * Name mappings
  */
-
-struct s0_name_mapping {
-    size_t  size;
-    size_t  allocated_size;
-    struct s0_name_mapping_entry  *entries;
-};
 
 #define DEFAULT_INITIAL_NAME_MAPPING_SIZE  4
 
@@ -296,17 +417,6 @@ s0_name_mapping_get_from(const struct s0_name_mapping *mapping,
  * Environments
  */
 
-struct s0_environment_entry {
-    struct s0_environment_entry  *next;
-    struct s0_name  *name;
-    struct s0_entity  *entity;
-};
-
-struct s0_environment {
-    struct s0_environment_entry  *head;
-    size_t  size;
-};
-
 struct s0_environment *
 s0_environment_new(void)
 {
@@ -412,12 +522,6 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
  * S₀: Blocks
  */
 
-struct s0_block {
-    struct s0_name_mapping  *inputs;
-    struct s0_statement_list  *statements;
-    struct s0_invocation  *invocation;
-};
-
 struct s0_block *
 s0_block_new(struct s0_name_mapping *inputs,
              struct s0_statement_list *statements,
@@ -468,16 +572,6 @@ s0_block_invocation(const struct s0_block *block)
  * Named blocks
  */
 
-struct s0_named_blocks_entry {
-    struct s0_named_blocks_entry  *next;
-    struct s0_name  *name;
-    struct s0_block  *block;
-};
-
-struct s0_named_blocks {
-    struct s0_named_blocks_entry  *head;
-};
-
 struct s0_named_blocks *
 s0_named_blocks_new(void)
 {
@@ -486,6 +580,7 @@ s0_named_blocks_new(void)
         return NULL;
     }
     blocks->head = NULL;
+    blocks->size = 0;
     return blocks;
 }
 
@@ -540,6 +635,7 @@ s0_named_blocks_add(struct s0_named_blocks *blocks,
     entry->block = block;
     entry->next = blocks->head;
     blocks->head = entry;
+    blocks->size++;
     return 0;
 }
 
@@ -560,31 +656,6 @@ s0_named_blocks_get(const struct s0_named_blocks *blocks,
 /*-----------------------------------------------------------------------------
  * Statements
  */
-
-struct s0_statement {
-    enum s0_statement_kind  type;
-    union {
-        struct {
-            struct s0_name  *dest;
-        } create_atom;
-        struct {
-            struct s0_name  *dest;
-            struct s0_name_set  *closed_over;
-            struct s0_named_blocks  *branches;
-        } create_closure;
-        struct {
-            struct s0_name  *dest;
-            size_t  size;
-            const void  *content;
-        } create_literal;
-        struct {
-            struct s0_name  *dest;
-            struct s0_name  *self_input;
-            struct s0_block  *body;
-        } create_method;
-    } _;
-};
-
 
 struct s0_statement *
 s0_create_atom_new(struct s0_name *dest)
@@ -793,12 +864,6 @@ s0_statement_kind(const struct s0_statement *stmt)
  * Statement lists
  */
 
-struct s0_statement_list {
-    size_t  size;
-    size_t  allocated_size;
-    struct s0_statement  **statements;
-};
-
 #define DEFAULT_INITIAL_STATEMENT_LIST_SIZE  4
 
 struct s0_statement_list *
@@ -867,21 +932,6 @@ s0_statement_list_at(const struct s0_statement_list *list, size_t index)
 /*-----------------------------------------------------------------------------
  * Invocations
  */
-
-struct s0_invocation {
-    enum s0_invocation_kind  type;
-    union {
-        struct {
-            struct s0_name  *src;
-            struct s0_name  *branch;
-        } invoke_closure;
-        struct {
-            struct s0_name  *src;
-            struct s0_name  *method;
-        } invoke_method;
-    } _;
-};
-
 
 struct s0_invocation *
 s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch)
@@ -984,30 +1034,6 @@ s0_invocation_kind(const struct s0_invocation *invocation)
 /*-----------------------------------------------------------------------------
  * Entities
  */
-
-struct s0_entity {
-    enum s0_entity_kind  type;
-    union {
-        struct {
-            struct s0_environment  *env;
-            struct s0_named_blocks  *blocks;
-        } closure;
-        struct {
-            size_t  size;
-            const void  *content;
-        } literal;
-        struct {
-            struct s0_name  *self_name;
-            struct s0_block  *block;
-        } method;
-        struct {
-            size_t  size;
-            size_t  allocated_size;
-            struct s0_object_entry  *entries;
-        } obj;
-    } _;
-};
-
 
 struct s0_entity *
 s0_atom_new(void)
@@ -1278,19 +1304,15 @@ s0_entity_kind(const struct s0_entity *entity)
  * S₀: Entity types
  */
 
-struct s0_entity_type {
-    enum s0_entity_type_kind  kind;
-};
-
 struct s0_entity_type *
 s0_any_entity_type_new(void)
 {
-    struct s0_entity_type  *any = malloc(sizeof(struct s0_entity_type));
-    if (unlikely(any == NULL)) {
+    struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(type == NULL)) {
         return NULL;
     }
-    any->kind = S0_ENTITY_TYPE_KIND_ANY;
-    return any;
+    type->kind = S0_ENTITY_TYPE_KIND_ANY;
+    return type;
 }
 
 static struct s0_entity_type *
@@ -1300,17 +1322,201 @@ s0_any_entity_type_new_copy(const struct s0_entity_type *other)
 }
 
 static void
-s0_any_entity_type_free(struct s0_entity_type *any)
+s0_any_entity_type_free(struct s0_entity_type *type)
 {
     /* Nothing to do */
 }
 
 static bool
-s0_any_entity_type_satisfied_by(const struct s0_entity_type *any,
+s0_any_entity_type_satisfied_by(const struct s0_entity_type *type,
                                 const struct s0_entity *entity)
 {
     return true;
 }
+
+static bool
+s0_any_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                     const struct s0_entity_type *have)
+{
+    return true;
+}
+
+
+struct s0_entity_type *
+s0_closure_entity_type_new(struct s0_environment_type_mapping *branches)
+{
+    struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(type == NULL)) {
+        s0_environment_type_mapping_free(branches);
+        return NULL;
+    }
+    type->kind = S0_ENTITY_TYPE_KIND_CLOSURE;
+    type->_.closure.branches = branches;
+    return type;
+}
+
+struct s0_entity_type *
+s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks)
+{
+    struct s0_environment_type_mapping  *branches;
+    struct s0_named_blocks_entry  *curr;
+
+    branches = s0_environment_type_mapping_new();
+    if (unlikely(branches == NULL)) {
+        return NULL;
+    }
+
+    for (curr = blocks->head; curr != NULL; curr = curr->next) {
+        int  rc;
+        struct s0_name_mapping  *inputs = curr->block->inputs;
+        struct s0_name  *name_copy;
+        struct s0_environment_type  *branch_type;
+
+        name_copy = s0_name_new_copy(curr->name);
+        if (unlikely(name_copy == NULL)) {
+            s0_environment_type_mapping_free(branches);
+            return NULL;
+        }
+
+        branch_type = s0_environment_type_new();
+        if (unlikely(branch_type == NULL)) {
+            s0_name_free(name_copy);
+            s0_environment_type_mapping_free(branches);
+            return NULL;
+        }
+
+        rc = s0_environment_type_add_external_inputs(branch_type, inputs);
+        if (unlikely(rc != 0)) {
+            s0_name_free(name_copy);
+            s0_environment_type_free(branch_type);
+            s0_environment_type_mapping_free(branches);
+            return NULL;
+        }
+
+        rc = s0_environment_type_mapping_add(branches, name_copy, branch_type);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_mapping_free(branches);
+            return NULL;
+        }
+    }
+
+    return s0_closure_entity_type_new(branches);
+}
+
+struct s0_entity_type *
+s0_closure_entity_type_new_from_closure(struct s0_entity *entity)
+{
+    assert(entity->type == S0_ENTITY_KIND_CLOSURE);
+    return s0_closure_entity_type_new_from_named_blocks
+        (entity->_.closure.blocks);
+}
+
+static struct s0_entity_type *
+s0_closure_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    struct s0_environment_type_mapping  *branches_copy =
+        s0_environment_type_mapping_new_copy(other->_.closure.branches);
+    if (unlikely(branches_copy == NULL)) {
+        return NULL;
+    }
+    return s0_closure_entity_type_new(branches_copy);
+}
+
+static void
+s0_closure_entity_type_free(struct s0_entity_type *type)
+{
+    s0_environment_type_mapping_free(type->_.closure.branches);
+}
+
+static bool
+s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
+                                    const struct s0_entity *entity)
+{
+    size_t  i;
+    struct s0_environment_type_mapping  *branches;
+    struct s0_named_blocks  *blocks;
+
+    if (entity->type != S0_ENTITY_KIND_CLOSURE) {
+        return false;
+    }
+
+    branches = type->_.closure.branches;
+    blocks = entity->_.closure.blocks;
+
+    if (branches->size != blocks->size) {
+        return false;
+    }
+
+    for (i = 0; i < branches->size; i++) {
+        int  rc;
+        struct s0_name  *name = branches->entries[i].name;
+        struct s0_environment_type  *type = branches->entries[i].type;
+        struct s0_block  *block;
+        struct s0_name_mapping  *block_inputs;
+        struct s0_environment_type  *block_type;
+
+        block = s0_named_blocks_get(blocks, name);
+        if (block == NULL) {
+            return false;
+        }
+
+        block_inputs = s0_block_inputs(block);
+        block_type = s0_environment_type_new();
+        rc = s0_environment_type_add_external_inputs(block_type, block_inputs);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_free(block_type);
+            return false;
+        }
+
+        if (!s0_environment_type_satisfied_by_type(type, block_type)) {
+            s0_environment_type_free(block_type);
+            return false;
+        }
+
+        s0_environment_type_free(block_type);
+    }
+
+    return true;
+}
+
+static bool
+s0_closure_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                         const struct s0_entity_type *have)
+{
+    size_t  i;
+    struct s0_environment_type_mapping  *requires_branches;
+    struct s0_environment_type_mapping  *have_branches;
+
+    if (have->kind != S0_ENTITY_TYPE_KIND_CLOSURE) {
+        return false;
+    }
+
+    requires_branches = requires->_.closure.branches;
+    have_branches = have->_.closure.branches;
+
+    if (requires_branches->size != have_branches->size) {
+        return false;
+    }
+
+    for (i = 0; i < requires_branches->size; i++) {
+        struct s0_name  *name = requires_branches->entries[i].name;
+        struct s0_environment_type  *requires_type =
+            requires_branches->entries[i].type;
+        struct s0_environment_type  *have_type;
+
+        have_type = s0_environment_type_mapping_get(have_branches, name);
+        if (have_type == NULL) {
+            return false;
+        }
+
+        if (!s0_environment_type_satisfied_by_type(requires_type, have_type)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 struct s0_entity_type *
 s0_entity_type_new_copy(const struct s0_entity_type *other)
@@ -1318,6 +1524,9 @@ s0_entity_type_new_copy(const struct s0_entity_type *other)
     switch (other->kind) {
         case S0_ENTITY_TYPE_KIND_ANY:
             return s0_any_entity_type_new_copy(other);
+            break;
+        case S0_ENTITY_TYPE_KIND_CLOSURE:
+            return s0_closure_entity_type_new_copy(other);
             break;
         default:
             assert(false);
@@ -1331,6 +1540,9 @@ s0_entity_type_free(struct s0_entity_type *type)
     switch (type->kind) {
         case S0_ENTITY_TYPE_KIND_ANY:
             s0_any_entity_type_free(type);
+            break;
+        case S0_ENTITY_TYPE_KIND_CLOSURE:
+            s0_closure_entity_type_free(type);
             break;
         default:
             assert(false);
@@ -1353,22 +1565,44 @@ s0_entity_type_satisfied_by(const struct s0_entity_type *type,
         case S0_ENTITY_TYPE_KIND_ANY:
             return s0_any_entity_type_satisfied_by(type, entity);
             break;
+        case S0_ENTITY_TYPE_KIND_CLOSURE:
+            return s0_closure_entity_type_satisfied_by(type, entity);
+            break;
         default:
             assert(false);
             break;
     }
 }
 
+bool
+s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                 const struct s0_entity_type *have)
+{
+    switch (requires->kind) {
+        case S0_ENTITY_TYPE_KIND_ANY:
+            return s0_any_entity_type_satisfied_by_type(requires, have);
+            break;
+        case S0_ENTITY_TYPE_KIND_CLOSURE:
+            return s0_closure_entity_type_satisfied_by_type(requires, have);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+bool
+s0_entity_type_equiv(const struct s0_entity_type *type1,
+                     const struct s0_entity_type *type2)
+{
+    return s0_entity_type_satisfied_by_type(type1, type2)
+        && s0_entity_type_satisfied_by_type(type2, type1);
+}
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Environment types
  */
-
-struct s0_environment_type {
-    size_t  size;
-    size_t  allocated_size;
-    struct s0_environment_type_entry  *entries;
-};
 
 #define DEFAULT_INITIAL_ENVIRONMENT_TYPE_SIZE  4
 
@@ -1388,6 +1622,42 @@ s0_environment_type_new(void)
     if (unlikely(type->entries == NULL)) {
         free(type);
         return NULL;
+    }
+    return type;
+}
+
+struct s0_environment_type *
+s0_environment_type_new_copy(const struct s0_environment_type *other)
+{
+    size_t  i;
+    struct s0_environment_type  *type = s0_environment_type_new();
+    if (unlikely(type == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < other->size; i++) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_entity_type  *type_copy;
+
+        name_copy = s0_name_new_copy(other->entries[i].name);
+        if (unlikely(name_copy == NULL)) {
+            s0_environment_type_free(type);
+            return NULL;
+        }
+
+        type_copy = s0_entity_type_new_copy(other->entries[i].type);
+        if (unlikely(type_copy == NULL)) {
+            s0_name_free(name_copy);
+            s0_environment_type_free(type);
+            return NULL;
+        }
+
+        rc = s0_environment_type_add(type, name_copy, type_copy);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_free(type);
+            return NULL;
+        }
     }
     return type;
 }
@@ -1546,12 +1816,13 @@ s0_environment_type_add_create_closure(struct s0_environment_type *type,
         return -1;
     }
 
-    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    dest_name = s0_name_new_copy(stmt->_.create_closure.dest);
     if (unlikely(dest_name == NULL)) {
         return -1;
     }
 
-    dest_type = s0_any_entity_type_new();
+    dest_type = s0_closure_entity_type_new_from_named_blocks
+        (stmt->_.create_closure.branches);
     if (unlikely(dest_type == NULL)) {
         s0_name_free(dest_name);
         return -1;
@@ -1572,7 +1843,7 @@ s0_environment_type_add_create_literal(struct s0_environment_type *type,
         return -1;
     }
 
-    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    dest_name = s0_name_new_copy(stmt->_.create_literal.dest);
     if (unlikely(dest_name == NULL)) {
         return -1;
     }
@@ -1598,7 +1869,7 @@ s0_environment_type_add_create_method(struct s0_environment_type *type,
         return -1;
     }
 
-    dest_name = s0_name_new_copy(stmt->_.create_atom.dest);
+    dest_name = s0_name_new_copy(stmt->_.create_method.dest);
     if (unlikely(dest_name == NULL)) {
         return -1;
     }
@@ -1625,6 +1896,71 @@ s0_environment_type_add_statement(struct s0_environment_type *type,
             return s0_environment_type_add_create_literal(type, stmt);
         case S0_STATEMENT_KIND_CREATE_METHOD:
             return s0_environment_type_add_create_method(type, stmt);
+        default:
+            assert(false);
+            break;
+    }
+}
+
+static int
+s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
+                                       const struct s0_invocation *invocation)
+{
+    struct s0_entity_type  *src_type;
+    struct s0_environment_type  *branch_inputs;
+
+    src_type = s0_environment_type_delete
+        (type, invocation->_.invoke_closure.src);
+    if (unlikely(src_type == NULL)) {
+        return -1;
+    }
+
+    if (src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE) {
+        s0_entity_type_free(src_type);
+        return -1;
+    }
+
+    branch_inputs = s0_environment_type_mapping_get
+        (src_type->_.closure.branches, invocation->_.invoke_closure.branch);
+    if (branch_inputs == NULL) {
+        s0_entity_type_free(src_type);
+        return -1;
+    }
+
+    if (!s0_environment_type_satisfied_by_type(branch_inputs, type)) {
+        s0_entity_type_free(src_type);
+        return -1;
+    }
+
+    s0_entity_type_free(src_type);
+    return 0;
+}
+
+static int
+s0_environment_type_add_invoke_method(struct s0_environment_type *type,
+                                      const struct s0_invocation *invocation)
+{
+    struct s0_entity_type  *src_type;
+
+    src_type = s0_environment_type_delete
+        (type, invocation->_.invoke_method.src);
+    if (unlikely(src_type == NULL)) {
+        return -1;
+    }
+
+    s0_entity_type_free(src_type);
+    return 0;
+}
+
+int
+s0_environment_type_add_invocation(struct s0_environment_type *type,
+                                   const struct s0_invocation *invocation)
+{
+    switch (invocation->type) {
+        case S0_INVOCATION_KIND_INVOKE_CLOSURE:
+            return s0_environment_type_add_invoke_closure(type, invocation);
+        case S0_INVOCATION_KIND_INVOKE_METHOD:
+            return s0_environment_type_add_invoke_method(type, invocation);
         default:
             assert(false);
             break;
@@ -1719,4 +2055,169 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *type,
     }
 
     return true;
+}
+
+bool
+s0_environment_type_satisfied_by_type(
+        const struct s0_environment_type *requires,
+        const struct s0_environment_type *have)
+{
+    size_t  i;
+
+    if (requires->size != have->size) {
+        return false;
+    }
+
+    for (i = 0; i < requires->size; i++) {
+        const struct s0_name  *name = requires->entries[i].name;
+        const struct s0_entity_type  *rtype = requires->entries[i].type;
+        const struct s0_entity_type  *htype =
+            s0_environment_type_get(have, name);
+        if (htype == NULL || !s0_entity_type_satisfied_by_type(rtype, htype)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool
+s0_environment_type_equiv(const struct s0_environment_type *type1,
+                          const struct s0_environment_type *type2)
+{
+    return s0_environment_type_satisfied_by_type(type1, type2)
+        && s0_environment_type_satisfied_by_type(type2, type1);
+}
+
+
+/*-----------------------------------------------------------------------------
+ * Environment type mappings
+ */
+
+#define DEFAULT_INITIAL_ENVIRONMENT_TYPE_MAPPING_SIZE  4
+
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new(void)
+{
+    struct s0_environment_type_mapping  *mapping =
+        malloc(sizeof(struct s0_environment_type_mapping));
+    if (unlikely(mapping == NULL)) {
+        return NULL;
+    }
+    mapping->size = 0;
+    mapping->allocated_size = DEFAULT_INITIAL_ENVIRONMENT_TYPE_MAPPING_SIZE;
+    mapping->entries =
+        malloc(DEFAULT_INITIAL_ENVIRONMENT_TYPE_MAPPING_SIZE *
+               sizeof(struct s0_environment_type_mapping_entry));
+    if (unlikely(mapping->entries == NULL)) {
+        free(mapping);
+        return NULL;
+    }
+    return mapping;
+}
+
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new_copy(
+        const struct s0_environment_type_mapping *other)
+{
+    size_t  i;
+    struct s0_environment_type_mapping  *mapping =
+        s0_environment_type_mapping_new();
+    if (unlikely(mapping == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < other->size; i++) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_environment_type  *type_copy;
+
+        name_copy = s0_name_new_copy(other->entries[i].name);
+        if (unlikely(name_copy == NULL)) {
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        type_copy = s0_environment_type_new_copy(other->entries[i].type);
+        if (unlikely(type_copy == NULL)) {
+            s0_name_free(name_copy);
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+
+        rc = s0_environment_type_mapping_add(mapping, name_copy, type_copy);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_mapping_free(mapping);
+            return NULL;
+        }
+    }
+    return mapping;
+}
+
+void
+s0_environment_type_mapping_free(struct s0_environment_type_mapping *mapping)
+{
+    size_t  i;
+    for (i = 0; i < mapping->size; i++) {
+        s0_name_free(mapping->entries[i].name);
+        s0_environment_type_free(mapping->entries[i].type);
+    }
+    free(mapping->entries);
+    free(mapping);
+}
+
+int
+s0_environment_type_mapping_add(struct s0_environment_type_mapping *mapping,
+                                struct s0_name *name,
+                                struct s0_environment_type *type)
+{
+    struct s0_environment_type_mapping_entry  *new_entry;
+
+    if (unlikely(mapping->size == mapping->allocated_size)) {
+        size_t  new_size = mapping->allocated_size * 2;
+        struct s0_environment_type_mapping_entry  *new_entries = realloc
+            (mapping->entries,
+             new_size * sizeof(struct s0_environment_type_mapping_entry));
+        if (unlikely(new_entries == NULL)) {
+            s0_name_free(name);
+            s0_environment_type_free(type);
+            return -1;
+        }
+        mapping->entries = new_entries;
+        mapping->allocated_size = new_size;
+    }
+
+    new_entry = &mapping->entries[mapping->size++];
+    new_entry->name = name;
+    new_entry->type = type;
+    return 0;
+}
+
+size_t
+s0_environment_type_mapping_size(
+        const struct s0_environment_type_mapping *mapping)
+{
+    return mapping->size;
+}
+
+const struct s0_environment_type_mapping_entry *
+s0_environment_type_mapping_at(
+        const struct s0_environment_type_mapping *mapping, size_t index)
+{
+    assert(index < mapping->size);
+    return &mapping->entries[index];
+}
+
+struct s0_environment_type *
+s0_environment_type_mapping_get(
+        const struct s0_environment_type_mapping *mapping,
+        const struct s0_name *name)
+{
+    size_t  i;
+    for (i = 0; i < mapping->size; i++) {
+        if (s0_name_eq(mapping->entries[i].name, name)) {
+            return mapping->entries[i].type;
+        }
+    }
+    return NULL;
 }

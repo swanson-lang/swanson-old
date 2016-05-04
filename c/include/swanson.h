@@ -461,9 +461,11 @@ s0_object_get(const struct s0_entity *, const struct s0_name *name);
  */
 
 struct s0_entity_type;
+struct s0_environment_type_mapping;
 
 enum s0_entity_type_kind {
-    S0_ENTITY_TYPE_KIND_ANY
+    S0_ENTITY_TYPE_KIND_ANY,
+    S0_ENTITY_TYPE_KIND_CLOSURE
 };
 
 struct s0_entity_type *
@@ -475,13 +477,42 @@ s0_entity_type_free(struct s0_entity_type *);
 enum s0_entity_type_kind
 s0_entity_type_kind(const struct s0_entity_type *);
 
+/* Returns whether the entity is an instance of the type (entity ∈ type). */
 bool
 s0_entity_type_satisfied_by(const struct s0_entity_type *,
                             const struct s0_entity *);
 
+/* Returns whether any entity that satisfies `have` would also satisfy
+ * `requires` (have ⊆ requires). */
+bool
+s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                 const struct s0_entity_type *have);
+
+/* Two types are equivalent if they both satisfy each other. */
+bool
+s0_entity_type_equiv(const struct s0_entity_type *,
+                     const struct s0_entity_type *);
+
 
 struct s0_entity_type *
 s0_any_entity_type_new(void);
+
+
+/* Takes ownership of branches */
+struct s0_entity_type *
+s0_closure_entity_type_new(struct s0_environment_type_mapping *branches);
+
+/* Entity MUST be a closure */
+struct s0_entity_type *
+s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks);
+
+/* Entity MUST be a closure */
+struct s0_entity_type *
+s0_closure_entity_type_new_from_closure(struct s0_entity *entity);
+
+/* Retains ownership of result.  Type MUST be a closure type. */
+const struct s0_environment_type_mapping *
+s0_closure_entity_type_mapping(const struct s0_entity_type *);
 
 
 /*-----------------------------------------------------------------------------
@@ -497,6 +528,9 @@ struct s0_environment_type_entry {
 
 struct s0_environment_type *
 s0_environment_type_new(void);
+
+struct s0_environment_type *
+s0_environment_type_new_copy(const struct s0_environment_type *other);
 
 void
 s0_environment_type_free(struct s0_environment_type *);
@@ -548,6 +582,15 @@ int
 s0_environment_type_add_statement(struct s0_environment_type *,
                                   const struct s0_statement *stmt);
 
+/* Ensures that an environment type satisfies the prerequisites of `invocation`,
+ * and then updates the environment type based on what `invocation` would do.
+ *
+ * Returns 0 if the prereqs were satisfied and the type was updated
+ * successfully; returns -1 otherwise. */
+int
+s0_environment_type_add_invocation(struct s0_environment_type *,
+                                   const struct s0_invocation *invocation);
+
 /* Adds an entry to the environment type for each entry in a name mapping, using
  * the mapping entry's `from` name and `type`.  This type describes the
  * environment that the caller must provide when invoking a block.
@@ -573,9 +616,67 @@ int
 s0_environment_type_add_internal_inputs(struct s0_environment_type *,
                                         const struct s0_name_mapping *inputs);
 
+/* Returns whether an environment satisfies a type (env ∈ type).  We're stricter
+ * than you might expect!  The set of names in the type and environment must be
+ * exactly the same, and each entry in the environment must satisfy the
+ * corresponding entity type. */
 bool
 s0_environment_type_satisfied_by(const struct s0_environment_type *,
                                  const struct s0_environment *);
+
+/* Returns whether every environment that satisfies `have` would also satsify
+ * `requires` (have ⊆ requires). */
+bool
+s0_environment_type_satisfied_by_type(
+        const struct s0_environment_type *requires,
+        const struct s0_environment_type *have);
+
+/* Two types are equivalent if they both satisfy each other. */
+bool
+s0_environment_type_equiv(const struct s0_environment_type *,
+                          const struct s0_environment_type *);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Environment type mappings
+ */
+
+struct s0_environment_type_mapping_entry {
+    struct s0_name  *name;
+    struct s0_environment_type  *type;
+};
+
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new(void);
+
+struct s0_environment_type_mapping *
+s0_environment_type_mapping_new_copy(
+        const struct s0_environment_type_mapping *other);
+
+void
+s0_environment_type_mapping_free(struct s0_environment_type_mapping *);
+
+/* Takes ownership of name and type.  name MUST not already be present in
+ * mapping.  Returns 0 if type was added; -1 if we couldn't allocate space for
+ * the new entry. */
+int
+s0_environment_type_mapping_add(struct s0_environment_type_mapping *,
+                                struct s0_name *name,
+                                struct s0_environment_type *type);
+
+size_t
+s0_environment_type_mapping_size(const struct s0_environment_type_mapping *);
+
+/* Returns entries in order that they were added to mapping.  index MUST be <
+ * size of object. */
+const struct s0_environment_type_mapping_entry *
+s0_environment_type_mapping_at(const struct s0_environment_type_mapping *,
+                               size_t index);
+
+/* Returns NULL if name is not in mapping. */
+struct s0_environment_type *
+s0_environment_type_mapping_get(const struct s0_environment_type_mapping *,
+                                const struct s0_name *name);
 
 
 /*-----------------------------------------------------------------------------
@@ -584,6 +685,8 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *,
 
 
 #define SWANSON_TAG_PREFIX  "tag:swanson-lang.org,2016:"
+#define S0_ANY_TAG             SWANSON_TAG_PREFIX "any"
+#define S0_CLOSURE_TAG         SWANSON_TAG_PREFIX "closure"
 #define S0_CREATE_ATOM_TAG     SWANSON_TAG_PREFIX "create-atom"
 #define S0_CREATE_CLOSURE_TAG  SWANSON_TAG_PREFIX "create-closure"
 #define S0_CREATE_LITERAL_TAG  SWANSON_TAG_PREFIX "create-literal"
@@ -659,6 +762,10 @@ s0_yaml_stream_new_from_file(FILE *fp, const char *filename,
 struct s0_yaml_stream *
 s0_yaml_stream_new_from_filename(const char *filename);
 
+/* You must ensure `str` outlives the stream. */
+struct s0_yaml_stream *
+s0_yaml_stream_new_from_string(const char *str);
+
 void
 s0_yaml_stream_free(struct s0_yaml_stream *);
 
@@ -682,6 +789,20 @@ s0_yaml_stream_parse_document(struct s0_yaml_stream *);
  * are responsible for freeing it. */
 struct s0_entity *
 s0_yaml_document_parse_module(struct s0_yaml_node node);
+
+/* Loads an S₀ entity type from a YAML node.  If the YAML node doesn't conform
+ * to the S₀ YAML entity type schema, then we return NULL, and fill in an error
+ * on the stream that the node came from.  You take ownership of the return
+ * value and are responsible for freeing it. */
+struct s0_entity_type *
+s0_yaml_document_parse_entity_type(struct s0_yaml_node node);
+
+/* Loads an S₀ environment type from a YAML node.  If the YAML node doesn't
+ * conform to the S₀ YAML environment type schema, then we return NULL, and fill
+ * in an error on the stream that the node came from.  You take ownership of the
+ * return value and are responsible for freeing it. */
+struct s0_environment_type *
+s0_yaml_document_parse_environment_type(struct s0_yaml_node node);
 
 
 #ifdef __cplusplus

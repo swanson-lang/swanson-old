@@ -3,7 +3,12 @@
 !s0!successful-parse
 name: A name can be a number
 module:
-  inputs: {}
+  inputs:
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          1337: {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -15,7 +20,12 @@ module:
 !s0!successful-parse
 name: A name can include spaces
 module:
-  inputs: {}
+  inputs:
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          "call function": {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -27,7 +37,14 @@ module:
 !s0!successful-parse
 name: A name can include any kind of punctuation
 module:
-  inputs: {}
+  inputs:
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          ? |
+            call !@#$%^&*()-=_+[]{}|\;':",./<>?`~
+          : {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -40,7 +57,12 @@ module:
 !s0!successful-parse
 name: A name can include Unicode control characters
 module:
-  inputs: {}
+  inputs:
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          "call\x1ffunction": {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -53,7 +75,13 @@ module:
 !s0!invalid-parse
 name: A name cannot be a sequence
 module:
-  inputs: {}
+  inputs:
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          ? []
+          : {}
   statements: []
   invocation:
     !s0!invoke-closure
@@ -65,9 +93,15 @@ module:
 !s0!invalid-parse
 name: A name cannot be a mapping
 module:
-  inputs: {}
+  inputs:
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          ? {}
+          : {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: []
+    branch: {}

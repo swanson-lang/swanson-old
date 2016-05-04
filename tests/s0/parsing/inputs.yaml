@@ -1,27 +1,19 @@
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!successful-parse
-name: The input set can be empty
-module:
-  inputs: {}
-  statements: []
-  invocation:
-    !s0!invoke-closure
-    src: exit
-    branch: call
-
-%TAG !s0! tag:swanson-lang.org,2016:
----
-!s0!successful-parse
 name: The name of an input doesn't need to change
 module:
   inputs:
-    self: self
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -29,13 +21,24 @@ module:
 name: All of the renamings happen "at the same time"
 module:
   inputs:
-    a: b
-    b: a
+    - external: a
+      internal: b
+      type: !s0!any {}
+    - external: b
+      internal: a
+      type: !s0!any {}
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          return:
+            a: !s0!any {}
+            b: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -43,13 +46,22 @@ module:
 name: There cannot be multiple inputs with the same "from" name
 module:
   inputs:
-    a: b
-    a: c
+    - external: a
+      internal: b
+      type: !s0!any {}
+    - external: a
+      internal: c
+      type: !s0!any {}
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 error: >
   There is already an input named `a`.
 
@@ -59,12 +71,21 @@ error: >
 name: There cannot be multiple inputs with the same "to" name
 module:
   inputs:
-    a: c
-    b: c
+    - external: a
+      internal: c
+      type: !s0!any {}
+    - external: b
+      internal: c
+      type: !s0!any {}
+    - external: exit
+      internal: exit
+      type: !s0!closure
+        branches:
+          return: {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
-    branch: call
+    branch: return
 error: >
   There is already an input that is renamed to `c`.
