@@ -4,12 +4,10 @@
 name: create-atom can create a new environment entry
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-atom
       dest: x
@@ -17,6 +15,8 @@ module:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -24,18 +24,18 @@ module:
 name: create-atom needs a destination
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-atom {}
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -43,15 +43,11 @@ module:
 name: create-atom cannot overwrite an input
 module:
   inputs:
-    - external: x
-      internal: x
-      type: !s0!any {}
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-atom
       dest: x
@@ -59,6 +55,8 @@ module:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -66,12 +64,10 @@ module:
 name: create-atom cannot overwrite an existing environment entry
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-atom
       dest: x
@@ -81,3 +77,5 @@ module:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x

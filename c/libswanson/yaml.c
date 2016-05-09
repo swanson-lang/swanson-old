@@ -487,113 +487,59 @@ s0_load_environment_type(struct s0_yaml_node node)
 }
 
 static struct s0_name_mapping *
-s0_load_name_mapping_entry(struct s0_yaml_node node,
-                           struct s0_name_mapping *mapping)
-{
-    struct s0_yaml_node  item;
-    struct s0_name  *external;
-    struct s0_name  *internal;
-    struct s0_entity_type  *type;
-
-    ensure_mapping(node, "name mapping entry");
-
-    /* external */
-
-    item = s0_yaml_node_mapping_get(node, "external");
-    if (unlikely(s0_yaml_node_is_missing(item))) {
-        fill_error(node.stream,
-                   "Name mapping entry requires a external at %zu:%zu",
-                   s0_yaml_node_get_node(node)->start_mark.line,
-                   s0_yaml_node_get_node(node)->start_mark.column);
-        return NULL;
-    }
-
-    external = s0_load_name(item);
-    if (unlikely(external == NULL)) {
-        return NULL;
-    }
-
-    /* internal */
-
-    item = s0_yaml_node_mapping_get(node, "internal");
-    if (unlikely(s0_yaml_node_is_missing(item))) {
-        fill_error(node.stream,
-                   "Name mapping entry requires a internal at %zu:%zu",
-                   s0_yaml_node_get_node(node)->start_mark.line,
-                   s0_yaml_node_get_node(node)->start_mark.column);
-        return NULL;
-    }
-
-    internal = s0_load_name(item);
-    if (unlikely(internal == NULL)) {
-        s0_name_free(external);
-        return NULL;
-    }
-
-    /* type */
-
-    item = s0_yaml_node_mapping_get(node, "type");
-    if (unlikely(s0_yaml_node_is_missing(item))) {
-        fill_error(node.stream,
-                   "Name mapping entry requires a type at %zu:%zu",
-                   s0_yaml_node_get_node(node)->start_mark.line,
-                   s0_yaml_node_get_node(node)->start_mark.column);
-        return NULL;
-    }
-
-    type = s0_load_entity_type(item);
-    if (unlikely(type == NULL)) {
-        s0_name_free(external);
-        s0_name_free(internal);
-        return NULL;
-    }
-
-    /* Sanity-check values */
-
-    if (unlikely(s0_name_mapping_get(mapping, external) != NULL)) {
-        fill_error(node.stream, "There is already an input named `%s`.",
-                   s0_name_human_readable(external));
-        s0_name_free(external);
-        s0_name_free(internal);
-        s0_entity_type_free(type);
-        return NULL;
-    }
-
-    if (unlikely(s0_name_mapping_get_from(mapping, internal) != NULL)) {
-        fill_error(node.stream,
-                   "There is already an input that is renamed to `%s`.",
-                   s0_name_human_readable(internal));
-        s0_name_free(external);
-        s0_name_free(internal);
-        s0_entity_type_free(type);
-        return NULL;
-    }
-
-    /* Add the new entry */
-
-    if (unlikely(s0_name_mapping_add(mapping, external, internal, type))) {
-        fill_memory_error(node.stream);
-        return NULL;
-    }
-
-    return mapping;
-}
-
-static struct s0_name_mapping *
 s0_load_name_mapping(struct s0_yaml_node node)
 {
     struct s0_name_mapping  *mapping;
     size_t  i;
     size_t  count;
 
-    ensure_sequence(node, "name mapping");
-    count = s0_yaml_node_sequence_size(node);
+    ensure_mapping(node, "name mapping");
+    count = s0_yaml_node_mapping_size(node);
     mapping = s0_name_mapping_new();
     for (i = 0; i < count; i++) {
         struct s0_yaml_node  item;
+        struct s0_name  *from;
+        struct s0_name  *to;
 
-        item = s0_yaml_node_sequence_at(node, i);
-        if (unlikely(s0_load_name_mapping_entry(item, mapping) == NULL)) {
+        item = s0_yaml_node_mapping_key_at(node, i);
+        from = s0_load_name(item);
+        if (unlikely(from == NULL)) {
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        item = s0_yaml_node_mapping_value_at(node, i);
+        to = s0_load_name(item);
+        if (unlikely(to == NULL)) {
+            s0_name_free(from);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_name_mapping_get(mapping, from) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already an input named `%s`.",
+                 s0_name_human_readable(from));
+            s0_name_free(from);
+            s0_name_free(to);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_name_mapping_get_from(mapping, to) != NULL)) {
+            fill_error
+                (node.stream,
+                 "There is already an input that is renamed to `%s`.",
+                 s0_name_human_readable(to));
+            s0_name_free(from);
+            s0_name_free(to);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        if (unlikely(s0_name_mapping_add(mapping, from, to))) {
+            fill_memory_error(node.stream);
             s0_name_mapping_free(mapping);
             return NULL;
         }
@@ -931,6 +877,7 @@ s0_load_invoke_closure(struct s0_yaml_node node)
     struct s0_yaml_node  item;
     struct s0_name  *src;
     struct s0_name  *branch;
+    struct s0_name_mapping  *parameters;
 
     /* src */
 
@@ -964,7 +911,27 @@ s0_load_invoke_closure(struct s0_yaml_node node)
         return NULL;
     }
 
-    return s0_invoke_closure_new(src, branch);
+    /* parameters */
+
+    item = s0_yaml_node_mapping_get(node, "parameters");
+    if (unlikely(s0_yaml_node_is_missing(item))) {
+        fill_error(node.stream,
+                   "invoke-closure requires a parameters at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        s0_name_free(src);
+        s0_name_free(branch);
+        return NULL;
+    }
+
+    parameters = s0_load_name_mapping(item);
+    if (unlikely(parameters == NULL)) {
+        s0_name_free(src);
+        s0_name_free(branch);
+        return NULL;
+    }
+
+    return s0_invoke_closure_new(src, branch, parameters);
 }
 
 static struct s0_invocation *
@@ -974,6 +941,7 @@ s0_load_invoke_method(struct s0_yaml_node node)
     struct s0_yaml_node  item;
     struct s0_name  *src;
     struct s0_name  *method;
+    struct s0_name_mapping  *parameters;
 
     /* src */
 
@@ -1007,7 +975,27 @@ s0_load_invoke_method(struct s0_yaml_node node)
         return NULL;
     }
 
-    return s0_invoke_method_new(src, method);
+    /* parameters */
+
+    item = s0_yaml_node_mapping_get(node, "parameters");
+    if (unlikely(s0_yaml_node_is_missing(item))) {
+        fill_error(node.stream,
+                   "invoke-method requires a parameters at %zu:%zu",
+                   s0_yaml_node_get_node(node)->start_mark.line,
+                   s0_yaml_node_get_node(node)->start_mark.column);
+        s0_name_free(src);
+        s0_name_free(method);
+        return NULL;
+    }
+
+    parameters = s0_load_name_mapping(item);
+    if (unlikely(parameters == NULL)) {
+        s0_name_free(src);
+        s0_name_free(method);
+        return NULL;
+    }
+
+    return s0_invoke_method_new(src, method, parameters);
 }
 
 static struct s0_invocation *
@@ -1029,7 +1017,6 @@ s0_load_invocation(struct s0_yaml_node node, struct s0_environment_type *type)
     }
 
     if (unlikely(invocation == NULL)) {
-        fill_memory_error(node.stream);
         return NULL;
     }
 
@@ -1048,9 +1035,8 @@ s0_load_invocation(struct s0_yaml_node node, struct s0_environment_type *type)
 static struct s0_block *
 s0_load_block(struct s0_yaml_node node)
 {
-    int  rc;
     struct s0_yaml_node  item;
-    struct s0_name_mapping  *inputs;
+    struct s0_environment_type  *inputs;
     struct s0_environment_type  *type;
     struct s0_statement_list  *statements;
     struct s0_invocation  *invocation;
@@ -1067,25 +1053,18 @@ s0_load_block(struct s0_yaml_node node)
         return NULL;
     }
 
-    inputs = s0_load_name_mapping(item);
+    inputs = s0_load_environment_type(item);
     if (unlikely(inputs == NULL)) {
         return NULL;
     }
 
-    type = s0_environment_type_new();
+    /* As we parse the statements and invocation, we'll use `type` to ensure
+     * that each one is well-typed.  (We can't use `inputs` directly, because
+     * we'll modify `type` as we use it to type-check the statements and
+     * invocations.) */
+    type = s0_environment_type_new_copy(inputs);
     if (unlikely(type == NULL)) {
-        fill_memory_error(node.stream);
-        s0_name_mapping_free(inputs);
-        return NULL;
-    }
-
-    rc = s0_environment_type_add_internal_inputs(type, inputs);
-    if (unlikely(rc != 0)) {
-        fill_error(node.stream, "Block has invalid inputs type at %zu:%zu",
-                   s0_yaml_node_get_node(node)->start_mark.line,
-                   s0_yaml_node_get_node(node)->start_mark.column);
-        s0_name_mapping_free(inputs);
-        s0_environment_type_free(type);
+        s0_environment_type_free(inputs);
         return NULL;
     }
 
@@ -1096,14 +1075,14 @@ s0_load_block(struct s0_yaml_node node)
         fill_error(node.stream, "Block requires a statements at %zu:%zu",
                    s0_yaml_node_get_node(node)->start_mark.line,
                    s0_yaml_node_get_node(node)->start_mark.column);
-        s0_name_mapping_free(inputs);
+        s0_environment_type_free(inputs);
         s0_environment_type_free(type);
         return NULL;
     }
 
     statements = s0_load_statement_list(item, type);
     if (unlikely(statements == NULL)) {
-        s0_name_mapping_free(inputs);
+        s0_environment_type_free(inputs);
         s0_environment_type_free(type);
         return NULL;
     }
@@ -1115,7 +1094,7 @@ s0_load_block(struct s0_yaml_node node)
         fill_error(node.stream, "Block requires a invocation at %zu:%zu",
                    s0_yaml_node_get_node(node)->start_mark.line,
                    s0_yaml_node_get_node(node)->start_mark.column);
-        s0_name_mapping_free(inputs);
+        s0_environment_type_free(inputs);
         s0_statement_list_free(statements);
         s0_environment_type_free(type);
         return NULL;
@@ -1123,7 +1102,7 @@ s0_load_block(struct s0_yaml_node node)
 
     invocation = s0_load_invocation(item, type);
     if (unlikely(invocation == NULL)) {
-        s0_name_mapping_free(inputs);
+        s0_environment_type_free(inputs);
         s0_statement_list_free(statements);
         s0_environment_type_free(type);
         return NULL;

@@ -4,16 +4,15 @@
 name: invoke-closure can call a closure in the environment
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return: {}
+    exit: !s0!closure
+      branches:
+        return: {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters: {}
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -21,15 +20,14 @@ module:
 name: invoke-closure needs a source
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return: {}
+    exit: !s0!closure
+      branches:
+        return: {}
   statements: []
   invocation:
     !s0!invoke-closure
     branch: return
+    parameters: {}
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -37,15 +35,29 @@ module:
 name: invoke-closure needs a branch
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return: {}
+    exit: !s0!closure
+      branches:
+        return: {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure needs a parameters
+module:
+  inputs:
+    exit: !s0!closure
+      branches:
+        return: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -58,6 +70,109 @@ module:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: The name of a parameter can change
+module:
+  inputs:
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          y: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: y
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: The name of a parameter doesn't need to change
+module:
+  inputs:
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: All of the renamings happen "at the same time"
+module:
+  inputs:
+    x: !s0!any {}
+    y: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+          y: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: y
+      y: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: There cannot be multiple parameters with the same "from" name
+module:
+  inputs:
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+          y: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: x
+      x: y
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: There cannot be multiple parameters with the same "to" name
+module:
+  inputs:
+    x: !s0!any {}
+    y: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: x
+      x: x
 
 # TODO - invoke-closure cannot call an atom
 # TODO - invoke-closure cannot call a literal

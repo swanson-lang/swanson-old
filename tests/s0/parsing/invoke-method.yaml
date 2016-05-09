@@ -4,14 +4,13 @@
 name: invoke-method can call a method in the environment
 module:
   inputs:
-    - external: self
-      internal: self
-      type: !s0!any {}
+    self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     src: self
     method: id
+    parameters: {}
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -21,13 +20,12 @@ module:
   inputs:
 module:
   inputs:
-    - external: self
-      internal: self
-      type: !s0!any {}
+    self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     method: id
+    parameters: {}
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -35,13 +33,25 @@ module:
 name: invoke-method needs a method
 module:
   inputs:
-    - external: self
-      internal: self
-      type: !s0!any {}
+    self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     src: self
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method needs a param
+module:
+  inputs:
+    self: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
 
 # TODO - invoke-method cannot call a missing environment entry
 # TODO - invoke-method cannot call an atom
