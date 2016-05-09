@@ -4,32 +4,31 @@
 name: create-method can create a new environment entry
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          - external: exit
-            internal: exit
-            type: !s0!closure
-              branches:
-                return: {}
+          exit: !s0!closure
+            branches:
+              return: {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
+          parameters: {}
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -37,12 +36,10 @@ module:
 name: create-method needs a destination
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-method
       self-input: self
@@ -54,10 +51,13 @@ module:
           !s0!invoke-closure
           src: exit
           branch: return
+          parameters: {}
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -65,31 +65,30 @@ module:
 name: create-method needs a self input
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       body:
         inputs:
-          - external: exit
-            internal: exit
-            type: !s0!closure
-              branches:
-                return: {}
+          exit: !s0!closure
+            branches:
+              return: {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
+          parameters: {}
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -97,12 +96,10 @@ module:
 name: create-method needs a body
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
@@ -111,6 +108,8 @@ module:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -118,35 +117,32 @@ module:
 name: create-method cannot overwrite an input
 module:
   inputs:
-    - external: x
-      internal: x
-      type: !s0!any {}
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          - external: exit
-            internal: exit
-            type: !s0!closure
-              branches:
-                return: {}
+          exit: !s0!closure
+            branches:
+              return: {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
+          parameters: {}
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -154,44 +150,42 @@ module:
 name: create-method cannot overwrite an existing environment entry
 module:
   inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements:
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          - external: exit
-            internal: exit
-            type: !s0!closure
-              branches:
-                return: {}
+          exit: !s0!closure
+            branches:
+              return: {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
+          parameters: {}
     - !s0!create-method
       dest: x
       self-input: self
       body:
         inputs:
-          - external: exit
-            internal: exit
-            type: !s0!closure
-              branches:
-                return: {}
+          exit: !s0!closure
+            branches:
+              return: {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
+          parameters: {}
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    parameters:
+      x: x

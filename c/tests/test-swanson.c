@@ -17,14 +17,16 @@ create_empty_block(void)
 {
     struct s0_name  *src;
     struct s0_name  *branch;
-    struct s0_name_mapping  *inputs;
+    struct s0_environment_type  *inputs;
+    struct s0_name_mapping  *params;
     struct s0_statement_list  *statements;
     struct s0_invocation  *invocation;
-    inputs = s0_name_mapping_new();
+    inputs = s0_environment_type_new();
     statements = s0_statement_list_new();
     src = s0_name_new_str("x");
     branch = s0_name_new_str("body");
-    invocation = s0_invoke_closure_new(src, branch);
+    params = s0_name_mapping_new();
+    invocation = s0_invoke_closure_new(src, branch, params);
     return s0_block_new(inputs, statements, invocation);
 }
 
@@ -274,32 +276,27 @@ TEST_CASE("can add names to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
-    struct s0_entity_type  *type;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
     s0_name_mapping_free(mapping);
 }
 
 TEST_CASE("non-empty name mapping has accurate size") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
-    struct s0_entity_type  *type;
     struct s0_name  *to;
     check_alloc(mapping, s0_name_mapping_new());
 
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
     check(s0_name_mapping_size(mapping) == 1);
 
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
     check(s0_name_mapping_size(mapping) == 2);
 
     s0_name_mapping_free(mapping);
@@ -309,31 +306,26 @@ TEST_CASE("can check which names belong to mapping") {
     struct s0_name_mapping  *mapping;
     struct s0_name  *from;
     struct s0_name  *to;
-    struct s0_entity_type  *type;
-    const struct s0_name_mapping_entry  *entry;
+    const struct s0_name  *actual;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
 
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check_nonnull(entry = s0_name_mapping_get(mapping, from));
-    check(s0_name_eq(entry->to, to));
-    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
+    check_nonnull(actual = s0_name_mapping_get(mapping, from));
+    check(s0_name_eq(actual, to));
     s0_name_free(from);
     s0_name_free(to);
 
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check_nonnull(entry = s0_name_mapping_get(mapping, from));
-    check(s0_name_eq(entry->to, to));
-    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
+    check_nonnull(actual = s0_name_mapping_get(mapping, from));
+    check(s0_name_eq(actual, to));
     s0_name_free(from);
     s0_name_free(to);
 
@@ -349,16 +341,13 @@ TEST_CASE("can iterate through names in mapping") {
     const struct s0_name_mapping_entry  *entry;
     struct s0_name  *from;
     struct s0_name  *to;
-    struct s0_entity_type  *type;
     check_alloc(mapping, s0_name_mapping_new());
     check_alloc(from, s0_name_new_str("a"));
     check_alloc(to, s0_name_new_str("b"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
     check_alloc(from, s0_name_new_str("c"));
     check_alloc(to, s0_name_new_str("d"));
-    check_alloc(type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, type));
+    check0(s0_name_mapping_add(mapping, from, to));
 
     /* This test assumes that the names are returned in the same order that they
      * were added to the mapping. */
@@ -368,7 +357,6 @@ TEST_CASE("can iterate through names in mapping") {
     check_alloc(to, s0_name_new_str("b"));
     check(s0_name_eq(entry->from, from));
     check(s0_name_eq(entry->to, to));
-    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
@@ -377,7 +365,6 @@ TEST_CASE("can iterate through names in mapping") {
     check_alloc(to, s0_name_new_str("d"));
     check(s0_name_eq(entry->from, from));
     check(s0_name_eq(entry->to, to));
-    check(s0_entity_type_kind(entry->type) == S0_ENTITY_TYPE_KIND_ANY);
     s0_name_free(from);
     s0_name_free(to);
 
@@ -634,11 +621,13 @@ TEST_CASE_GROUP("S₀ invocations");
 TEST_CASE("can create `invoke-closure` invocation") {
     struct s0_name  *src;
     struct s0_name  *branch;
+    struct s0_name_mapping  *params;
     struct s0_invocation  *invocation;
 
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("body"));
-    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
     check(s0_invocation_kind(invocation) == S0_INVOCATION_KIND_INVOKE_CLOSURE);
 
     check_alloc(src, s0_name_new_str("a"));
@@ -649,17 +638,21 @@ TEST_CASE("can create `invoke-closure` invocation") {
     check(s0_name_eq(s0_invoke_closure_branch(invocation), branch));
     s0_name_free(branch);
 
+    check(s0_invoke_closure_params(invocation) == params);
+
     s0_invocation_free(invocation);
 }
 
 TEST_CASE("can create `invoke-method` invocation") {
     struct s0_name  *src;
     struct s0_name  *method;
+    struct s0_name_mapping  *params;
     struct s0_invocation  *invocation;
 
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(method, s0_name_new_str("run"));
-    check_alloc(invocation, s0_invoke_method_new(src, method));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_method_new(src, method, params));
     check(s0_invocation_kind(invocation) == S0_INVOCATION_KIND_INVOKE_METHOD);
 
     check_alloc(src, s0_name_new_str("a"));
@@ -669,6 +662,8 @@ TEST_CASE("can create `invoke-method` invocation") {
     check_alloc(method, s0_name_new_str("run"));
     check(s0_name_eq(s0_invoke_method_method(invocation), method));
     s0_name_free(method);
+
+    check(s0_invoke_method_params(invocation) == params);
 
     s0_invocation_free(invocation);
 }
@@ -682,15 +677,17 @@ TEST_CASE_GROUP("S₀ blocks");
 TEST_CASE("can create block") {
     struct s0_name  *src;
     struct s0_name  *branch;
-    struct s0_name_mapping  *inputs;
+    struct s0_environment_type  *inputs;
     struct s0_statement_list  *statements;
+    struct s0_name_mapping  *params;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
-    check_alloc(inputs, s0_name_mapping_new());
+    check_alloc(inputs, s0_environment_type_new());
     check_alloc(statements, s0_statement_list_new());
     check_alloc(src, s0_name_new_str("x"));
     check_alloc(branch, s0_name_new_str("body"));
-    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
     check_alloc(block, s0_block_new(inputs, statements, invocation));
     check(s0_block_inputs(block) == inputs);
     check(s0_block_statements(block) == statements);
@@ -1109,31 +1106,35 @@ TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ *") {
     struct s0_entity_type  *type;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
-    struct s0_name_mapping  *inputs;
-    struct s0_name  *from;
-    struct s0_name  *to;
+    struct s0_environment_type  *inputs;
+    struct s0_name  *name;
     struct s0_entity_type  *input_type;
     struct s0_statement_list  *statements;
     struct s0_name  *src;
     struct s0_name  *branch;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_name_mapping  *params;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
-    struct s0_name  *name;
     struct s0_entity  *entity;
     /* type = * */
     check_alloc(type, s0_any_entity_type_new());
     /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
-    check_alloc(inputs, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("a"));
+    check_alloc(inputs, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
     check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(inputs, from, to, input_type));
+    check0(s0_environment_type_add(inputs, name, input_type));
     check_alloc(statements, s0_statement_list_new());
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("cont"));
-    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(params, from, to));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
     check_alloc(block, s0_block_new(inputs, statements, invocation));
     check_alloc(name, s0_name_new_str("cont"));
     check0(s0_named_blocks_add(blocks, name, block));
@@ -1336,16 +1337,17 @@ TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ ⤿ ⦃a:*⦄") {
     struct s0_entity_type  *type;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
-    struct s0_name_mapping  *inputs;
-    struct s0_name  *from;
-    struct s0_name  *to;
+    struct s0_environment_type  *inputs;
+    struct s0_name  *name;
     struct s0_entity_type  *input_type;
     struct s0_statement_list  *statements;
     struct s0_name  *src;
     struct s0_name  *branch;
+    struct s0_name_mapping  *params;
+    struct s0_name  *from;
+    struct s0_name  *to;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
-    struct s0_name  *name;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
     check_alloc(type, entity_type(
@@ -1358,15 +1360,18 @@ TEST_CASE("⟨⤿ ⦃a:*⦄ ...⟩ ∈ ⤿ ⦃a:*⦄") {
     /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
-    check_alloc(inputs, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("a"));
+    check_alloc(inputs, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
     check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(inputs, from, to, input_type));
+    check0(s0_environment_type_add(inputs, name, input_type));
     check_alloc(statements, s0_statement_list_new());
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("cont"));
-    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(params, from, to));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
     check_alloc(block, s0_block_new(inputs, statements, invocation));
     check_alloc(name, s0_name_new_str("cont"));
     check0(s0_named_blocks_add(blocks, name, block));
@@ -1382,16 +1387,17 @@ TEST_CASE("type of ⟨⤿ ⦃a:*⦄ ...⟩ = ⤿ ⦃a:*⦄") {
     struct s0_entity_type  *type;
     struct s0_environment  *env;
     struct s0_named_blocks  *blocks;
-    struct s0_name_mapping  *inputs;
-    struct s0_name  *from;
-    struct s0_name  *to;
+    struct s0_environment_type  *inputs;
+    struct s0_name  *name;
     struct s0_entity_type  *input_type;
     struct s0_statement_list  *statements;
     struct s0_name  *src;
     struct s0_name  *branch;
+    struct s0_name_mapping  *params;
+    struct s0_name  *from;
+    struct s0_name  *to;
     struct s0_invocation  *invocation;
     struct s0_block  *block;
-    struct s0_name  *name;
     struct s0_entity  *entity;
     struct s0_entity_type  *calculated_type;
     /* type = ⤿ ⦃a:*⦄ */
@@ -1405,15 +1411,18 @@ TEST_CASE("type of ⟨⤿ ⦃a:*⦄ ...⟩ = ⤿ ⦃a:*⦄") {
     /* entity = ⟨⤿ ⦃a:*⦄ ...⟩ */
     check_alloc(env, s0_environment_new());
     check_alloc(blocks, s0_named_blocks_new());
-    check_alloc(inputs, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("a"));
+    check_alloc(inputs, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
     check_alloc(input_type, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(inputs, from, to, input_type));
+    check0(s0_environment_type_add(inputs, name, input_type));
     check_alloc(statements, s0_statement_list_new());
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("cont"));
-    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(params, from, to));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
     check_alloc(block, s0_block_new(inputs, statements, invocation));
     check_alloc(name, s0_name_new_str("cont"));
     check0(s0_named_blocks_add(blocks, name, block));
@@ -1721,7 +1730,7 @@ TEST_CASE("cannot extract duplicate entries from environment type") {
     struct s0_entity_type  *etype;
     struct s0_name_set  *set;
 
-    /* Construct ⦃a:*, b:*⦄ */
+    /* Construct ⦃a:*⦄ */
     check_alloc(src, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
     check_alloc(etype, s0_any_entity_type_new());
@@ -2012,6 +2021,9 @@ TEST_CASE("can add `invoke-closure` to environment type") {
     struct s0_environment_type  *type;
     struct s0_name  *src;
     struct s0_name  *branch;
+    struct s0_name_mapping  *params;
+    struct s0_name  *from;
+    struct s0_name  *to;
     struct s0_invocation  *invocation;
     /* initial env = ⦃a:⤿ ⦃b:*⦄, b:*⦄ */
     check_alloc(type, environment_type(
@@ -2025,7 +2037,11 @@ TEST_CASE("can add `invoke-closure` to environment type") {
     /* Then add the invocation */
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(branch, s0_name_new_str("cont"));
-    check_alloc(invocation, s0_invoke_closure_new(src, branch));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(params, from, to));
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
     check0(s0_environment_type_add_invocation(type, invocation));
     /* Free everything */
     s0_invocation_free(invocation);
@@ -2038,6 +2054,7 @@ TEST_CASE("can add `invoke-method` to environment type") {
     struct s0_entity_type  *etype;
     struct s0_name  *src;
     struct s0_name  *method;
+    struct s0_name_mapping  *params;
     struct s0_invocation  *invocation;
     check_alloc(type, s0_environment_type_new());
     check_alloc(name, s0_name_new_str("a"));
@@ -2045,137 +2062,14 @@ TEST_CASE("can add `invoke-method` to environment type") {
     check0(s0_environment_type_add(type, name, etype));
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(method, s0_name_new_str("run"));
-    check_alloc(invocation, s0_invoke_method_new(src, method));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_method_new(src, method, params));
     check0(s0_environment_type_add_invocation(type, invocation));
     check_alloc(name, s0_name_new_str("a"));
     check(s0_environment_type_get(type, name) == NULL);
     s0_name_free(name);
     s0_invocation_free(invocation);
     s0_environment_type_free(type);
-}
-
-TEST_CASE("can create external environment type from input mappings") {
-    struct s0_name_mapping  *mapping;
-    struct s0_name  *from;
-    struct s0_name  *to;
-    struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
-    struct s0_environment_type  *expected;
-    /* Create the mapping */
-    check_alloc(mapping, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    check_alloc(from, s0_name_new_str("c"));
-    check_alloc(to, s0_name_new_str("d"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    /* Create an environment type from the mapping */
-    check_alloc(type, s0_environment_type_new());
-    check0(s0_environment_type_add_external_inputs(type, mapping));
-    /* Result should be ⦃a:*, c:*⦄ */
-    check_alloc(expected, environment_type(
-                YAML
-                "a: !s0!any {}\n"
-                "c: !s0!any {}\n"
-                ));
-    check(s0_environment_type_equiv(type, expected));
-    /* Free everything */
-    s0_environment_type_free(type);
-    s0_environment_type_free(expected);
-    s0_name_mapping_free(mapping);
-}
-
-TEST_CASE("cannot overwrite external environment type from input mappings") {
-    struct s0_name_mapping  *mapping;
-    struct s0_name  *from;
-    struct s0_name  *to;
-    struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
-    /* Create the mapping */
-    check_alloc(mapping, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    check_alloc(from, s0_name_new_str("c"));
-    check_alloc(to, s0_name_new_str("d"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    /* Create an environment type with entries that overlap what we'd add from
-     * the mapping. */
-    check_alloc(type, environment_type(
-                YAML
-                "a: !s0!any {}\n"
-                "c: !s0!any {}\n"
-                ));
-    check(s0_environment_type_add_external_inputs(type, mapping) == -1);
-    /* Free everything */
-    s0_environment_type_free(type);
-    s0_name_mapping_free(mapping);
-}
-
-TEST_CASE("can create internal environment type from input mappings") {
-    struct s0_name_mapping  *mapping;
-    struct s0_name  *from;
-    struct s0_name  *to;
-    struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
-    struct s0_environment_type  *expected;
-    /* Create the mapping */
-    check_alloc(mapping, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    check_alloc(from, s0_name_new_str("c"));
-    check_alloc(to, s0_name_new_str("d"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    /* Create an environment type from the mapping */
-    check_alloc(type, s0_environment_type_new());
-    check0(s0_environment_type_add_internal_inputs(type, mapping));
-    /* Result should be ⦃b:*, d:*⦄ */
-    check_alloc(expected, environment_type(
-                YAML
-                "b: !s0!any {}\n"
-                "d: !s0!any {}\n"
-                ));
-    check(s0_environment_type_equiv(type, expected));
-    /* Free everything */
-    s0_environment_type_free(type);
-    s0_environment_type_free(expected);
-    s0_name_mapping_free(mapping);
-}
-
-TEST_CASE("cannot overwrite internal environment type from input mappings") {
-    struct s0_name_mapping  *mapping;
-    struct s0_name  *from;
-    struct s0_name  *to;
-    struct s0_environment_type  *type;
-    struct s0_entity_type  *etype;
-    /* Create the mapping */
-    check_alloc(mapping, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("b"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    check_alloc(from, s0_name_new_str("c"));
-    check_alloc(to, s0_name_new_str("d"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_name_mapping_add(mapping, from, to, etype));
-    /* Create an environment type with entries that overlap what we'd add from
-     * the mapping. */
-    check_alloc(type, environment_type(
-                YAML
-                "b: !s0!any {}\n"
-                "d: !s0!any {}\n"
-                ));
-    check(s0_environment_type_add_internal_inputs(type, mapping) == -1);
-    /* Free everything */
-    s0_environment_type_free(type);
-    s0_name_mapping_free(mapping);
 }
 
 TEST_CASE("⦃⦄ ⊆ ⦃⦄") {
@@ -2374,6 +2268,161 @@ TEST_CASE("⦃b:*,a:*⦄ ⊆ ⦃b:*,a:*⦄") {
     /* Free everything */
     s0_environment_type_free(requires);
     s0_environment_type_free(have);
+}
+
+TEST_CASE("⦃a:*⦄[a→b] == ⦃b:*⦄") {
+    struct s0_environment_type  *type;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *expected;
+    /* Construct ⦃a:*⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
+    /* Construct [a→b] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_type_rename(type, mapping));
+    /* Verify that result == ⦃b:*⦄ */
+    check_alloc(expected, environment_type(
+                YAML
+                "b: !s0!any {}\n"
+                ));
+    check(s0_environment_type_equiv(type, expected));
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_type_free(type);
+    s0_environment_type_free(expected);
+}
+
+TEST_CASE("⦃a:*⦄[a→a] == ⦃a:*⦄") {
+    struct s0_environment_type  *type;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *expected;
+    /* Construct ⦃a:*⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
+    /* Construct [a→a] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_type_rename(type, mapping));
+    /* Verify that result == ⦃a:*⦄ */
+    check_alloc(expected, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
+    check(s0_environment_type_equiv(type, expected));
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_type_free(type);
+    s0_environment_type_free(expected);
+}
+
+TEST_CASE("⦃a:*,b:*⦄[a→c,b→d] == ⦃c:*,d:*⦄") {
+    struct s0_environment_type  *type;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *expected;
+    /* Construct ⦃a:*,b:*⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
+    /* Construct [a→c,b→d] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("c"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_type_rename(type, mapping));
+    /* Verify that result == ⦃c:*,d:*⦄ */
+    check_alloc(expected, environment_type(
+                YAML
+                "c: !s0!any {}\n"
+                "d: !s0!any {}\n"
+                ));
+    check(s0_environment_type_equiv(type, expected));
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_type_free(type);
+    s0_environment_type_free(expected);
+}
+
+TEST_CASE("⦃a:*,b:*⦄[a→b,b→a] == ⦃a:*,b:*⦄") {
+    struct s0_environment_type  *type;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_environment_type  *expected;
+    /* Construct ⦃a:*,b:*⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
+    /* Construct [a→b,b→a] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_type_rename(type, mapping));
+    /* Verify that result == ⦃a:*,b:*⦄ */
+    check_alloc(expected, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                "b: !s0!any {}\n"
+                ));
+    check(s0_environment_type_equiv(type, expected));
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_type_free(type);
+    s0_environment_type_free(expected);
+}
+
+TEST_CASE("⦃a:*⦄[a→b,c→d] is invalid") {
+    struct s0_environment_type  *type;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct ⦃a:*⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!any {}\n"
+                ));
+    /* Construct [a→b,c→d] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Verify that we can't apply renaming */
+    check(s0_environment_type_rename(type, mapping) != 0);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_type_free(type);
 }
 
 /*-----------------------------------------------------------------------------

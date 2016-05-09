@@ -82,12 +82,10 @@ s0_name_set_at(const struct s0_name_set *, size_t index);
  */
 
 struct s0_name_mapping;
-struct s0_entity_type;
 
 struct s0_name_mapping_entry {
     struct s0_name  *from;
     struct s0_name  *to;
-    struct s0_entity_type  *type;
 };
 
 struct s0_name_mapping *
@@ -96,13 +94,13 @@ s0_name_mapping_new(void);
 void
 s0_name_mapping_free(struct s0_name_mapping *);
 
-/* Takes ownership of from, to, and type.  from MUST not already be present in
- * the mapping's domain, and to MUST not already be present in the mapping's
- * range.  Returns 0 if name was added; -1 if we couldn't allocate space for the
- * new entry. */
+/* Takes ownership of from and to.  from MUST not already be present in the
+ * mapping's domain, and to MUST not already be present in the mapping's range.
+ * Returns 0 if name was added; -1 if we couldn't allocate space for the new
+ * entry. */
 int
 s0_name_mapping_add(struct s0_name_mapping *, struct s0_name *from,
-                    struct s0_name *to, struct s0_entity_type *type);
+                    struct s0_name *to);
 
 size_t
 s0_name_mapping_size(const struct s0_name_mapping *);
@@ -113,11 +111,11 @@ const struct s0_name_mapping_entry *
 s0_name_mapping_at(const struct s0_name_mapping *, size_t index);
 
 /* Returns NULL if from is not in the mapping's domain. */
-const struct s0_name_mapping_entry *
+const struct s0_name *
 s0_name_mapping_get(const struct s0_name_mapping *, const struct s0_name *from);
 
 /* Returns NULL if from is not in the mapping's range. */
-const struct s0_name_mapping_entry *
+const struct s0_name *
 s0_name_mapping_get_from(const struct s0_name_mapping *,
                          const struct s0_name *to);
 
@@ -310,7 +308,8 @@ s0_invocation_kind(const struct s0_invocation *);
 
 /* Takes control of src and branch */
 struct s0_invocation *
-s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch);
+s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch,
+                      struct s0_name_mapping *params);
 
 /* Invocation MUST be InvokeClosure */
 struct s0_name *
@@ -320,10 +319,15 @@ s0_invoke_closure_src(const struct s0_invocation *);
 struct s0_name *
 s0_invoke_closure_branch(const struct s0_invocation *);
 
+/* Invocation MUST be InvokeClosure */
+struct s0_name_mapping *
+s0_invoke_closure_params(const struct s0_invocation *);
+
 
 /* Takes control of src and method */
 struct s0_invocation *
-s0_invoke_method_new(struct s0_name *src, struct s0_name *method);
+s0_invoke_method_new(struct s0_name *src, struct s0_name *method,
+                     struct s0_name_mapping *params);
 
 /* Invocation MUST be InvokeMethod */
 struct s0_name *
@@ -333,21 +337,27 @@ s0_invoke_method_src(const struct s0_invocation *);
 struct s0_name *
 s0_invoke_method_method(const struct s0_invocation *);
 
+/* Invocation MUST be InvokeMethod */
+struct s0_name_mapping *
+s0_invoke_method_params(const struct s0_invocation *);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Blocks
  */
 
+struct s0_environment_type;
+
 /* Takes control of inputs, statements, and invocation */
 struct s0_block *
-s0_block_new(struct s0_name_mapping *inputs,
+s0_block_new(struct s0_environment_type *inputs,
              struct s0_statement_list *statements,
              struct s0_invocation *invocation);
 
 void
 s0_block_free(struct s0_block *);
 
-struct s0_name_mapping *
+struct s0_environment_type *
 s0_block_inputs(const struct s0_block *);
 
 struct s0_statement_list *
@@ -573,6 +583,15 @@ s0_environment_type_extract(struct s0_environment_type *dest,
                             struct s0_environment_type *src,
                             const struct s0_name_set *set);
 
+/* Applies a renaming (given by a name mapping) to an environment type.  The
+ * mapping and the type must be the same size, and there must be an entry in the
+ * mapping for every element of the environment type.  Returns -1 if these
+ * conditions are not met.  Returns ENOMEM if there is an error allocating
+ * memory.  Returns 0 if the renaming was successful. */
+int
+s0_environment_type_rename(struct s0_environment_type *,
+                           const struct s0_name_mapping *mapping);
+
 /* Ensures that an environment type satisfies the prerequisites of `stmt`, and
  * then updates the environment type based on what `stmt` would do.
  *
@@ -590,31 +609,6 @@ s0_environment_type_add_statement(struct s0_environment_type *,
 int
 s0_environment_type_add_invocation(struct s0_environment_type *,
                                    const struct s0_invocation *invocation);
-
-/* Adds an entry to the environment type for each entry in a name mapping, using
- * the mapping entry's `from` name and `type`.  This type describes the
- * environment that the caller must provide when invoking a block.
- *
- * Returns 0 if all of the entries were created successfully; returns -1 if
- * there is an error creating the environment type. */
-int
-s0_environment_type_add_external_inputs(struct s0_environment_type *,
-                                        const struct s0_name_mapping *inputs);
-
-/* Adds an entry to the environment type for each entry in a name mapping, using
- * the mapping entry's `to` name and `type`.  This type describes the
- * environment a block is given when it first starts executing.
- *
- * You should have already filled in the environment type with entries
- * representing any closure set that the block will operate under (to ensure
- * that there are no name clashes between the closure set and the input
- * mapping).
- *
- * Returns 0 if all of the entries were created successfully; returns -1 if
- * there is an error creating the environment type. */
-int
-s0_environment_type_add_internal_inputs(struct s0_environment_type *,
-                                        const struct s0_name_mapping *inputs);
 
 /* Returns whether an environment satisfies a type (env ∈ type).  We're stricter
  * than you might expect!  The set of names in the type and environment must be

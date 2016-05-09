@@ -1,91 +1,22 @@
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
-!s0!successful-parse
-name: The name of an input doesn't need to change
-module:
-  inputs:
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return: {}
-  statements: []
-  invocation:
-    !s0!invoke-closure
-    src: exit
-    branch: return
-
-%TAG !s0! tag:swanson-lang.org,2016:
----
-!s0!successful-parse
-name: All of the renamings happen "at the same time"
-module:
-  inputs:
-    - external: a
-      internal: b
-      type: !s0!any {}
-    - external: b
-      internal: a
-      type: !s0!any {}
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return:
-            a: !s0!any {}
-            b: !s0!any {}
-  statements: []
-  invocation:
-    !s0!invoke-closure
-    src: exit
-    branch: return
-
-%TAG !s0! tag:swanson-lang.org,2016:
----
 !s0!invalid-parse
-name: There cannot be multiple inputs with the same "from" name
+name: There cannot be multiple inputs with the same name
 module:
   inputs:
-    - external: a
-      internal: b
-      type: !s0!any {}
-    - external: a
-      internal: c
-      type: !s0!any {}
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return: {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-closure
     src: exit
     branch: return
+    params: {}
 error: >
-  There is already an input named `a`.
-
-%TAG !s0! tag:swanson-lang.org,2016:
----
-!s0!invalid-parse
-name: There cannot be multiple inputs with the same "to" name
-module:
-  inputs:
-    - external: a
-      internal: c
-      type: !s0!any {}
-    - external: b
-      internal: c
-      type: !s0!any {}
-    - external: exit
-      internal: exit
-      type: !s0!closure
-        branches:
-          return: {}
-  statements: []
-  invocation:
-    !s0!invoke-closure
-    src: exit
-    branch: return
-error: >
-  There is already an input that is renamed to `c`.
+  There is already an input names `exit`.
