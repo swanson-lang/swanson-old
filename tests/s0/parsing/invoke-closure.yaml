@@ -74,6 +74,80 @@ module:
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
+!s0!invalid-parse
+name: invoke-closure cannot call a missing branch
+module:
+  inputs:
+    exit: !s0!closure
+      branches:
+        return: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: abort
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure cannot call an atom
+module:
+  inputs: {}
+  statements:
+    - !s0!create-atom
+      dest: exit
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure cannot call a literal
+module:
+  inputs: {}
+  statements:
+    - !s0!create-literal
+      dest: exit
+      content: stuff
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure cannot call a method
+module:
+  inputs: {}
+  statements:
+    - !s0!create-method
+      dest: exit
+      self-input: self
+      body:
+        inputs:
+          exit: !s0!closure
+            branches:
+              return: {}
+        statements: []
+        invocation:
+          !s0!invoke-closure
+          src: exit
+          branch: return
+          parameters: {}
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
 !s0!successful-parse
 name: The name of a parameter can change
 module:
@@ -174,9 +248,60 @@ module:
       x: x
       x: x
 
-# TODO - invoke-closure cannot call an atom
-# TODO - invoke-closure cannot call a literal
-# TODO - invoke-closure cannot call a method
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure must provide a parameter for each input
+module:
+  inputs:
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure parameter must satisfy input type
+module:
+  inputs:
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!closure
+            branches:
+              abort: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-closure cannot provide extra parameters
+module:
+  inputs:
+    x: !s0!any {}
+    exit: !s0!closure
+      branches:
+        return: {}
+  statements: []
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      x: x
+
 # TODO - invoke-closure cannot call an object
-# TODO - invoke-closure cannot call a missing branch
-# TODO - invoke-closure environment must satisfy the inputs of its target
