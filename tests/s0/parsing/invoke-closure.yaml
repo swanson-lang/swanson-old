@@ -149,7 +149,7 @@ module:
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!successful-parse
-name: The name of a parameter can change
+name: The name of a closure parameter can change
 module:
   inputs:
     x: !s0!any {}
@@ -168,7 +168,7 @@ module:
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!successful-parse
-name: The name of a parameter doesn't need to change
+name: The name of a closure parameter doesn't need to change
 module:
   inputs:
     x: !s0!any {}
@@ -187,7 +187,7 @@ module:
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!successful-parse
-name: All of the renamings happen "at the same time"
+name: All of the closure parameter renamings happen "at the same time"
 module:
   inputs:
     x: !s0!any {}
@@ -209,7 +209,7 @@ module:
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!invalid-parse
-name: There cannot be multiple parameters with the same "from" name
+name: There cannot be multiple closure parameters with the same "from" name
 module:
   inputs:
     x: !s0!any {}
@@ -230,7 +230,7 @@ module:
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!invalid-parse
-name: There cannot be multiple parameters with the same "to" name
+name: There cannot be multiple closure parameters with the same "to" name
 module:
   inputs:
     x: !s0!any {}
@@ -246,7 +246,7 @@ module:
     branch: return
     parameters:
       x: x
-      x: x
+      y: x
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---

@@ -419,13 +419,13 @@ size_t
 s0_literal_size(const struct s0_entity *);
 
 
-/* Takes control block */
+/* Takes control body */
 struct s0_entity *
-s0_method_new(struct s0_block *block);
+s0_method_new(struct s0_block *body);
 
 /* Entity MUST be a method.  method retains ownership of block. */
 struct s0_block *
-s0_method_block(const struct s0_entity *);
+s0_method_body(const struct s0_entity *);
 
 
 struct s0_object_entry {
@@ -466,11 +466,16 @@ struct s0_environment_type_mapping;
 
 enum s0_entity_type_kind {
     S0_ENTITY_TYPE_KIND_ANY,
-    S0_ENTITY_TYPE_KIND_CLOSURE
+    S0_ENTITY_TYPE_KIND_CLOSURE,
+    S0_ENTITY_TYPE_KIND_METHOD,
+    S0_ENTITY_TYPE_KIND_OBJECT
 };
 
 struct s0_entity_type *
 s0_entity_type_new_copy(const struct s0_entity_type *other);
+
+struct s0_entity_type *
+s0_entity_type_new_from_entity(const struct s0_entity *);
 
 void
 s0_entity_type_free(struct s0_entity_type *);
@@ -503,17 +508,27 @@ s0_any_entity_type_new(void);
 struct s0_entity_type *
 s0_closure_entity_type_new(struct s0_environment_type_mapping *branches);
 
-/* Entity MUST be a closure */
-struct s0_entity_type *
-s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks);
-
-/* Entity MUST be a closure */
-struct s0_entity_type *
-s0_closure_entity_type_new_from_closure(struct s0_entity *entity);
-
 /* Retains ownership of result.  Type MUST be a closure type. */
 const struct s0_environment_type_mapping *
-s0_closure_entity_type_mapping(const struct s0_entity_type *);
+s0_closure_entity_type_branches(const struct s0_entity_type *);
+
+
+/* Takes ownership of branch */
+struct s0_entity_type *
+s0_method_entity_type_new(struct s0_environment_type *body);
+
+/* Retains ownership of result.  Type MUST be a method type. */
+const struct s0_environment_type *
+s0_method_entity_type_body(const struct s0_entity_type *);
+
+
+/* Takes ownership of elements */
+struct s0_entity_type *
+s0_object_entity_type_new(struct s0_environment_type *elements);
+
+/* Retains ownership of result.  Type MUST be a object type. */
+const struct s0_environment_type *
+s0_object_entity_type_elements(const struct s0_entity_type *);
 
 
 /*-----------------------------------------------------------------------------
@@ -678,6 +693,8 @@ s0_environment_type_mapping_get(const struct s0_environment_type_mapping *,
 #define S0_CREATE_METHOD_TAG   SWANSON_TAG_PREFIX "create-method"
 #define S0_INVOKE_CLOSURE_TAG  SWANSON_TAG_PREFIX "invoke-closure"
 #define S0_INVOKE_METHOD_TAG   SWANSON_TAG_PREFIX "invoke-method"
+#define S0_METHOD_TAG          SWANSON_TAG_PREFIX "method"
+#define S0_OBJECT_TAG          SWANSON_TAG_PREFIX "object"
 
 
 struct s0_yaml_stream;

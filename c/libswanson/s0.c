@@ -62,7 +62,7 @@ struct s0_named_blocks {
 };
 
 struct s0_statement {
-    enum s0_statement_kind  type;
+    enum s0_statement_kind  kind;
     union {
         struct {
             struct s0_name  *dest;
@@ -91,7 +91,7 @@ struct s0_statement_list {
 };
 
 struct s0_invocation {
-    enum s0_invocation_kind  type;
+    enum s0_invocation_kind  kind;
     union {
         struct {
             struct s0_name  *src;
@@ -107,7 +107,7 @@ struct s0_invocation {
 };
 
 struct s0_entity {
-    enum s0_entity_kind  type;
+    enum s0_entity_kind  kind;
     union {
         struct {
             struct s0_environment  *env;
@@ -118,7 +118,7 @@ struct s0_entity {
             const void  *content;
         } literal;
         struct {
-            struct s0_block  *block;
+            struct s0_block  *body;
         } method;
         struct {
             size_t  size;
@@ -134,6 +134,12 @@ struct s0_entity_type {
         struct {
             struct s0_environment_type_mapping  *branches;
         } closure;
+        struct {
+            struct s0_environment_type  *body;
+        } method;
+        struct {
+            struct s0_environment_type  *elements;
+        } object;
     } _;
 };
 
@@ -662,7 +668,7 @@ s0_create_atom_new(struct s0_name *dest)
         s0_name_free(dest);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_KIND_CREATE_ATOM;
+    stmt->kind = S0_STATEMENT_KIND_CREATE_ATOM;
     stmt->_.create_atom.dest = dest;
     return stmt;
 }
@@ -676,7 +682,7 @@ s0_create_atom_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_atom_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_ATOM);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_ATOM);
     return stmt->_.create_atom.dest;
 }
 
@@ -692,7 +698,7 @@ s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
         s0_named_blocks_free(branches);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_KIND_CREATE_CLOSURE;
+    stmt->kind = S0_STATEMENT_KIND_CREATE_CLOSURE;
     stmt->_.create_closure.dest = dest;
     stmt->_.create_closure.closed_over = closed_over;
     stmt->_.create_closure.branches = branches;
@@ -710,21 +716,21 @@ s0_create_closure_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_closure_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.dest;
 }
 
 struct s0_name_set *
 s0_create_closure_closed_over(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.closed_over;
 }
 
 struct s0_named_blocks *
 s0_create_closure_branches(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_CLOSURE);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_CLOSURE);
     return stmt->_.create_closure.branches;
 }
 
@@ -737,7 +743,7 @@ s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
         s0_name_free(dest);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_KIND_CREATE_LITERAL;
+    stmt->kind = S0_STATEMENT_KIND_CREATE_LITERAL;
     stmt->_.create_literal.dest = dest;
     stmt->_.create_literal.size = size;
     stmt->_.create_literal.content = malloc(size);
@@ -760,21 +766,21 @@ s0_create_literal_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_literal_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.dest;
 }
 
 const void *
 s0_create_literal_content(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.content;
 }
 
 size_t
 s0_create_literal_size(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_LITERAL);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_LITERAL);
     return stmt->_.create_literal.size;
 }
 
@@ -788,7 +794,7 @@ s0_create_method_new(struct s0_name *dest, struct s0_block *body)
         s0_block_free(body);
         return NULL;
     }
-    stmt->type = S0_STATEMENT_KIND_CREATE_METHOD;
+    stmt->kind = S0_STATEMENT_KIND_CREATE_METHOD;
     stmt->_.create_method.dest = dest;
     stmt->_.create_method.body = body;
     return stmt;
@@ -804,14 +810,14 @@ s0_create_method_free(struct s0_statement *stmt)
 struct s0_name *
 s0_create_method_dest(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.dest;
 }
 
 struct s0_block *
 s0_create_method_body(const struct s0_statement *stmt)
 {
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
+    assert(stmt->kind == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.body;
 }
 
@@ -819,7 +825,7 @@ s0_create_method_body(const struct s0_statement *stmt)
 void
 s0_statement_free(struct s0_statement *stmt)
 {
-    switch (stmt->type) {
+    switch (stmt->kind) {
         case S0_STATEMENT_KIND_CREATE_ATOM:
             s0_create_atom_free(stmt);
             break;
@@ -842,7 +848,7 @@ s0_statement_free(struct s0_statement *stmt)
 enum s0_statement_kind
 s0_statement_kind(const struct s0_statement *stmt)
 {
-    return stmt->type;
+    return stmt->kind;
 }
 
 
@@ -930,7 +936,7 @@ s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch,
         s0_name_mapping_free(params);
         return NULL;
     }
-    invocation->type = S0_INVOCATION_KIND_INVOKE_CLOSURE;
+    invocation->kind = S0_INVOCATION_KIND_INVOKE_CLOSURE;
     invocation->_.invoke_closure.src = src;
     invocation->_.invoke_closure.branch = branch;
     invocation->_.invoke_closure.params = params;
@@ -948,21 +954,21 @@ s0_invoke_closure_free(struct s0_invocation *invocation)
 struct s0_name *
 s0_invoke_closure_src(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
+    assert(invocation->kind == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.src;
 }
 
 struct s0_name *
 s0_invoke_closure_branch(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
+    assert(invocation->kind == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.branch;
 }
 
 struct s0_name_mapping *
 s0_invoke_closure_params(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_CLOSURE);
+    assert(invocation->kind == S0_INVOCATION_KIND_INVOKE_CLOSURE);
     return invocation->_.invoke_closure.params;
 }
 
@@ -978,7 +984,7 @@ s0_invoke_method_new(struct s0_name *src, struct s0_name *method,
         s0_name_mapping_free(params);
         return NULL;
     }
-    invocation->type = S0_INVOCATION_KIND_INVOKE_METHOD;
+    invocation->kind = S0_INVOCATION_KIND_INVOKE_METHOD;
     invocation->_.invoke_method.src = src;
     invocation->_.invoke_method.method = method;
     invocation->_.invoke_method.params = params;
@@ -996,21 +1002,21 @@ s0_invoke_method_free(struct s0_invocation *invocation)
 struct s0_name *
 s0_invoke_method_src(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
+    assert(invocation->kind == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.src;
 }
 
 struct s0_name *
 s0_invoke_method_method(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
+    assert(invocation->kind == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.method;
 }
 
 struct s0_name_mapping *
 s0_invoke_method_params(const struct s0_invocation *invocation)
 {
-    assert(invocation->type == S0_INVOCATION_KIND_INVOKE_METHOD);
+    assert(invocation->kind == S0_INVOCATION_KIND_INVOKE_METHOD);
     return invocation->_.invoke_method.params;
 }
 
@@ -1018,7 +1024,7 @@ s0_invoke_method_params(const struct s0_invocation *invocation)
 void
 s0_invocation_free(struct s0_invocation *invocation)
 {
-    switch (invocation->type) {
+    switch (invocation->kind) {
         case S0_INVOCATION_KIND_INVOKE_CLOSURE:
             s0_invoke_closure_free(invocation);
             break;
@@ -1035,7 +1041,7 @@ s0_invocation_free(struct s0_invocation *invocation)
 enum s0_invocation_kind
 s0_invocation_kind(const struct s0_invocation *invocation)
 {
-    return invocation->type;
+    return invocation->kind;
 }
 
 
@@ -1050,7 +1056,7 @@ s0_atom_new(void)
     if (unlikely(atom == NULL)) {
         return NULL;
     }
-    atom->type = S0_ENTITY_KIND_ATOM;
+    atom->kind = S0_ENTITY_KIND_ATOM;
     return atom;
 }
 
@@ -1063,8 +1069,8 @@ s0_atom_free(struct s0_entity *atom)
 bool
 s0_atom_eq(const struct s0_entity *a1, const struct s0_entity *a2)
 {
-    assert(a1->type == S0_ENTITY_KIND_ATOM);
-    assert(a2->type == S0_ENTITY_KIND_ATOM);
+    assert(a1->kind == S0_ENTITY_KIND_ATOM);
+    assert(a2->kind == S0_ENTITY_KIND_ATOM);
     return (a1 == a2);
 }
 
@@ -1078,7 +1084,7 @@ s0_closure_new(struct s0_environment *env, struct s0_named_blocks *blocks)
         s0_named_blocks_free(blocks);
         return NULL;
     }
-    closure->type = S0_ENTITY_KIND_CLOSURE;
+    closure->kind = S0_ENTITY_KIND_CLOSURE;
     closure->_.closure.env = env;
     closure->_.closure.blocks = blocks;
     return closure;
@@ -1094,14 +1100,14 @@ s0_closure_free(struct s0_entity *closure)
 struct s0_environment *
 s0_closure_environment(const struct s0_entity *closure)
 {
-    assert(closure->type == S0_ENTITY_KIND_CLOSURE);
+    assert(closure->kind == S0_ENTITY_KIND_CLOSURE);
     return closure->_.closure.env;
 }
 
 struct s0_named_blocks *
 s0_closure_named_blocks(const struct s0_entity *closure)
 {
-    assert(closure->type == S0_ENTITY_KIND_CLOSURE);
+    assert(closure->kind == S0_ENTITY_KIND_CLOSURE);
     return closure->_.closure.blocks;
 }
 
@@ -1113,7 +1119,7 @@ s0_literal_new(size_t size, const void *content)
     if (unlikely(literal == NULL)) {
         return NULL;
     }
-    literal->type = S0_ENTITY_KIND_LITERAL;
+    literal->kind = S0_ENTITY_KIND_LITERAL;
     literal->_.literal.size = size;
     literal->_.literal.content = malloc(size);
     if (unlikely(literal->_.literal.content == NULL)) {
@@ -1139,42 +1145,42 @@ s0_literal_free(struct s0_entity *literal)
 const char *
 s0_literal_content(const struct s0_entity *literal)
 {
-    assert(literal->type == S0_ENTITY_KIND_LITERAL);
+    assert(literal->kind == S0_ENTITY_KIND_LITERAL);
     return literal->_.literal.content;
 }
 
 size_t
 s0_literal_size(const struct s0_entity *literal)
 {
-    assert(literal->type == S0_ENTITY_KIND_LITERAL);
+    assert(literal->kind == S0_ENTITY_KIND_LITERAL);
     return literal->_.literal.size;
 }
 
 
 struct s0_entity *
-s0_method_new(struct s0_block *block)
+s0_method_new(struct s0_block *body)
 {
     struct s0_entity  *method = malloc(sizeof(struct s0_entity));
     if (unlikely(method == NULL)) {
-        s0_block_free(block);
+        s0_block_free(body);
         return NULL;
     }
-    method->type = S0_ENTITY_KIND_METHOD;
-    method->_.method.block = block;
+    method->kind = S0_ENTITY_KIND_METHOD;
+    method->_.method.body = body;
     return method;
 }
 
 static void
 s0_method_free(struct s0_entity *method)
 {
-    s0_block_free(method->_.method.block);
+    s0_block_free(method->_.method.body);
 }
 
 struct s0_block *
-s0_method_block(const struct s0_entity *method)
+s0_method_body(const struct s0_entity *method)
 {
-    assert(method->type == S0_ENTITY_KIND_METHOD);
-    return method->_.method.block;
+    assert(method->kind == S0_ENTITY_KIND_METHOD);
+    return method->_.method.body;
 }
 
 
@@ -1187,7 +1193,7 @@ s0_object_new(void)
     if (unlikely(obj == NULL)) {
         return NULL;
     }
-    obj->type = S0_ENTITY_KIND_OBJECT;
+    obj->kind = S0_ENTITY_KIND_OBJECT;
     obj->_.obj.size = 0;
     obj->_.obj.allocated_size = DEFAULT_INITIAL_OBJECT_SIZE;
     obj->_.obj.entries =
@@ -1239,14 +1245,14 @@ s0_object_add(struct s0_entity *obj,
 size_t
 s0_object_size(const struct s0_entity *obj)
 {
-    assert(obj->type == S0_ENTITY_KIND_OBJECT);
+    assert(obj->kind == S0_ENTITY_KIND_OBJECT);
     return obj->_.obj.size;
 }
 
 struct s0_object_entry
 s0_object_at(const struct s0_entity *obj, size_t index)
 {
-    assert(obj->type == S0_ENTITY_KIND_OBJECT);
+    assert(obj->kind == S0_ENTITY_KIND_OBJECT);
     assert(index < obj->_.obj.size);
     return obj->_.obj.entries[index];
 }
@@ -1255,7 +1261,7 @@ struct s0_entity *
 s0_object_get(const struct s0_entity *obj, const struct s0_name *name)
 {
     size_t  i;
-    assert(obj->type == S0_ENTITY_KIND_OBJECT);
+    assert(obj->kind == S0_ENTITY_KIND_OBJECT);
     for (i = 0; i < obj->_.obj.size; i++) {
         if (s0_name_eq(obj->_.obj.entries[i].name, name)) {
             return obj->_.obj.entries[i].entity;
@@ -1268,7 +1274,7 @@ s0_object_get(const struct s0_entity *obj, const struct s0_name *name)
 void
 s0_entity_free(struct s0_entity *entity)
 {
-    switch (entity->type) {
+    switch (entity->kind) {
         case S0_ENTITY_KIND_ATOM:
             s0_atom_free(entity);
             break;
@@ -1294,7 +1300,7 @@ s0_entity_free(struct s0_entity *entity)
 enum s0_entity_kind
 s0_entity_kind(const struct s0_entity *entity)
 {
-    return entity->type;
+    return entity->kind;
 }
 
 
@@ -1353,8 +1359,9 @@ s0_closure_entity_type_new(struct s0_environment_type_mapping *branches)
     return type;
 }
 
-struct s0_entity_type *
-s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks)
+static struct s0_entity_type *
+s0_closure_entity_type_new_from_named_blocks(
+        const struct s0_named_blocks *blocks)
 {
     struct s0_environment_type_mapping  *branches;
     struct s0_named_blocks_entry  *curr;
@@ -1393,10 +1400,10 @@ s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks)
     return s0_closure_entity_type_new(branches);
 }
 
-struct s0_entity_type *
-s0_closure_entity_type_new_from_closure(struct s0_entity *entity)
+static struct s0_entity_type *
+s0_closure_entity_type_new_from_closure(const struct s0_entity *entity)
 {
-    assert(entity->type == S0_ENTITY_KIND_CLOSURE);
+    assert(entity->kind == S0_ENTITY_KIND_CLOSURE);
     return s0_closure_entity_type_new_from_named_blocks
         (entity->_.closure.blocks);
 }
@@ -1418,6 +1425,12 @@ s0_closure_entity_type_free(struct s0_entity_type *type)
     s0_environment_type_mapping_free(type->_.closure.branches);
 }
 
+const struct s0_environment_type_mapping *
+s0_closure_entity_type_branches(const struct s0_entity_type *type)
+{
+    return type->_.closure.branches;
+}
+
 static bool
 s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
                                     const struct s0_entity *entity)
@@ -1426,7 +1439,7 @@ s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
     struct s0_environment_type_mapping  *branches;
     struct s0_named_blocks  *blocks;
 
-    if (entity->type != S0_ENTITY_KIND_CLOSURE) {
+    if (entity->kind != S0_ENTITY_KIND_CLOSURE) {
         return false;
     }
 
@@ -1441,15 +1454,13 @@ s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
         struct s0_name  *name = branches->entries[i].name;
         struct s0_environment_type  *type = branches->entries[i].type;
         struct s0_block  *block;
-        struct s0_environment_type  *block_inputs;
 
         block = s0_named_blocks_get(blocks, name);
         if (block == NULL) {
             return false;
         }
 
-        block_inputs = s0_block_inputs(block);
-        if (!s0_environment_type_satisfied_by_type(type, block_inputs)) {
+        if (!s0_environment_type_satisfied_by_type(type, block->inputs)) {
             return false;
         }
     }
@@ -1497,6 +1508,230 @@ s0_closure_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
 
 
 struct s0_entity_type *
+s0_method_entity_type_new(struct s0_environment_type *body)
+{
+    struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(type == NULL)) {
+        s0_environment_type_free(body);
+        return NULL;
+    }
+    type->kind = S0_ENTITY_TYPE_KIND_METHOD;
+    type->_.method.body = body;
+    return type;
+}
+
+static struct s0_entity_type *
+s0_method_entity_type_new_from_block(const struct s0_block *block)
+{
+    struct s0_environment_type  *inputs = block->inputs;
+    struct s0_environment_type  *body;
+    body = s0_environment_type_new_copy(inputs);
+    if (unlikely(body == NULL)) {
+        return NULL;
+    }
+    return s0_method_entity_type_new(body);
+}
+
+static struct s0_entity_type *
+s0_method_entity_type_new_from_method(const struct s0_entity *entity)
+{
+    assert(entity->kind == S0_ENTITY_KIND_METHOD);
+    return s0_method_entity_type_new_from_block(entity->_.method.body);
+}
+
+static struct s0_entity_type *
+s0_method_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    struct s0_environment_type  *body_copy =
+        s0_environment_type_new_copy(other->_.method.body);
+    if (unlikely(body_copy == NULL)) {
+        return NULL;
+    }
+    return s0_method_entity_type_new(body_copy);
+}
+
+static void
+s0_method_entity_type_free(struct s0_entity_type *type)
+{
+    s0_environment_type_free(type->_.method.body);
+}
+
+const struct s0_environment_type *
+s0_method_entity_type_body(const struct s0_entity_type *type)
+{
+    return type->_.method.body;
+}
+
+static bool
+s0_method_entity_type_satisfied_by(const struct s0_entity_type *type,
+                                   const struct s0_entity *entity)
+{
+    struct s0_environment_type  *body_type;
+    struct s0_block  *body;
+    if (entity->kind != S0_ENTITY_KIND_METHOD) {
+        return false;
+    }
+    body_type = type->_.method.body;
+    body = entity->_.method.body;
+    return s0_environment_type_satisfied_by_type(body_type, body->inputs);
+}
+
+static bool
+s0_method_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                        const struct s0_entity_type *have)
+{
+    struct s0_environment_type  *requires_body;
+    struct s0_environment_type  *have_body;
+    if (have->kind != S0_ENTITY_TYPE_KIND_METHOD) {
+        return false;
+    }
+    requires_body = requires->_.method.body;
+    have_body = have->_.method.body;
+    return s0_environment_type_satisfied_by_type(requires_body, have_body);
+}
+
+
+struct s0_entity_type *
+s0_object_entity_type_new(struct s0_environment_type *elements)
+{
+    struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(type == NULL)) {
+        s0_environment_type_free(elements);
+        return NULL;
+    }
+    type->kind = S0_ENTITY_TYPE_KIND_OBJECT;
+    type->_.object.elements = elements;
+    return type;
+}
+
+static struct s0_entity_type *
+s0_object_entity_type_new_from_object(const struct s0_entity *entity)
+{
+    size_t  i;
+    struct s0_environment_type  *elements;
+
+    assert(entity->kind == S0_ENTITY_KIND_OBJECT);
+
+    elements = s0_environment_type_new();
+    if (unlikely(elements == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < entity->_.obj.size; i++) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_entity_type  *element_type;
+
+        name_copy = s0_name_new_copy(entity->_.obj.entries[i].name);
+        if (unlikely(name_copy == NULL)) {
+            s0_environment_type_free(elements);
+            return NULL;
+        }
+
+        element_type = s0_entity_type_new_from_entity
+            (entity->_.obj.entries[i].entity);
+        if (unlikely(element_type == NULL)) {
+            s0_name_free(name_copy);
+            s0_environment_type_free(elements);
+            return NULL;
+        }
+
+        rc = s0_environment_type_add(elements, name_copy, element_type);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_free(elements);
+            return NULL;
+        }
+    }
+
+    return s0_object_entity_type_new(elements);
+}
+
+static struct s0_entity_type *
+s0_object_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    struct s0_environment_type  *elements_copy =
+        s0_environment_type_new_copy(other->_.object.elements);
+    if (unlikely(elements_copy == NULL)) {
+        return NULL;
+    }
+    return s0_object_entity_type_new(elements_copy);
+}
+
+static void
+s0_object_entity_type_free(struct s0_entity_type *type)
+{
+    s0_environment_type_free(type->_.object.elements);
+}
+
+const struct s0_environment_type *
+s0_object_entity_type_elements(const struct s0_entity_type *type)
+{
+    return type->_.object.elements;
+}
+
+static bool
+s0_object_entity_type_satisfied_by(const struct s0_entity_type *type,
+                                   const struct s0_entity *entity)
+{
+    /* We can't use s0_environment_type_satisfied_by here, because the object is
+     * allowed to have more entries than are required by the object type, which
+     * isn't true of environments. */
+
+    size_t  i;
+    struct s0_environment_type  *elements;
+
+    if (entity->kind != S0_ENTITY_KIND_OBJECT) {
+        return false;
+    }
+
+    elements = type->_.object.elements;
+    for (i = 0; i < elements->size; i++) {
+        const struct s0_name  *name = elements->entries[i].name;
+        const struct s0_entity_type  *etype = elements->entries[i].type;
+        struct s0_entity  *element = s0_object_get(entity, name);
+        if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool
+s0_object_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                        const struct s0_entity_type *have)
+{
+    /* We can't use s0_environment_type_satisfied_by_type here, because the
+     * `have` type is allowed to have more entries than the `required` type,
+     * which isn't true of environments. */
+
+    size_t  i;
+    struct s0_environment_type  *requires_elements;
+    struct s0_environment_type  *have_elements;
+
+    if (have->kind != S0_ENTITY_TYPE_KIND_OBJECT) {
+        return false;
+    }
+
+    requires_elements = requires->_.object.elements;
+    have_elements = have->_.object.elements;
+    for (i = 0; i < requires_elements->size; i++) {
+        const struct s0_name  *name = requires_elements->entries[i].name;
+        const struct s0_entity_type  *requires_type =
+            requires_elements->entries[i].type;
+        const struct s0_entity_type  *have_type =
+            s0_environment_type_get(have_elements, name);
+        if (have_type == NULL ||
+            !s0_entity_type_satisfied_by_type(requires_type, have_type)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+struct s0_entity_type *
 s0_entity_type_new_copy(const struct s0_entity_type *other)
 {
     switch (other->kind) {
@@ -1506,6 +1741,32 @@ s0_entity_type_new_copy(const struct s0_entity_type *other)
         case S0_ENTITY_TYPE_KIND_CLOSURE:
             return s0_closure_entity_type_new_copy(other);
             break;
+        case S0_ENTITY_TYPE_KIND_METHOD:
+            return s0_method_entity_type_new_copy(other);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            return s0_object_entity_type_new_copy(other);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+struct s0_entity_type *
+s0_entity_type_new_from_entity(const struct s0_entity *entity)
+{
+    switch (entity->kind) {
+        case S0_ENTITY_KIND_ATOM:
+            return s0_any_entity_type_new();
+        case S0_ENTITY_KIND_CLOSURE:
+            return s0_closure_entity_type_new_from_closure(entity);
+        case S0_ENTITY_KIND_LITERAL:
+            return s0_any_entity_type_new();
+        case S0_ENTITY_KIND_METHOD:
+            return s0_method_entity_type_new_from_method(entity);
+        case S0_ENTITY_KIND_OBJECT:
+            return s0_object_entity_type_new_from_object(entity);
         default:
             assert(false);
             break;
@@ -1521,6 +1782,12 @@ s0_entity_type_free(struct s0_entity_type *type)
             break;
         case S0_ENTITY_TYPE_KIND_CLOSURE:
             s0_closure_entity_type_free(type);
+            break;
+        case S0_ENTITY_TYPE_KIND_METHOD:
+            s0_method_entity_type_free(type);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            s0_object_entity_type_free(type);
             break;
         default:
             assert(false);
@@ -1546,6 +1813,12 @@ s0_entity_type_satisfied_by(const struct s0_entity_type *type,
         case S0_ENTITY_TYPE_KIND_CLOSURE:
             return s0_closure_entity_type_satisfied_by(type, entity);
             break;
+        case S0_ENTITY_TYPE_KIND_METHOD:
+            return s0_method_entity_type_satisfied_by(type, entity);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            return s0_object_entity_type_satisfied_by(type, entity);
+            break;
         default:
             assert(false);
             break;
@@ -1562,6 +1835,12 @@ s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
             break;
         case S0_ENTITY_TYPE_KIND_CLOSURE:
             return s0_closure_entity_type_satisfied_by_type(requires, have);
+            break;
+        case S0_ENTITY_TYPE_KIND_METHOD:
+            return s0_method_entity_type_satisfied_by_type(requires, have);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            return s0_object_entity_type_satisfied_by_type(requires, have);
             break;
         default:
             assert(false);
@@ -1897,7 +2176,7 @@ int
 s0_environment_type_add_statement(struct s0_environment_type *type,
                                   const struct s0_statement *stmt)
 {
-    switch (stmt->type) {
+    switch (stmt->kind) {
         case S0_STATEMENT_KIND_CREATE_ATOM:
             return s0_environment_type_add_create_atom(type, stmt);
         case S0_STATEMENT_KIND_CREATE_CLOSURE:
@@ -1926,15 +2205,14 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
     if (unlikely(src_type == NULL)) {
         return -1;
     }
-
-    if (src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE) {
+    if (unlikely(src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE)) {
         s0_entity_type_free(src_type);
         return -1;
     }
 
     branch_inputs = s0_environment_type_mapping_get
         (src_type->_.closure.branches, invocation->_.invoke_closure.branch);
-    if (branch_inputs == NULL) {
+    if (unlikely(branch_inputs == NULL)) {
         s0_entity_type_free(src_type);
         return -1;
     }
@@ -1946,13 +2224,14 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
     }
 
     params = invocation->_.invoke_closure.params;
-    if (s0_environment_type_rename(renamed_type, params) != 0) {
+    if (unlikely(s0_environment_type_rename(renamed_type, params) != 0)) {
         s0_entity_type_free(src_type);
         s0_environment_type_free(renamed_type);
         return -1;
     }
 
-    if (!s0_environment_type_satisfied_by_type(branch_inputs, renamed_type)) {
+    if (unlikely(!s0_environment_type_satisfied_by_type(
+                    branch_inputs, renamed_type))) {
         s0_entity_type_free(src_type);
         s0_environment_type_free(renamed_type);
         return -1;
@@ -1968,14 +2247,49 @@ s0_environment_type_add_invoke_method(struct s0_environment_type *type,
                                       const struct s0_invocation *invocation)
 {
     struct s0_entity_type  *src_type;
+    const struct s0_environment_type  *src_elements;
+    struct s0_entity_type  *method_type;
+    struct s0_environment_type  *renamed_type;
+    struct s0_name_mapping  *params;
+    struct s0_environment_type  *method_inputs;
 
-    src_type = s0_environment_type_delete
-        (type, invocation->_.invoke_method.src);
+    src_type = s0_environment_type_get(type, invocation->_.invoke_method.src);
     if (unlikely(src_type == NULL)) {
         return -1;
     }
+    if (unlikely(src_type->kind != S0_ENTITY_TYPE_KIND_OBJECT)) {
+        return -1;
+    }
 
-    s0_entity_type_free(src_type);
+    src_elements = s0_object_entity_type_elements(src_type);
+    method_type = s0_environment_type_get
+        (src_elements, invocation->_.invoke_method.method);
+    if (unlikely(method_type == NULL)) {
+        return -1;
+    }
+    if (method_type->kind != S0_ENTITY_TYPE_KIND_METHOD) {
+        return -1;
+    }
+
+    renamed_type = s0_environment_type_new_copy(type);
+    if (unlikely(renamed_type == NULL)) {
+        return -1;
+    }
+
+    params = invocation->_.invoke_method.params;
+    if (unlikely(s0_environment_type_rename(renamed_type, params) != 0)) {
+        s0_environment_type_free(renamed_type);
+        return -1;
+    }
+
+    method_inputs = method_type->_.method.body;
+    if (unlikely(!s0_environment_type_satisfied_by_type(
+                    method_inputs, renamed_type))) {
+        s0_environment_type_free(renamed_type);
+        return -1;
+    }
+
+    s0_environment_type_free(renamed_type);
     return 0;
 }
 
@@ -1983,7 +2297,7 @@ int
 s0_environment_type_add_invocation(struct s0_environment_type *type,
                                    const struct s0_invocation *invocation)
 {
-    switch (invocation->type) {
+    switch (invocation->kind) {
         case S0_INVOCATION_KIND_INVOKE_CLOSURE:
             return s0_environment_type_add_invoke_closure(type, invocation);
         case S0_INVOCATION_KIND_INVOKE_METHOD:
