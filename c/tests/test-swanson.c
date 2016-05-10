@@ -792,11 +792,11 @@ TEST_CASE_GROUP("S₀ methods");
 
 TEST_CASE("can create method") {
     struct s0_entity  *method;
-    struct s0_block  *block;
-    check_alloc(block, create_empty_block());
-    check_alloc(method, s0_method_new(block));
+    struct s0_block  *body;
+    check_alloc(body, create_empty_block());
+    check_alloc(method, s0_method_new(body));
     check(s0_entity_kind(method) == S0_ENTITY_KIND_METHOD);
-    check(s0_method_block(method) == block);
+    check(s0_method_body(method) == body);
     s0_entity_free(method);
 }
 
@@ -1151,13 +1151,13 @@ TEST_CASE("literal ∈ *") {
 
 TEST_CASE("method ∈ *") {
     struct s0_entity_type  *type;
-    struct s0_block  *block;
+    struct s0_block  *body;
     struct s0_entity  *entity;
     /* type = * */
     check_alloc(type, s0_any_entity_type_new());
     /* entity = method */
-    check_alloc(block, create_empty_block());
-    check_alloc(entity, s0_method_new(block));
+    check_alloc(body, create_empty_block());
+    check_alloc(entity, s0_method_new(body));
     /* Verify entity ∈ type */
     check(s0_entity_type_satisfied_by(type, entity));
     /* Free everything */
@@ -1278,7 +1278,7 @@ TEST_CASE("literal ∉ ⤿ ⦃a:*⦄") {
 
 TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
     struct s0_entity_type  *type;
-    struct s0_block  *block;
+    struct s0_block  *body;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
     check_alloc(type, entity_type(
@@ -1289,8 +1289,8 @@ TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
                 "    a: !s0!any {}\n"
                 ));
     /* entity = method */
-    check_alloc(block, create_empty_block());
-    check_alloc(entity, s0_method_new(block));
+    check_alloc(body, create_empty_block());
+    check_alloc(entity, s0_method_new(body));
     /* Verify entity ∉ type */
     check(!s0_entity_type_satisfied_by(type, entity));
     /* Free everything */

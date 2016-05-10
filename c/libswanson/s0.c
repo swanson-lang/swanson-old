@@ -118,7 +118,7 @@ struct s0_entity {
             const void  *content;
         } literal;
         struct {
-            struct s0_block  *block;
+            struct s0_block  *body;
         } method;
         struct {
             size_t  size;
@@ -1152,29 +1152,29 @@ s0_literal_size(const struct s0_entity *literal)
 
 
 struct s0_entity *
-s0_method_new(struct s0_block *block)
+s0_method_new(struct s0_block *body)
 {
     struct s0_entity  *method = malloc(sizeof(struct s0_entity));
     if (unlikely(method == NULL)) {
-        s0_block_free(block);
+        s0_block_free(body);
         return NULL;
     }
     method->type = S0_ENTITY_KIND_METHOD;
-    method->_.method.block = block;
+    method->_.method.body = body;
     return method;
 }
 
 static void
 s0_method_free(struct s0_entity *method)
 {
-    s0_block_free(method->_.method.block);
+    s0_block_free(method->_.method.body);
 }
 
 struct s0_block *
-s0_method_block(const struct s0_entity *method)
+s0_method_body(const struct s0_entity *method)
 {
     assert(method->type == S0_ENTITY_KIND_METHOD);
-    return method->_.method.block;
+    return method->_.method.body;
 }
 
 

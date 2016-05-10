@@ -419,13 +419,13 @@ size_t
 s0_literal_size(const struct s0_entity *);
 
 
-/* Takes control block */
+/* Takes control body */
 struct s0_entity *
-s0_method_new(struct s0_block *block);
+s0_method_new(struct s0_block *body);
 
 /* Entity MUST be a method.  method retains ownership of block. */
 struct s0_block *
-s0_method_block(const struct s0_entity *);
+s0_method_body(const struct s0_entity *);
 
 
 struct s0_object_entry {
