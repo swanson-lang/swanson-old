@@ -2205,15 +2205,14 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
     if (unlikely(src_type == NULL)) {
         return -1;
     }
-
-    if (src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE) {
+    if (unlikely(src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE)) {
         s0_entity_type_free(src_type);
         return -1;
     }
 
     branch_inputs = s0_environment_type_mapping_get
         (src_type->_.closure.branches, invocation->_.invoke_closure.branch);
-    if (branch_inputs == NULL) {
+    if (unlikely(branch_inputs == NULL)) {
         s0_entity_type_free(src_type);
         return -1;
     }
@@ -2225,13 +2224,14 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
     }
 
     params = invocation->_.invoke_closure.params;
-    if (s0_environment_type_rename(renamed_type, params) != 0) {
+    if (unlikely(s0_environment_type_rename(renamed_type, params) != 0)) {
         s0_entity_type_free(src_type);
         s0_environment_type_free(renamed_type);
         return -1;
     }
 
-    if (!s0_environment_type_satisfied_by_type(branch_inputs, renamed_type)) {
+    if (unlikely(!s0_environment_type_satisfied_by_type(
+                    branch_inputs, renamed_type))) {
         s0_entity_type_free(src_type);
         s0_environment_type_free(renamed_type);
         return -1;
@@ -2247,14 +2247,49 @@ s0_environment_type_add_invoke_method(struct s0_environment_type *type,
                                       const struct s0_invocation *invocation)
 {
     struct s0_entity_type  *src_type;
+    const struct s0_environment_type  *src_elements;
+    struct s0_entity_type  *method_type;
+    struct s0_environment_type  *renamed_type;
+    struct s0_name_mapping  *params;
+    struct s0_environment_type  *method_inputs;
 
-    src_type = s0_environment_type_delete
-        (type, invocation->_.invoke_method.src);
+    src_type = s0_environment_type_get(type, invocation->_.invoke_method.src);
     if (unlikely(src_type == NULL)) {
         return -1;
     }
+    if (unlikely(src_type->kind != S0_ENTITY_TYPE_KIND_OBJECT)) {
+        return -1;
+    }
 
-    s0_entity_type_free(src_type);
+    src_elements = s0_object_entity_type_elements(src_type);
+    method_type = s0_environment_type_get
+        (src_elements, invocation->_.invoke_method.method);
+    if (unlikely(method_type == NULL)) {
+        return -1;
+    }
+    if (method_type->kind != S0_ENTITY_TYPE_KIND_METHOD) {
+        return -1;
+    }
+
+    renamed_type = s0_environment_type_new_copy(type);
+    if (unlikely(renamed_type == NULL)) {
+        return -1;
+    }
+
+    params = invocation->_.invoke_method.params;
+    if (unlikely(s0_environment_type_rename(renamed_type, params) != 0)) {
+        s0_environment_type_free(renamed_type);
+        return -1;
+    }
+
+    method_inputs = method_type->_.method.body;
+    if (unlikely(!s0_environment_type_satisfied_by_type(
+                    method_inputs, renamed_type))) {
+        s0_environment_type_free(renamed_type);
+        return -1;
+    }
+
+    s0_environment_type_free(renamed_type);
     return 0;
 }
 

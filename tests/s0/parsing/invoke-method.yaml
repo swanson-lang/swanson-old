@@ -4,13 +4,17 @@
 name: invoke-method can call a method in the environment
 module:
   inputs:
-    self: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     src: self
     method: id
-    parameters: {}
+    parameters:
+      self: self
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -18,14 +22,16 @@ module:
 name: invoke-method needs a source
 module:
   inputs:
-module:
-  inputs:
-    self: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     method: id
-    parameters: {}
+    parameters:
+      self: self
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
@@ -33,30 +39,347 @@ module:
 name: invoke-method needs a method
 module:
   inputs:
-    self: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     src: self
-    parameters: {}
+    parameters:
+      self: self
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
 !s0!invalid-parse
-name: invoke-method needs a param
+name: invoke-method needs parameters
 module:
   inputs:
-    self: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
   statements: []
   invocation:
     !s0!invoke-method
     src: self
     method: id
 
-# TODO - invoke-method cannot call a missing environment entry
-# TODO - invoke-method cannot call an atom
-# TODO - invoke-method cannot call a closure
-# TODO - invoke-method cannot call a literal
-# TODO - invoke-method cannot call a method
-# TODO - invoke-method cannot call a missing method
-# TODO - invoke-method environment must satisfy the inputs of its target
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot call a missing environment entry
+module:
+  inputs: {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot call an atom
+module:
+  inputs: {}
+  statements:
+    - !s0!create-atom
+      dest: self
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot call a closure
+module:
+  inputs: {}
+  statements:
+    - !s0!create-closure
+      dest: self
+      closed-over: []
+      branches:
+        body:
+          inputs:
+            exit: !s0!closure
+              branches:
+                return: {}
+          statements: []
+          invocation:
+            !s0!invoke-closure
+            src: exit
+            branch: return
+            parameters: {}
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot call a literal
+module:
+  inputs: {}
+  statements:
+    - !s0!create-literal
+      dest: self
+      content: stuff
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot call a method outside of an object
+module:
+  inputs: {}
+  statements:
+    - !s0!create-method
+      dest: self
+      self-input: self
+      body:
+        inputs:
+          exit: !s0!closure
+            branches:
+              return: {}
+        statements: []
+        invocation:
+          !s0!invoke-closure
+          src: exit
+          branch: return
+          parameters: {}
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot call a missing method
+module:
+  inputs:
+    self: !s0!object
+      other: !s0!method
+        inputs:
+          self: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: The name of a method parameter can change
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          y: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: y
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: The name of a method parameter doesn't need to change
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!successful-parse
+name: All of the method parameter renamings happen "at the same time"
+module:
+  inputs:
+    x: !s0!any {}
+    y: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          x: !s0!any {}
+          y: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: y
+      y: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: There cannot be multiple method parameters with the same "from" name
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          x: !s0!any {}
+          y: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: x
+      x: y
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: There cannot be multiple method parameters with the same "to" name
+module:
+  inputs:
+    x: !s0!any {}
+    y: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: x
+      y: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method must provide a parameter for "self"
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      x: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method must provide a parameter for each input
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          x: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method parameter must satisfy input type
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+          x: !s0!closure
+            branches:
+              abort: {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
+!s0!invalid-parse
+name: invoke-method cannot provide extra parameters
+module:
+  inputs:
+    x: !s0!any {}
+    self: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+  statements: []
+  invocation:
+    !s0!invoke-method
+    src: self
+    method: id
+    parameters:
+      self: self
+      x: x
+
+# TODO - invoke-method cannot call an object

@@ -2687,24 +2687,30 @@ TEST_CASE("can add `invoke-closure` to environment type") {
 
 TEST_CASE("can add `invoke-method` to environment type") {
     struct s0_environment_type  *type;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
     struct s0_name  *src;
     struct s0_name  *method;
     struct s0_name_mapping  *params;
+    struct s0_name  *from;
+    struct s0_name  *to;
     struct s0_invocation  *invocation;
-    check_alloc(type, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(type, name, etype));
+    /* initial env = ⦃a:⟪run:⊶ ⦃self:*⦄⟫⦄ */
+    check_alloc(type, environment_type(
+                YAML
+                "a: !s0!object\n"
+                "  run: !s0!method\n"
+                "    inputs:\n"
+                "      self: !s0!any {}\n"
+                ));
+    /* Then add the invocation */
     check_alloc(src, s0_name_new_str("a"));
     check_alloc(method, s0_name_new_str("run"));
     check_alloc(params, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("self"));
+    check0(s0_name_mapping_add(params, from, to));
     check_alloc(invocation, s0_invoke_method_new(src, method, params));
     check0(s0_environment_type_add_invocation(type, invocation));
-    check_alloc(name, s0_name_new_str("a"));
-    check(s0_environment_type_get(type, name) == NULL);
-    s0_name_free(name);
+    /* Free everything */
     s0_invocation_free(invocation);
     s0_environment_type_free(type);
 }
