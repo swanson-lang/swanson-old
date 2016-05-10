@@ -521,23 +521,17 @@ TEST_CASE("can create `create-literal` statement") {
 
 TEST_CASE("can create `create-method` statement") {
     struct s0_name  *dest;
-    struct s0_name  *self_input;
     struct s0_block  *body;
     struct s0_statement  *stmt;
 
     check_alloc(dest, s0_name_new_str("a"));
-    check_alloc(self_input, s0_name_new_str("self"));
     check_alloc(body, create_empty_block());
-    check_alloc(stmt, s0_create_method_new(dest, self_input, body));
+    check_alloc(stmt, s0_create_method_new(dest, body));
     check(s0_statement_kind(stmt) == S0_STATEMENT_KIND_CREATE_METHOD);
 
     check_alloc(dest, s0_name_new_str("a"));
     check(s0_name_eq(s0_create_method_dest(stmt), dest));
     s0_name_free(dest);
-
-    check_alloc(self_input, s0_name_new_str("self"));
-    check(s0_name_eq(s0_create_method_self_input(stmt), self_input));
-    s0_name_free(self_input);
 
     check(s0_create_method_body(stmt) == body);
 
@@ -798,15 +792,10 @@ TEST_CASE_GROUP("S₀ methods");
 
 TEST_CASE("can create method") {
     struct s0_entity  *method;
-    struct s0_name  *self_name;
     struct s0_block  *block;
-    check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
-    check_alloc(method, s0_method_new(self_name, block));
+    check_alloc(method, s0_method_new(block));
     check(s0_entity_kind(method) == S0_ENTITY_KIND_METHOD);
-    check_alloc(self_name, s0_name_new_str("self"));
-    check(s0_name_eq(s0_method_self_name(method), self_name));
-    s0_name_free(self_name);
     check(s0_method_block(method) == block);
     s0_entity_free(method);
 }
@@ -1162,15 +1151,13 @@ TEST_CASE("literal ∈ *") {
 
 TEST_CASE("method ∈ *") {
     struct s0_entity_type  *type;
-    struct s0_name  *self_name;
     struct s0_block  *block;
     struct s0_entity  *entity;
     /* type = * */
     check_alloc(type, s0_any_entity_type_new());
     /* entity = method */
-    check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
-    check_alloc(entity, s0_method_new(self_name, block));
+    check_alloc(entity, s0_method_new(block));
     /* Verify entity ∈ type */
     check(s0_entity_type_satisfied_by(type, entity));
     /* Free everything */
@@ -1291,7 +1278,6 @@ TEST_CASE("literal ∉ ⤿ ⦃a:*⦄") {
 
 TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
     struct s0_entity_type  *type;
-    struct s0_name  *self_name;
     struct s0_block  *block;
     struct s0_entity  *entity;
     /* type = ⤿ ⦃a:*⦄ */
@@ -1303,9 +1289,8 @@ TEST_CASE("method ∉ ⤿ ⦃a:*⦄") {
                 "    a: !s0!any {}\n"
                 ));
     /* entity = method */
-    check_alloc(self_name, s0_name_new_str("self"));
     check_alloc(block, create_empty_block());
-    check_alloc(entity, s0_method_new(self_name, block));
+    check_alloc(entity, s0_method_new(block));
     /* Verify entity ∉ type */
     check(!s0_entity_type_satisfied_by(type, entity));
     /* Free everything */
@@ -1991,7 +1976,6 @@ TEST_CASE("can add `create-literal` to environment type") {
 TEST_CASE("can add `create-method` to environment type") {
     struct s0_environment_type  *type;
     struct s0_name  *dest;
-    struct s0_name  *self_input;
     struct s0_block  *body;
     struct s0_statement  *stmt;
     struct s0_name  *name;
@@ -2000,9 +1984,8 @@ TEST_CASE("can add `create-method` to environment type") {
     /* Create environment from statement */
     check_alloc(type, s0_environment_type_new());
     check_alloc(dest, s0_name_new_str("a"));
-    check_alloc(self_input, s0_name_new_str("self"));
     check_alloc(body, create_empty_block());
-    check_alloc(stmt, s0_create_method_new(dest, self_input, body));
+    check_alloc(stmt, s0_create_method_new(dest, body));
     check0(s0_environment_type_add_statement(type, stmt));
     /* expected = * */
     check_alloc(expected, s0_any_entity_type_new());

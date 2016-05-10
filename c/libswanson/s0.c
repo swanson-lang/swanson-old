@@ -79,7 +79,6 @@ struct s0_statement {
         } create_literal;
         struct {
             struct s0_name  *dest;
-            struct s0_name  *self_input;
             struct s0_block  *body;
         } create_method;
     } _;
@@ -119,7 +118,6 @@ struct s0_entity {
             const void  *content;
         } literal;
         struct {
-            struct s0_name  *self_name;
             struct s0_block  *block;
         } method;
         struct {
@@ -782,19 +780,16 @@ s0_create_literal_size(const struct s0_statement *stmt)
 
 
 struct s0_statement *
-s0_create_method_new(struct s0_name *dest, struct s0_name *self_input,
-                     struct s0_block *body)
+s0_create_method_new(struct s0_name *dest, struct s0_block *body)
 {
     struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
     if (unlikely(stmt == NULL)) {
         s0_name_free(dest);
-        s0_name_free(self_input);
         s0_block_free(body);
         return NULL;
     }
     stmt->type = S0_STATEMENT_KIND_CREATE_METHOD;
     stmt->_.create_method.dest = dest;
-    stmt->_.create_method.self_input = self_input;
     stmt->_.create_method.body = body;
     return stmt;
 }
@@ -803,7 +798,6 @@ static void
 s0_create_method_free(struct s0_statement *stmt)
 {
     s0_name_free(stmt->_.create_method.dest);
-    s0_name_free(stmt->_.create_method.self_input);
     s0_block_free(stmt->_.create_method.body);
 }
 
@@ -812,13 +806,6 @@ s0_create_method_dest(const struct s0_statement *stmt)
 {
     assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
     return stmt->_.create_method.dest;
-}
-
-struct s0_name *
-s0_create_method_self_input(const struct s0_statement *stmt)
-{
-    assert(stmt->type == S0_STATEMENT_KIND_CREATE_METHOD);
-    return stmt->_.create_method.self_input;
 }
 
 struct s0_block *
@@ -1165,16 +1152,14 @@ s0_literal_size(const struct s0_entity *literal)
 
 
 struct s0_entity *
-s0_method_new(struct s0_name *self_name, struct s0_block *block)
+s0_method_new(struct s0_block *block)
 {
     struct s0_entity  *method = malloc(sizeof(struct s0_entity));
     if (unlikely(method == NULL)) {
-        s0_name_free(self_name);
         s0_block_free(block);
         return NULL;
     }
     method->type = S0_ENTITY_KIND_METHOD;
-    method->_.method.self_name = self_name;
     method->_.method.block = block;
     return method;
 }
@@ -1182,15 +1167,7 @@ s0_method_new(struct s0_name *self_name, struct s0_block *block)
 static void
 s0_method_free(struct s0_entity *method)
 {
-    s0_name_free(method->_.method.self_name);
     s0_block_free(method->_.method.block);
-}
-
-struct s0_name *
-s0_method_self_name(const struct s0_entity *method)
-{
-    assert(method->type == S0_ENTITY_KIND_METHOD);
-    return method->_.method.self_name;
 }
 
 struct s0_block *
