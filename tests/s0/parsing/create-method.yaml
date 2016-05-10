@@ -11,18 +11,20 @@ module:
   statements:
     - !s0!create-method
       dest: x
-      self-input: self
       body:
         inputs:
+          self: !s0!any {}
           exit: !s0!closure
             branches:
-              return: {}
+              return:
+                self: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
-          parameters: {}
+          parameters:
+            self: self
   invocation:
     !s0!invoke-closure
     src: exit
@@ -42,47 +44,20 @@ module:
           x: !s0!any {}
   statements:
     - !s0!create-method
-      self-input: self
       body:
         inputs:
-          exit: exit
-        statements: []
-        invocation:
-          !s0!invoke-closure
-          src: exit
-          branch: return
-          parameters: {}
-  invocation:
-    !s0!invoke-closure
-    src: exit
-    branch: return
-    parameters:
-      x: x
-
-%TAG !s0! tag:swanson-lang.org,2016:
----
-!s0!invalid-parse
-name: create-method needs a self input
-module:
-  inputs:
-    exit: !s0!closure
-      branches:
-        return:
-          x: !s0!any {}
-  statements:
-    - !s0!create-method
-      dest: x
-      body:
-        inputs:
+          self: !s0!any {}
           exit: !s0!closure
             branches:
-              return: {}
+              return:
+                self: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
-          parameters: {}
+          parameters:
+            self: self
   invocation:
     !s0!invoke-closure
     src: exit
@@ -103,7 +78,6 @@ module:
   statements:
     - !s0!create-method
       dest: x
-      self-input: self
   invocation:
     !s0!invoke-closure
     src: exit
@@ -125,18 +99,20 @@ module:
   statements:
     - !s0!create-method
       dest: x
-      self-input: self
       body:
         inputs:
+          self: !s0!any {}
           exit: !s0!closure
             branches:
-              return: {}
+              return:
+                self: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
-          parameters: {}
+          parameters:
+            self: self
   invocation:
     !s0!invoke-closure
     src: exit
@@ -157,32 +133,36 @@ module:
   statements:
     - !s0!create-method
       dest: x
-      self-input: self
       body:
         inputs:
+          self: !s0!any {}
           exit: !s0!closure
             branches:
-              return: {}
+              return:
+                self: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
-          parameters: {}
+          parameters:
+            self: self
     - !s0!create-method
       dest: x
-      self-input: self
       body:
         inputs:
+          self: !s0!any {}
           exit: !s0!closure
             branches:
-              return: {}
+              return:
+                self: !s0!any {}
         statements: []
         invocation:
           !s0!invoke-closure
           src: exit
           branch: return
-          parameters: {}
+          parameters:
+            self: self
   invocation:
     !s0!invoke-closure
     src: exit

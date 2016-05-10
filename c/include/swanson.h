@@ -244,18 +244,13 @@ size_t
 s0_create_literal_size(const struct s0_statement *);
 
 
-/* Takes control of dest, self_input, and body */
+/* Takes control of dest and body */
 struct s0_statement *
-s0_create_method_new(struct s0_name *dest, struct s0_name *self_input,
-                     struct s0_block *body);
+s0_create_method_new(struct s0_name *dest, struct s0_block *body);
 
 /* Statement MUST be CreateMethod */
 struct s0_name *
 s0_create_method_dest(const struct s0_statement *);
-
-/* Statement MUST be CreateMethod */
-struct s0_name *
-s0_create_method_self_input(const struct s0_statement *);
 
 /* Statement MUST be CreateMethod */
 struct s0_block *
@@ -424,13 +419,9 @@ size_t
 s0_literal_size(const struct s0_entity *);
 
 
-/* Takes control of self_name and block */
+/* Takes control block */
 struct s0_entity *
-s0_method_new(struct s0_name *self_name, struct s0_block *block);
-
-/* Entity MUST be a method.  method retains ownership of self_name. */
-struct s0_name *
-s0_method_self_name(const struct s0_entity *);
+s0_method_new(struct s0_block *block);
 
 /* Entity MUST be a method.  method retains ownership of block. */
 struct s0_block *

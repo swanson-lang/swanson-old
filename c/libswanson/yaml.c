@@ -752,7 +752,6 @@ s0_load_create_method(struct s0_yaml_node node)
     /* We've already verified that this is a !s0!create-method mapping node. */
     struct s0_yaml_node  item;
     struct s0_name  *dest;
-    struct s0_name  *self_input;
     struct s0_block  *body;
 
     /* dest */
@@ -770,24 +769,6 @@ s0_load_create_method(struct s0_yaml_node node)
         return NULL;
     }
 
-    /* self_input */
-
-    item = s0_yaml_node_mapping_get(node, "self-input");
-    if (unlikely(s0_yaml_node_is_missing(item))) {
-        fill_error(node.stream,
-                   "create-method requires a self-input at %zu:%zu",
-                   s0_yaml_node_get_node(node)->start_mark.line,
-                   s0_yaml_node_get_node(node)->start_mark.column);
-        s0_name_free(dest);
-        return NULL;
-    }
-
-    self_input = s0_load_name(item);
-    if (unlikely(self_input == NULL)) {
-        s0_name_free(dest);
-        return NULL;
-    }
-
     /* body */
 
     item = s0_yaml_node_mapping_get(node, "body");
@@ -796,18 +777,16 @@ s0_load_create_method(struct s0_yaml_node node)
                    s0_yaml_node_get_node(node)->start_mark.line,
                    s0_yaml_node_get_node(node)->start_mark.column);
         s0_name_free(dest);
-        s0_name_free(self_input);
         return NULL;
     }
 
     body = s0_load_block(item);
     if (unlikely(body == NULL)) {
         s0_name_free(dest);
-        s0_name_free(self_input);
         return NULL;
     }
 
-    return s0_create_method_new(dest, self_input, body);
+    return s0_create_method_new(dest, body);
 }
 
 static struct s0_statement *
