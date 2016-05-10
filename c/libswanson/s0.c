@@ -1356,8 +1356,9 @@ s0_closure_entity_type_new(struct s0_environment_type_mapping *branches)
     return type;
 }
 
-struct s0_entity_type *
-s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks)
+static struct s0_entity_type *
+s0_closure_entity_type_new_from_named_blocks(
+        const struct s0_named_blocks *blocks)
 {
     struct s0_environment_type_mapping  *branches;
     struct s0_named_blocks_entry  *curr;
@@ -1396,8 +1397,8 @@ s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks)
     return s0_closure_entity_type_new(branches);
 }
 
-struct s0_entity_type *
-s0_closure_entity_type_new_from_closure(struct s0_entity *entity)
+static struct s0_entity_type *
+s0_closure_entity_type_new_from_closure(const struct s0_entity *entity)
 {
     assert(entity->kind == S0_ENTITY_KIND_CLOSURE);
     return s0_closure_entity_type_new_from_named_blocks
@@ -1516,8 +1517,8 @@ s0_method_entity_type_new(struct s0_environment_type *body)
     return type;
 }
 
-struct s0_entity_type *
-s0_method_entity_type_new_from_block(struct s0_block *block)
+static struct s0_entity_type *
+s0_method_entity_type_new_from_block(const struct s0_block *block)
 {
     struct s0_environment_type  *inputs = block->inputs;
     struct s0_environment_type  *body;
@@ -1528,8 +1529,8 @@ s0_method_entity_type_new_from_block(struct s0_block *block)
     return s0_method_entity_type_new(body);
 }
 
-struct s0_entity_type *
-s0_method_entity_type_new_from_method(struct s0_entity *entity)
+static struct s0_entity_type *
+s0_method_entity_type_new_from_method(const struct s0_entity *entity)
 {
     assert(entity->kind == S0_ENTITY_KIND_METHOD);
     return s0_method_entity_type_new_from_block(entity->_.method.body);
@@ -1600,6 +1601,26 @@ s0_entity_type_new_copy(const struct s0_entity_type *other)
         case S0_ENTITY_TYPE_KIND_METHOD:
             return s0_method_entity_type_new_copy(other);
             break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+struct s0_entity_type *
+s0_entity_type_new_from_entity(const struct s0_entity *entity)
+{
+    switch (entity->kind) {
+        case S0_ENTITY_KIND_ATOM:
+            return s0_any_entity_type_new();
+        case S0_ENTITY_KIND_CLOSURE:
+            return s0_closure_entity_type_new_from_closure(entity);
+        case S0_ENTITY_KIND_LITERAL:
+            return s0_any_entity_type_new();
+        case S0_ENTITY_KIND_METHOD:
+            return s0_method_entity_type_new_from_method(entity);
+        case S0_ENTITY_KIND_OBJECT:
+            return s0_any_entity_type_new();
         default:
             assert(false);
             break;

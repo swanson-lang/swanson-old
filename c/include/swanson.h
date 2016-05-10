@@ -473,6 +473,9 @@ enum s0_entity_type_kind {
 struct s0_entity_type *
 s0_entity_type_new_copy(const struct s0_entity_type *other);
 
+struct s0_entity_type *
+s0_entity_type_new_from_entity(const struct s0_entity *);
+
 void
 s0_entity_type_free(struct s0_entity_type *);
 
@@ -504,13 +507,6 @@ s0_any_entity_type_new(void);
 struct s0_entity_type *
 s0_closure_entity_type_new(struct s0_environment_type_mapping *branches);
 
-struct s0_entity_type *
-s0_closure_entity_type_new_from_named_blocks(struct s0_named_blocks *blocks);
-
-/* Entity MUST be a closure */
-struct s0_entity_type *
-s0_closure_entity_type_new_from_closure(struct s0_entity *entity);
-
 /* Retains ownership of result.  Type MUST be a closure type. */
 const struct s0_environment_type_mapping *
 s0_closure_entity_type_branches(const struct s0_entity_type *);
@@ -519,13 +515,6 @@ s0_closure_entity_type_branches(const struct s0_entity_type *);
 /* Takes ownership of branch */
 struct s0_entity_type *
 s0_method_entity_type_new(struct s0_environment_type *body);
-
-struct s0_entity_type *
-s0_method_entity_type_new_from_block(struct s0_block *block);
-
-/* Entity MUST be a method */
-struct s0_entity_type *
-s0_method_entity_type_new_from_method(struct s0_entity *entity);
 
 /* Retains ownership of result.  Type MUST be a method type. */
 const struct s0_environment_type *

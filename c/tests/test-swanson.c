@@ -1457,8 +1457,7 @@ TEST_CASE("type of ⟨⤿ ⦃a:*⦄ ...⟩ = ⤿ ⦃a:*⦄") {
     check0(s0_named_blocks_add(blocks, name, block));
     check_alloc(entity, s0_closure_new(env, blocks));
     /* Verify type(entity) = type */
-    check_alloc(calculated_type,
-                s0_closure_entity_type_new_from_closure(entity));
+    check_alloc(calculated_type, s0_entity_type_new_from_entity(entity));
     check(s0_entity_type_satisfied_by_type(type, calculated_type));
     check(s0_entity_type_satisfied_by_type(calculated_type, type));
     /* Free everything */
@@ -1705,8 +1704,7 @@ TEST_CASE("type of ⟨⊶ ⦃a:*⦄ ...⟩ = ⊶ ⦃a:*⦄") {
     check_alloc(body, s0_block_new(inputs, statements, invocation));
     check_alloc(entity, s0_method_new(body));
     /* Verify type(entity) = type */
-    check_alloc(calculated_type,
-                s0_method_entity_type_new_from_method(entity));
+    check_alloc(calculated_type, s0_entity_type_new_from_entity(entity));
     check(s0_entity_type_satisfied_by_type(type, calculated_type));
     check(s0_entity_type_satisfied_by_type(calculated_type, type));
     /* Free everything */
