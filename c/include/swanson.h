@@ -467,7 +467,8 @@ struct s0_environment_type_mapping;
 enum s0_entity_type_kind {
     S0_ENTITY_TYPE_KIND_ANY,
     S0_ENTITY_TYPE_KIND_CLOSURE,
-    S0_ENTITY_TYPE_KIND_METHOD
+    S0_ENTITY_TYPE_KIND_METHOD,
+    S0_ENTITY_TYPE_KIND_OBJECT
 };
 
 struct s0_entity_type *
@@ -519,6 +520,15 @@ s0_method_entity_type_new(struct s0_environment_type *body);
 /* Retains ownership of result.  Type MUST be a method type. */
 const struct s0_environment_type *
 s0_method_entity_type_body(const struct s0_entity_type *);
+
+
+/* Takes ownership of elements */
+struct s0_entity_type *
+s0_object_entity_type_new(struct s0_environment_type *elements);
+
+/* Retains ownership of result.  Type MUST be a object type. */
+const struct s0_environment_type *
+s0_object_entity_type_elements(const struct s0_entity_type *);
 
 
 /*-----------------------------------------------------------------------------
@@ -684,6 +694,7 @@ s0_environment_type_mapping_get(const struct s0_environment_type_mapping *,
 #define S0_INVOKE_CLOSURE_TAG  SWANSON_TAG_PREFIX "invoke-closure"
 #define S0_INVOKE_METHOD_TAG   SWANSON_TAG_PREFIX "invoke-method"
 #define S0_METHOD_TAG          SWANSON_TAG_PREFIX "method"
+#define S0_OBJECT_TAG          SWANSON_TAG_PREFIX "object"
 
 
 struct s0_yaml_stream;

@@ -137,6 +137,9 @@ struct s0_entity_type {
         struct {
             struct s0_environment_type  *body;
         } method;
+        struct {
+            struct s0_environment_type  *elements;
+        } object;
     } _;
 };
 
@@ -1589,6 +1592,146 @@ s0_method_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
 
 
 struct s0_entity_type *
+s0_object_entity_type_new(struct s0_environment_type *elements)
+{
+    struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
+    if (unlikely(type == NULL)) {
+        s0_environment_type_free(elements);
+        return NULL;
+    }
+    type->kind = S0_ENTITY_TYPE_KIND_OBJECT;
+    type->_.object.elements = elements;
+    return type;
+}
+
+static struct s0_entity_type *
+s0_object_entity_type_new_from_object(const struct s0_entity *entity)
+{
+    size_t  i;
+    struct s0_environment_type  *elements;
+
+    assert(entity->kind == S0_ENTITY_KIND_OBJECT);
+
+    elements = s0_environment_type_new();
+    if (unlikely(elements == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < entity->_.obj.size; i++) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_entity_type  *element_type;
+
+        name_copy = s0_name_new_copy(entity->_.obj.entries[i].name);
+        if (unlikely(name_copy == NULL)) {
+            s0_environment_type_free(elements);
+            return NULL;
+        }
+
+        element_type = s0_entity_type_new_from_entity
+            (entity->_.obj.entries[i].entity);
+        if (unlikely(element_type == NULL)) {
+            s0_name_free(name_copy);
+            s0_environment_type_free(elements);
+            return NULL;
+        }
+
+        rc = s0_environment_type_add(elements, name_copy, element_type);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_free(elements);
+            return NULL;
+        }
+    }
+
+    return s0_object_entity_type_new(elements);
+}
+
+static struct s0_entity_type *
+s0_object_entity_type_new_copy(const struct s0_entity_type *other)
+{
+    struct s0_environment_type  *elements_copy =
+        s0_environment_type_new_copy(other->_.object.elements);
+    if (unlikely(elements_copy == NULL)) {
+        return NULL;
+    }
+    return s0_object_entity_type_new(elements_copy);
+}
+
+static void
+s0_object_entity_type_free(struct s0_entity_type *type)
+{
+    s0_environment_type_free(type->_.object.elements);
+}
+
+const struct s0_environment_type *
+s0_object_entity_type_elements(const struct s0_entity_type *type)
+{
+    return type->_.object.elements;
+}
+
+static bool
+s0_object_entity_type_satisfied_by(const struct s0_entity_type *type,
+                                   const struct s0_entity *entity)
+{
+    /* We can't use s0_environment_type_satisfied_by here, because the object is
+     * allowed to have more entries than are required by the object type, which
+     * isn't true of environments. */
+
+    size_t  i;
+    struct s0_environment_type  *elements;
+
+    if (entity->kind != S0_ENTITY_KIND_OBJECT) {
+        return false;
+    }
+
+    elements = type->_.object.elements;
+    for (i = 0; i < elements->size; i++) {
+        const struct s0_name  *name = elements->entries[i].name;
+        const struct s0_entity_type  *etype = elements->entries[i].type;
+        struct s0_entity  *element = s0_object_get(entity, name);
+        if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool
+s0_object_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
+                                        const struct s0_entity_type *have)
+{
+    /* We can't use s0_environment_type_satisfied_by_type here, because the
+     * `have` type is allowed to have more entries than the `required` type,
+     * which isn't true of environments. */
+
+    size_t  i;
+    struct s0_environment_type  *requires_elements;
+    struct s0_environment_type  *have_elements;
+
+    if (have->kind != S0_ENTITY_TYPE_KIND_OBJECT) {
+        return false;
+    }
+
+    requires_elements = requires->_.object.elements;
+    have_elements = have->_.object.elements;
+    for (i = 0; i < requires_elements->size; i++) {
+        const struct s0_name  *name = requires_elements->entries[i].name;
+        const struct s0_entity_type  *requires_type =
+            requires_elements->entries[i].type;
+        const struct s0_entity_type  *have_type =
+            s0_environment_type_get(have_elements, name);
+        if (have_type == NULL ||
+            !s0_entity_type_satisfied_by_type(requires_type, have_type)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+struct s0_entity_type *
 s0_entity_type_new_copy(const struct s0_entity_type *other)
 {
     switch (other->kind) {
@@ -1600,6 +1743,9 @@ s0_entity_type_new_copy(const struct s0_entity_type *other)
             break;
         case S0_ENTITY_TYPE_KIND_METHOD:
             return s0_method_entity_type_new_copy(other);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            return s0_object_entity_type_new_copy(other);
             break;
         default:
             assert(false);
@@ -1620,7 +1766,7 @@ s0_entity_type_new_from_entity(const struct s0_entity *entity)
         case S0_ENTITY_KIND_METHOD:
             return s0_method_entity_type_new_from_method(entity);
         case S0_ENTITY_KIND_OBJECT:
-            return s0_any_entity_type_new();
+            return s0_object_entity_type_new_from_object(entity);
         default:
             assert(false);
             break;
@@ -1639,6 +1785,9 @@ s0_entity_type_free(struct s0_entity_type *type)
             break;
         case S0_ENTITY_TYPE_KIND_METHOD:
             s0_method_entity_type_free(type);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            s0_object_entity_type_free(type);
             break;
         default:
             assert(false);
@@ -1667,6 +1816,9 @@ s0_entity_type_satisfied_by(const struct s0_entity_type *type,
         case S0_ENTITY_TYPE_KIND_METHOD:
             return s0_method_entity_type_satisfied_by(type, entity);
             break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            return s0_object_entity_type_satisfied_by(type, entity);
+            break;
         default:
             assert(false);
             break;
@@ -1686,6 +1838,9 @@ s0_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
             break;
         case S0_ENTITY_TYPE_KIND_METHOD:
             return s0_method_entity_type_satisfied_by_type(requires, have);
+            break;
+        case S0_ENTITY_TYPE_KIND_OBJECT:
+            return s0_object_entity_type_satisfied_by_type(requires, have);
             break;
         default:
             assert(false);

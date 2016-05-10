@@ -448,6 +448,18 @@ s0_load_method_entity_type(struct s0_yaml_node node)
 }
 
 static struct s0_entity_type *
+s0_load_object_entity_type(struct s0_yaml_node node)
+{
+    /* We've already verified that this is a !s0!object mapping node. */
+    struct s0_environment_type  *elements;
+    elements = s0_load_environment_type(node);
+    if (unlikely(elements == NULL)) {
+        return NULL;
+    }
+    return s0_object_entity_type_new(elements);
+}
+
+static struct s0_entity_type *
 s0_load_entity_type(struct s0_yaml_node node)
 {
     ensure_mapping(node, "entity type");
@@ -457,6 +469,8 @@ s0_load_entity_type(struct s0_yaml_node node)
         return s0_load_closure_entity_type(node);
     } else if (s0_yaml_node_has_tag(node, S0_METHOD_TAG)) {
         return s0_load_method_entity_type(node);
+    } else if (s0_yaml_node_has_tag(node, S0_OBJECT_TAG)) {
+        return s0_load_object_entity_type(node);
     } else {
         fill_error(node.stream, "Unknown entity type at %zu:%zu",
                    s0_yaml_node_get_node(node)->start_mark.line,
