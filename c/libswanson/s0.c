@@ -248,6 +248,35 @@ s0_name_set_new(void)
     return set;
 }
 
+struct s0_name_set *
+s0_name_set_new_copy(const struct s0_name_set *other)
+{
+    size_t  i;
+    struct s0_name_set  *set = s0_name_set_new();
+    if (unlikely(set == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < other->size; i++) {
+        int  rc;
+        struct s0_name  *copy;
+
+        copy = s0_name_new_copy(other->names[i]);
+        if (unlikely(copy == NULL)) {
+            s0_name_set_free(set);
+            return NULL;
+        }
+
+        rc = s0_name_set_add(set, copy);
+        if (unlikely(rc != 0)) {
+            s0_name_set_free(set);
+            return NULL;
+        }
+    }
+
+    return set;
+}
+
 void
 s0_name_set_free(struct s0_name_set *set)
 {
@@ -312,6 +341,24 @@ s0_name_set_at(const struct s0_name_set *set, size_t index)
     return set->names[index];
 }
 
+bool
+s0_name_set_eq(const struct s0_name_set *s1, const struct s0_name_set *s2)
+{
+    size_t  i;
+
+    if (s1->size != s2->size) {
+        return false;
+    }
+
+    for (i = 0; i < s1->size; i++) {
+        if (!s0_name_set_contains(s2, s1->names[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 /*-----------------------------------------------------------------------------
  * Name mappings
@@ -335,6 +382,43 @@ s0_name_mapping_new(void)
         free(mapping);
         return NULL;
     }
+    return mapping;
+}
+
+struct s0_name_mapping *
+s0_name_mapping_new_copy(const struct s0_name_mapping *other)
+{
+    size_t  i;
+    struct s0_name_mapping  *mapping = s0_name_mapping_new();
+    if (unlikely(mapping == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < other->size; i++) {
+        int  rc;
+        struct s0_name  *from_copy;
+        struct s0_name  *to_copy;
+
+        from_copy = s0_name_new_copy(other->entries[i].from);
+        if (unlikely(from_copy == NULL)) {
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        to_copy = s0_name_new_copy(other->entries[i].to);
+        if (unlikely(to_copy == NULL)) {
+            s0_name_free(from_copy);
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+
+        rc = s0_name_mapping_add(mapping, from_copy, to_copy);
+        if (unlikely(rc != 0)) {
+            s0_name_mapping_free(mapping);
+            return NULL;
+        }
+    }
+
     return mapping;
 }
 
@@ -413,6 +497,27 @@ s0_name_mapping_get_from(const struct s0_name_mapping *mapping,
         }
     }
     return NULL;
+}
+
+bool
+s0_name_mapping_eq(const struct s0_name_mapping *m1,
+                   const struct s0_name_mapping *m2)
+{
+    size_t  i;
+
+    if (m1->size != m2->size) {
+        return false;
+    }
+
+    for (i = 0; i < m1->size; i++) {
+        const struct s0_name  *m2_to =
+            s0_name_mapping_get(m2, m1->entries[i].from);
+        if (m2_to == NULL || !s0_name_eq(m2_to, m1->entries[i].to)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 
@@ -543,6 +648,34 @@ s0_block_new(struct s0_environment_type *inputs,
     return block;
 }
 
+struct s0_block *
+s0_block_new_copy(const struct s0_block *other)
+{
+    struct s0_environment_type  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_invocation  *invocation;
+
+    inputs = s0_environment_type_new_copy(other->inputs);
+    if (unlikely(inputs == NULL)) {
+        return NULL;
+    }
+
+    statements = s0_statement_list_new_copy(other->statements);
+    if (unlikely(statements == NULL)) {
+        s0_environment_type_free(inputs);
+        return NULL;
+    }
+
+    invocation = s0_invocation_new_copy(other->invocation);
+    if (unlikely(invocation == NULL)) {
+        s0_environment_type_free(inputs);
+        s0_statement_list_free(statements);
+        return NULL;
+    }
+
+    return s0_block_new(inputs, statements, invocation);
+}
+
 void
 s0_block_free(struct s0_block *block)
 {
@@ -570,6 +703,14 @@ s0_block_invocation(const struct s0_block *block)
     return block->invocation;
 }
 
+bool
+s0_block_eq(const struct s0_block *b1, const struct s0_block *b2)
+{
+    return s0_environment_type_equiv(b1->inputs, b2->inputs)
+        && s0_statement_list_eq(b1->statements, b2->statements)
+        && s0_invocation_eq(b1->invocation, b2->invocation);
+}
+
 
 /*-----------------------------------------------------------------------------
  * Named blocks
@@ -584,6 +725,45 @@ s0_named_blocks_new(void)
     }
     blocks->head = NULL;
     blocks->size = 0;
+    return blocks;
+}
+
+struct s0_named_blocks *
+s0_named_blocks_new_copy(const struct s0_named_blocks *other)
+{
+    struct s0_named_blocks  *blocks;
+    struct s0_named_blocks_entry  *curr;
+
+    blocks = s0_named_blocks_new();
+    if (unlikely(blocks == NULL)) {
+        return NULL;
+    }
+
+    for (curr = other->head; curr != NULL; curr = curr->next) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_block  *block_copy;
+
+        name_copy = s0_name_new_copy(curr->name);
+        if (unlikely(name_copy == NULL)) {
+            s0_named_blocks_free(blocks);
+            return NULL;
+        }
+
+        block_copy = s0_block_new_copy(curr->block);
+        if (unlikely(block_copy == NULL)) {
+            s0_name_free(name_copy);
+            s0_named_blocks_free(blocks);
+            return NULL;
+        }
+
+        rc = s0_named_blocks_add(blocks, name_copy, block_copy);
+        if (unlikely(rc != 0)) {
+            s0_named_blocks_free(blocks);
+            return NULL;
+        }
+    }
+
     return blocks;
 }
 
@@ -655,6 +835,26 @@ s0_named_blocks_get(const struct s0_named_blocks *blocks,
     return NULL;
 }
 
+bool
+s0_named_blocks_eq(const struct s0_named_blocks *nb1,
+                   const struct s0_named_blocks *nb2)
+{
+    struct s0_named_blocks_entry  *curr;
+
+    if (nb1->size != nb2->size) {
+        return false;
+    }
+
+    for (curr = nb1->head; curr != NULL; curr = curr->next) {
+        struct s0_block  *nb2_block = s0_named_blocks_get(nb2, curr->name);
+        if (nb2_block == NULL || !s0_block_eq(nb2_block, curr->block)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 /*-----------------------------------------------------------------------------
  * Statements
@@ -673,6 +873,19 @@ s0_create_atom_new(struct s0_name *dest)
     return stmt;
 }
 
+static struct s0_statement *
+s0_create_atom_new_copy(const struct s0_statement *other)
+{
+    struct s0_name  *dest;
+
+    dest = s0_name_new_copy(other->_.create_atom.dest);
+    if (unlikely(dest == NULL)) {
+        return NULL;
+    }
+
+    return s0_create_atom_new(dest);
+}
+
 static void
 s0_create_atom_free(struct s0_statement *stmt)
 {
@@ -684,6 +897,12 @@ s0_create_atom_dest(const struct s0_statement *stmt)
 {
     assert(stmt->kind == S0_STATEMENT_KIND_CREATE_ATOM);
     return stmt->_.create_atom.dest;
+}
+
+static bool
+s0_create_atom_eq(const struct s0_statement *s1, const struct s0_statement *s2)
+{
+    return s0_name_eq(s1->_.create_atom.dest, s2->_.create_atom.dest);
 }
 
 
@@ -703,6 +922,34 @@ s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
     stmt->_.create_closure.closed_over = closed_over;
     stmt->_.create_closure.branches = branches;
     return stmt;
+}
+
+static struct s0_statement *
+s0_create_closure_new_copy(const struct s0_statement *other)
+{
+    struct s0_name  *dest;
+    struct s0_name_set  *closed_over;
+    struct s0_named_blocks  *branches;
+
+    dest = s0_name_new_copy(other->_.create_closure.dest);
+    if (unlikely(dest == NULL)) {
+        return NULL;
+    }
+
+    closed_over = s0_name_set_new_copy(other->_.create_closure.closed_over);
+    if (unlikely(closed_over == NULL)) {
+        s0_name_free(dest);
+        return NULL;
+    }
+
+    branches = s0_named_blocks_new_copy(other->_.create_closure.branches);
+    if (unlikely(branches == NULL)) {
+        s0_name_free(dest);
+        s0_name_set_free(closed_over);
+        return NULL;
+    }
+
+    return s0_create_closure_new(dest, closed_over, branches);
 }
 
 static void
@@ -734,6 +981,17 @@ s0_create_closure_branches(const struct s0_statement *stmt)
     return stmt->_.create_closure.branches;
 }
 
+static bool
+s0_create_closure_eq(const struct s0_statement *s1,
+                     const struct s0_statement *s2)
+{
+    return s0_name_eq(s1->_.create_closure.dest, s2->_.create_closure.dest)
+        && s0_name_set_eq(s1->_.create_closure.closed_over,
+                          s2->_.create_closure.closed_over)
+        && s0_named_blocks_eq(s1->_.create_closure.branches,
+                              s2->_.create_closure.branches);
+}
+
 
 struct s0_statement *
 s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
@@ -754,6 +1012,20 @@ s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
     }
     memcpy((void *) stmt->_.create_literal.content, content, size);
     return stmt;
+}
+
+static struct s0_statement *
+s0_create_literal_new_copy(const struct s0_statement *other)
+{
+    struct s0_name  *dest;
+
+    dest = s0_name_new_copy(other->_.create_literal.dest);
+    if (unlikely(dest == NULL)) {
+        return NULL;
+    }
+
+    return s0_create_literal_new
+        (dest, other->_.create_literal.size, other->_.create_literal.content);
 }
 
 static void
@@ -784,6 +1056,16 @@ s0_create_literal_size(const struct s0_statement *stmt)
     return stmt->_.create_literal.size;
 }
 
+static bool
+s0_create_literal_eq(const struct s0_statement *s1,
+                     const struct s0_statement *s2)
+{
+    return s0_name_eq(s1->_.create_literal.dest, s2->_.create_literal.dest)
+        && s1->_.create_literal.size == s2->_.create_literal.size
+        && memcmp(s1->_.create_literal.content, s2->_.create_literal.content,
+                  s1->_.create_literal.size) == 0;
+}
+
 
 struct s0_statement *
 s0_create_method_new(struct s0_name *dest, struct s0_block *body)
@@ -798,6 +1080,26 @@ s0_create_method_new(struct s0_name *dest, struct s0_block *body)
     stmt->_.create_method.dest = dest;
     stmt->_.create_method.body = body;
     return stmt;
+}
+
+static struct s0_statement *
+s0_create_method_new_copy(const struct s0_statement *other)
+{
+    struct s0_name  *dest;
+    struct s0_block  *body;
+
+    dest = s0_name_new_copy(other->_.create_method.dest);
+    if (unlikely(dest == NULL)) {
+        return NULL;
+    }
+
+    body = s0_block_new_copy(other->_.create_method.body);
+    if (unlikely(body == NULL)) {
+        s0_name_free(dest);
+        return NULL;
+    }
+
+    return s0_create_method_new(dest, body);
 }
 
 static void
@@ -821,6 +1123,32 @@ s0_create_method_body(const struct s0_statement *stmt)
     return stmt->_.create_method.body;
 }
 
+static bool
+s0_create_method_eq(const struct s0_statement *s1,
+                    const struct s0_statement *s2)
+{
+    return s0_name_eq(s1->_.create_method.dest, s2->_.create_method.dest)
+        && s0_block_eq(s1->_.create_method.body, s2->_.create_method.body);
+}
+
+
+struct s0_statement *
+s0_statement_new_copy(const struct s0_statement *other)
+{
+    switch (other->kind) {
+        case S0_STATEMENT_KIND_CREATE_ATOM:
+            return s0_create_atom_new_copy(other);
+        case S0_STATEMENT_KIND_CREATE_CLOSURE:
+            return s0_create_closure_new_copy(other);
+        case S0_STATEMENT_KIND_CREATE_LITERAL:
+            return s0_create_literal_new_copy(other);
+        case S0_STATEMENT_KIND_CREATE_METHOD:
+            return s0_create_method_new_copy(other);
+        default:
+            assert(false);
+            break;
+    }
+}
 
 void
 s0_statement_free(struct s0_statement *stmt)
@@ -851,6 +1179,27 @@ s0_statement_kind(const struct s0_statement *stmt)
     return stmt->kind;
 }
 
+bool
+s0_statement_eq(const struct s0_statement *s1, const struct s0_statement *s2)
+{
+    if (s1->kind != s2->kind) {
+        return false;
+    }
+    switch (s1->kind) {
+        case S0_STATEMENT_KIND_CREATE_ATOM:
+            return s0_create_atom_eq(s1, s2);
+        case S0_STATEMENT_KIND_CREATE_CLOSURE:
+            return s0_create_closure_eq(s1, s2);
+        case S0_STATEMENT_KIND_CREATE_LITERAL:
+            return s0_create_literal_eq(s1, s2);
+        case S0_STATEMENT_KIND_CREATE_METHOD:
+            return s0_create_method_eq(s1, s2);
+        default:
+            assert(false);
+            break;
+    }
+}
+
 
 /*-----------------------------------------------------------------------------
  * Statement lists
@@ -874,6 +1223,35 @@ s0_statement_list_new(void)
         free(list);
         return NULL;
     }
+    return list;
+}
+
+struct s0_statement_list *
+s0_statement_list_new_copy(const struct s0_statement_list *other)
+{
+    size_t  i;
+    struct s0_statement_list  *list = s0_statement_list_new();
+    if (unlikely(list == NULL)) {
+        return NULL;
+    }
+
+    for (i = 0; i < other->size; i++) {
+        int  rc;
+        struct s0_statement  *copy;
+
+        copy = s0_statement_new_copy(other->statements[i]);
+        if (unlikely(copy == NULL)) {
+            s0_statement_list_free(list);
+            return NULL;
+        }
+
+        rc = s0_statement_list_add(list, copy);
+        if (unlikely(rc != 0)) {
+            s0_statement_list_free(list);
+            return NULL;
+        }
+    }
+
     return list;
 }
 
@@ -920,6 +1298,25 @@ s0_statement_list_at(const struct s0_statement_list *list, size_t index)
     return list->statements[index];
 }
 
+bool
+s0_statement_list_eq(const struct s0_statement_list *l1,
+                     const struct s0_statement_list *l2)
+{
+    size_t  i;
+
+    if (l1->size != l2->size) {
+        return false;
+    }
+
+    for (i = 0; i < l1->size; i++) {
+        if (!s0_statement_eq(l1->statements[i], l2->statements[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 /*-----------------------------------------------------------------------------
  * Invocations
@@ -941,6 +1338,34 @@ s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch,
     invocation->_.invoke_closure.branch = branch;
     invocation->_.invoke_closure.params = params;
     return invocation;
+}
+
+static struct s0_invocation *
+s0_invoke_closure_new_copy(const struct s0_invocation *other)
+{
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_name_mapping  *params;
+
+    src = s0_name_new_copy(other->_.invoke_closure.src);
+    if (unlikely(src == NULL)) {
+        return NULL;
+    }
+
+    branch = s0_name_new_copy(other->_.invoke_closure.branch);
+    if (unlikely(branch == NULL)) {
+        s0_name_free(src);
+        return NULL;
+    }
+
+    params = s0_name_mapping_new_copy(other->_.invoke_closure.params);
+    if (unlikely(params == NULL)) {
+        s0_name_free(src);
+        s0_name_free(branch);
+        return NULL;
+    }
+
+    return s0_invoke_closure_new(src, branch, params);
 }
 
 static void
@@ -972,6 +1397,16 @@ s0_invoke_closure_params(const struct s0_invocation *invocation)
     return invocation->_.invoke_closure.params;
 }
 
+static bool
+s0_invoke_closure_eq(const struct s0_invocation *i1,
+                     const struct s0_invocation *i2)
+{
+    return s0_name_eq(i1->_.invoke_closure.src, i2->_.invoke_closure.src)
+        && s0_name_eq(i1->_.invoke_closure.branch, i2->_.invoke_closure.branch)
+        && s0_name_mapping_eq(i1->_.invoke_closure.params,
+                              i2->_.invoke_closure.params);
+}
+
 
 struct s0_invocation *
 s0_invoke_method_new(struct s0_name *src, struct s0_name *method,
@@ -989,6 +1424,34 @@ s0_invoke_method_new(struct s0_name *src, struct s0_name *method,
     invocation->_.invoke_method.method = method;
     invocation->_.invoke_method.params = params;
     return invocation;
+}
+
+static struct s0_invocation *
+s0_invoke_method_new_copy(const struct s0_invocation *other)
+{
+    struct s0_name  *src;
+    struct s0_name  *method;
+    struct s0_name_mapping  *params;
+
+    src = s0_name_new_copy(other->_.invoke_method.src);
+    if (unlikely(src == NULL)) {
+        return NULL;
+    }
+
+    method = s0_name_new_copy(other->_.invoke_method.method);
+    if (unlikely(method == NULL)) {
+        s0_name_free(src);
+        return NULL;
+    }
+
+    params = s0_name_mapping_new_copy(other->_.invoke_method.params);
+    if (unlikely(params == NULL)) {
+        s0_name_free(src);
+        s0_name_free(method);
+        return NULL;
+    }
+
+    return s0_invoke_method_new(src, method, params);
 }
 
 static void
@@ -1020,6 +1483,30 @@ s0_invoke_method_params(const struct s0_invocation *invocation)
     return invocation->_.invoke_method.params;
 }
 
+static bool
+s0_invoke_method_eq(const struct s0_invocation *i1,
+                     const struct s0_invocation *i2)
+{
+    return s0_name_eq(i1->_.invoke_method.src, i2->_.invoke_method.src)
+        && s0_name_eq(i1->_.invoke_method.method, i2->_.invoke_method.method)
+        && s0_name_mapping_eq(i1->_.invoke_method.params,
+                              i2->_.invoke_method.params);
+}
+
+
+struct s0_invocation *
+s0_invocation_new_copy(const struct s0_invocation *other)
+{
+    switch (other->kind) {
+        case S0_INVOCATION_KIND_INVOKE_CLOSURE:
+            return s0_invoke_closure_new_copy(other);
+        case S0_INVOCATION_KIND_INVOKE_METHOD:
+            return s0_invoke_method_new_copy(other);
+        default:
+            assert(false);
+            break;
+    }
+}
 
 void
 s0_invocation_free(struct s0_invocation *invocation)
@@ -1042,6 +1529,23 @@ enum s0_invocation_kind
 s0_invocation_kind(const struct s0_invocation *invocation)
 {
     return invocation->kind;
+}
+
+bool
+s0_invocation_eq(const struct s0_invocation *i1, const struct s0_invocation *i2)
+{
+    if (i1->kind != i2->kind) {
+        return false;
+    }
+    switch (i1->kind) {
+        case S0_INVOCATION_KIND_INVOKE_CLOSURE:
+            return s0_invoke_closure_eq(i1, i2);
+        case S0_INVOCATION_KIND_INVOKE_METHOD:
+            return s0_invoke_method_eq(i1, i2);
+        default:
+            assert(false);
+            break;
+    }
 }
 
 

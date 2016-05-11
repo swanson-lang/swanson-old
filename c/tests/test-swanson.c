@@ -220,6 +220,21 @@ TEST_CASE("can check which names belong to set") {
     s0_name_set_free(set);
 }
 
+TEST_CASE("can create a copy of a name set") {
+    struct s0_name_set  *set;
+    struct s0_name_set  *copy;
+    struct s0_name  *name;
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(name, s0_name_new_str("b"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(copy, s0_name_set_new_copy(set));
+    check(s0_name_set_eq(set, copy));
+    s0_name_set_free(set);
+    s0_name_set_free(copy);
+}
+
 TEST_CASE("can iterate through names in set") {
     struct s0_name_set  *set;
     struct s0_name  *name;
@@ -334,6 +349,24 @@ TEST_CASE("can check which names belong to mapping") {
     s0_name_free(from);
 
     s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("can create a copy of a name mapping") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name_mapping  *copy;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(copy, s0_name_mapping_new_copy(mapping));
+    check(s0_name_mapping_eq(mapping, copy));
+    s0_name_mapping_free(mapping);
+    s0_name_mapping_free(copy);
 }
 
 TEST_CASE("can iterate through names in mapping") {
@@ -458,6 +491,24 @@ TEST_CASE("can check which names belong to blocks") {
     s0_named_blocks_free(blocks);
 }
 
+TEST_CASE("can create a copy of named blocks") {
+    struct s0_named_blocks  *blocks;
+    struct s0_named_blocks  *copy;
+    struct s0_name  *name;
+    struct s0_block  *block;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    check_alloc(copy, s0_named_blocks_new_copy(blocks));
+    check(s0_named_blocks_eq(blocks, copy));
+    s0_named_blocks_free(blocks);
+    s0_named_blocks_free(copy);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Statements
  */
@@ -477,6 +528,18 @@ TEST_CASE("can create `create-atom` statement") {
     s0_name_free(dest);
 
     s0_statement_free(stmt);
+}
+
+TEST_CASE("can copy `create-atom` statement") {
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
 }
 
 TEST_CASE("can create `create-closure` statement") {
@@ -501,6 +564,22 @@ TEST_CASE("can create `create-closure` statement") {
     s0_statement_free(stmt);
 }
 
+TEST_CASE("can copy `create-closure` statement") {
+    struct s0_name  *dest;
+    struct s0_name_set  *closed_over;
+    struct s0_named_blocks  *branches;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(closed_over, s0_name_set_new());
+    check_alloc(branches, s0_named_blocks_new());
+    check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
+}
+
 TEST_CASE("can create `create-literal` statement") {
     struct s0_name  *dest;
     struct s0_statement  *stmt;
@@ -517,6 +596,18 @@ TEST_CASE("can create `create-literal` statement") {
     check(memcmp(s0_create_literal_content(stmt), "hello", 5) == 0);
 
     s0_statement_free(stmt);
+}
+
+TEST_CASE("can copy a `create-literal` statement") {
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
 }
 
 TEST_CASE("can create `create-method` statement") {
@@ -536,6 +627,20 @@ TEST_CASE("can create `create-method` statement") {
     check(s0_create_method_body(stmt) == body);
 
     s0_statement_free(stmt);
+}
+
+TEST_CASE("can copy a `create-method` statement") {
+    struct s0_name  *dest;
+    struct s0_block  *body;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(body, create_empty_block());
+    check_alloc(stmt, s0_create_method_new(dest, body));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
 }
 
 /*-----------------------------------------------------------------------------
@@ -585,6 +690,24 @@ TEST_CASE("non-empty statement list has accurate size") {
     check(s0_statement_list_size(list) == 2);
 
     s0_statement_list_free(list);
+}
+
+TEST_CASE("can create a copy of a statement list") {
+    struct s0_statement_list  *list;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_statement_list  *copy;
+    check_alloc(list, s0_statement_list_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    check_alloc(dest, s0_name_new_str("b"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    check_alloc(copy, s0_statement_list_new_copy(list));
+    check(s0_statement_list_eq(list, copy));
+    s0_statement_list_free(list);
+    s0_statement_list_free(copy);
 }
 
 TEST_CASE("can iterate through statements in list") {
@@ -637,6 +760,22 @@ TEST_CASE("can create `invoke-closure` invocation") {
     s0_invocation_free(invocation);
 }
 
+TEST_CASE("can copy a `invoke-closure` invocation") {
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_name_mapping  *params;
+    struct s0_invocation  *invocation;
+    struct s0_invocation  *copy;
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
+    check_alloc(copy, s0_invocation_new_copy(invocation));
+    check(s0_invocation_eq(invocation, copy));
+    s0_invocation_free(invocation);
+    s0_invocation_free(copy);
+}
+
 TEST_CASE("can create `invoke-method` invocation") {
     struct s0_name  *src;
     struct s0_name  *method;
@@ -660,6 +799,22 @@ TEST_CASE("can create `invoke-method` invocation") {
     check(s0_invoke_method_params(invocation) == params);
 
     s0_invocation_free(invocation);
+}
+
+TEST_CASE("can copy a `invoke-method` invocation") {
+    struct s0_name  *src;
+    struct s0_name  *method;
+    struct s0_name_mapping  *params;
+    struct s0_invocation  *invocation;
+    struct s0_invocation  *copy;
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(method, s0_name_new_str("run"));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_method_new(src, method, params));
+    check_alloc(copy, s0_invocation_new_copy(invocation));
+    check(s0_invocation_eq(invocation, copy));
+    s0_invocation_free(invocation);
+    s0_invocation_free(copy);
 }
 
 /*-----------------------------------------------------------------------------
@@ -687,6 +842,28 @@ TEST_CASE("can create block") {
     check(s0_block_statements(block) == statements);
     check(s0_block_invocation(block) == invocation);
     s0_block_free(block);
+}
+
+TEST_CASE("can copy a block") {
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_environment_type  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_name_mapping  *params;
+    struct s0_invocation  *invocation;
+    struct s0_block  *block;
+    struct s0_block  *copy;
+    check_alloc(inputs, s0_environment_type_new());
+    check_alloc(statements, s0_statement_list_new());
+    check_alloc(src, s0_name_new_str("x"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
+    check_alloc(block, s0_block_new(inputs, statements, invocation));
+    check_alloc(copy, s0_block_new_copy(block));
+    check(s0_block_eq(block, copy));
+    s0_block_free(block);
+    s0_block_free(copy);
 }
 
 /*-----------------------------------------------------------------------------
