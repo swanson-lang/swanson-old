@@ -1263,6 +1263,45 @@ TEST_CASE("can extract entries from an environment") {
     s0_environment_free(dest);
 }
 
+TEST_CASE("can merge environments") {
+    struct s0_environment  *src;
+    struct s0_environment  *dest;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    /* Construct dest = {a:⋄} */
+    check_alloc(dest, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(dest, name, atom1));
+    /* Construct src = {b:⋄} */
+    check_alloc(src, s0_environment_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(src, name, atom2));
+    /* Merge environments together */
+    check0(s0_environment_merge(dest, src));
+    /* Verify that dest == {a:⋄,b:⋄} */
+    check(s0_environment_size(dest) == 2);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(dest, name) == atom1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(dest, name) == atom2);
+    s0_name_free(name);
+    /* Verify that src == {} */
+    check(s0_environment_size(src) == 0);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(src, name) == NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_environment_free(src);
+    s0_environment_free(dest);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Entity types: Any
  */

@@ -175,6 +175,18 @@ int
 s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
                        const struct s0_name_set *set);
 
+/* Extracts all entries from `src`, moving them into `dest`.  This is used to
+ * merge together the closure set and inputs of a closure when invoking it.  The
+ * set of names in `src` and `dest` MUST be disjoint.
+ *
+ * `src` will be empty if the merging is successful, but the caller retains
+ * ownership, and is responsible for freeing `src`.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error moving the entries. */
+int
+s0_environment_merge(struct s0_environment *dest, struct s0_environment *src);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Named blocks

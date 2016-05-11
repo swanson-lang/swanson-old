@@ -658,6 +658,35 @@ s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
     return 0;
 }
 
+int
+s0_environment_merge(struct s0_environment *dest, struct s0_environment *src)
+{
+    struct s0_environment_entry  *curr;
+
+#if !defined(NDEBUG)
+    for (curr = src->head; curr != NULL; curr = curr->next) {
+        assert(s0_environment_get(dest, curr->name) == NULL);
+    }
+#endif
+
+    if (dest->head == NULL) {
+        dest->head = src->head;
+        dest->size += src->size;
+        src->head = NULL;
+        src->size = 0;
+    } else {
+        /* Walk through to the end of the list. */
+        for (curr = dest->head; curr->next != NULL; curr = curr->next) {
+        }
+        /* Spackle the src list onto the end of the dest list. */
+        curr->next = src->head;
+        dest->size += src->size;
+        src->head = NULL;
+        src->size = 0;
+    }
+    return 0;
+}
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Blocks
