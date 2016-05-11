@@ -897,6 +897,29 @@ s0_named_blocks_get(const struct s0_named_blocks *blocks,
     return NULL;
 }
 
+struct s0_block *
+s0_named_blocks_delete(struct s0_named_blocks *blocks,
+                       const struct s0_name *name)
+{
+    struct s0_named_blocks_entry  *prev;
+    struct s0_named_blocks_entry  *curr;
+    for (prev = NULL, curr = blocks->head; curr != NULL;
+         prev = curr, curr = curr->next) {
+        if (s0_name_eq(curr->name, name)) {
+            struct s0_block  *block = curr->block;
+            if (prev == NULL) {
+                blocks->head = curr->next;
+            } else {
+                prev->next = curr->next;
+            }
+            s0_name_free(curr->name);
+            free(curr);
+            return block;
+        }
+    }
+    return NULL;
+}
+
 bool
 s0_named_blocks_eq(const struct s0_named_blocks *nb1,
                    const struct s0_named_blocks *nb2)

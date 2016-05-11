@@ -218,6 +218,10 @@ s0_named_blocks_add(struct s0_named_blocks *,
 struct s0_block *
 s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
 
+/* Returns NULL if name is not in named_blocks. */
+struct s0_block *
+s0_named_blocks_delete(struct s0_named_blocks *, const struct s0_name *name);
+
 bool
 s0_named_blocks_eq(const struct s0_named_blocks *,
                    const struct s0_named_blocks *);

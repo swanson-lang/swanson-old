@@ -509,6 +509,34 @@ TEST_CASE("can create a copy of named blocks") {
     s0_named_blocks_free(copy);
 }
 
+TEST_CASE("can delete block in named blocks") {
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block1;
+    struct s0_block  *block2;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block1, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(block2, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block2));
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_named_blocks_delete(blocks, name) == block1);
+    check(s0_named_blocks_get(blocks, name) == NULL);
+    s0_block_free(block1);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_named_blocks_delete(blocks, name) == block2);
+    check(s0_named_blocks_get(blocks, name) == NULL);
+    s0_block_free(block2);
+    s0_name_free(name);
+
+    s0_named_blocks_free(blocks);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Statements
  */
