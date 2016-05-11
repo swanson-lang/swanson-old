@@ -164,6 +164,17 @@ s0_environment_get(const struct s0_environment *, const struct s0_name *name);
 struct s0_entity *
 s0_environment_delete(struct s0_environment *, const struct s0_name *name);
 
+/* Extracts entries from `src`, moving them into `dest`.  The entries to extract
+ * are given by a name set.  This is used for closure sets when constructing a
+ * closure, since the entries being closed over are moved from the containing
+ * environment into the closure's environment.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error moving the entries. */
+int
+s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
+                       const struct s0_name_set *set);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Named blocks

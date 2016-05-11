@@ -1220,6 +1220,49 @@ TEST_CASE("can delete entries from environment") {
     s0_environment_free(env);
 }
 
+TEST_CASE("can extract entries from an environment") {
+    struct s0_environment  *src;
+    struct s0_environment  *dest;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_name_set  *set;
+    /* Construct {a:⋄,b:⋄} */
+    check_alloc(src, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(src, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(src, name, atom2));
+    /* Extract `a` into dest */
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(dest, s0_environment_new());
+    check0(s0_environment_extract(dest, src, set));
+    s0_name_set_free(set);
+    /* Verify that src == {b:⋄} */
+    check(s0_environment_size(src) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(src, name) == atom2);
+    s0_name_free(name);
+    /* Verify that dest == {a:⋄} */
+    check(s0_environment_size(dest) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(dest, name) == atom1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(dest, name) == NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_environment_free(src);
+    s0_environment_free(dest);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Entity types: Any
  */

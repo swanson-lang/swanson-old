@@ -625,6 +625,39 @@ s0_environment_delete(struct s0_environment *env, const struct s0_name *name)
     return NULL;
 }
 
+int
+s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
+                       const struct s0_name_set *set)
+{
+    size_t  i;
+    for (i = 0; i < set->size; i++) {
+        const struct s0_name  *name = set->names[i];
+        struct s0_entity  *entity;
+
+        if (unlikely(s0_environment_get(dest, name) != NULL)) {
+            return -1;
+        }
+
+        entity = s0_environment_delete(src, name);
+        if (entity == NULL) {
+            return -1;
+        } else {
+            int  rc;
+            struct s0_name  *name_copy = s0_name_new_copy(name);
+            if (unlikely(name_copy == NULL)) {
+                s0_entity_free(entity);
+                return ENOMEM;
+            }
+
+            rc = s0_environment_add(dest, name_copy, entity);
+            if (unlikely(rc != 0)) {
+                return ENOMEM;
+            }
+        }
+    }
+    return 0;
+}
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Blocks
