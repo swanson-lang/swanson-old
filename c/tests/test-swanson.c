@@ -86,6 +86,49 @@ environment_type(const char *str)
     return type;
 }
 
+static struct s0_block *
+load_block(const char *str)
+{
+    struct s0_yaml_stream  *stream;
+    struct s0_yaml_node  node;
+    struct s0_entity  *closure;
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block;
+
+    stream = s0_yaml_stream_new_from_string(str);
+    if (unlikely(stream == NULL)) {
+        return NULL;
+    }
+
+    node = s0_yaml_stream_parse_document(stream);
+    if (s0_yaml_node_is_error(node)) {
+        fail(s0_yaml_stream_last_error(stream));
+        s0_yaml_stream_free(stream);
+        return NULL;
+    }
+
+    closure = s0_yaml_document_parse_module(node);
+    if (closure == NULL) {
+        fail(s0_yaml_stream_last_error(stream));
+        s0_yaml_stream_free(stream);
+        return NULL;
+    }
+    s0_yaml_stream_free(stream);
+
+    name = s0_name_new_str("module");
+    if (name == NULL) {
+        s0_entity_free(closure);
+        return NULL;
+    }
+
+    blocks = s0_closure_named_blocks(closure);
+    block = s0_named_blocks_delete(blocks, name);
+    s0_name_free(name);
+    s0_entity_free(closure);
+    return block;
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Names
  */
@@ -3675,6 +3718,95 @@ TEST_CASE("can iterate through names in mapping") {
     s0_name_free(name);
 
     s0_environment_type_mapping_free(mapping);
+}
+
+/*-----------------------------------------------------------------------------
+ * S₀: Execution
+ */
+
+TEST_CASE_GROUP("S₀ execution");
+
+TEST_CASE("can execute empty block") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *finish;
+    struct s0_block  *block;
+    /* Create an environment with a `finish` method */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("finish"));
+    check_alloc(finish, s0_finish_new());
+    check0(s0_environment_add(env, name, finish));
+    /* Create a block */
+    check_alloc(block, load_block(
+                YAML
+                "inputs:\n"
+                "  finish: !s0!object\n"
+                "    finish: !s0!method\n"
+                "      inputs:\n"
+                "        self: !s0!object {}\n"
+                "statements: []\n"
+                "invocation:\n"
+                "  !s0!invoke-method\n"
+                "  src: finish\n"
+                "  method: finish\n"
+                "  parameters:\n"
+                "    finish: self\n"
+                ));
+    /* Execute the block */
+    check0(s0_block_execute(block, env));
+    /* Free everything */
+    s0_environment_free(env);
+    s0_block_free(block);
+}
+
+TEST_CASE("can execute a closure") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *finish;
+    struct s0_block  *block;
+    /* Create an environment with a `finish` method */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("finish"));
+    check_alloc(finish, s0_finish_new());
+    check0(s0_environment_add(env, name, finish));
+    /* Create a block */
+    check_alloc(block, load_block(
+                YAML
+                "inputs:\n"
+                "  finish: !s0!object\n"
+                "    finish: !s0!method\n"
+                "      inputs:\n"
+                "        self: !s0!object {}\n"
+                "statements:\n"
+                "  - !s0!create-closure\n"
+                "    dest: continue\n"
+                "    closed-over: []\n"
+                "    branches:\n"
+                "      body:\n"
+                "        inputs:\n"
+                "          finish: !s0!object\n"
+                "            finish: !s0!method\n"
+                "              inputs:\n"
+                "                self: !s0!object {}\n"
+                "        statements: []\n"
+                "        invocation:\n"
+                "          !s0!invoke-method\n"
+                "          src: finish\n"
+                "          method: finish\n"
+                "          parameters:\n"
+                "            finish: self\n"
+                "invocation:\n"
+                "  !s0!invoke-closure\n"
+                "  src: continue\n"
+                "  branch: body\n"
+                "  parameters:\n"
+                "    finish: finish\n"
+                ));
+    /* Execute the block */
+    check0(s0_block_execute(block, env));
+    /* Free everything */
+    s0_environment_free(env);
+    s0_block_free(block);
 }
 
 /*-----------------------------------------------------------------------------
