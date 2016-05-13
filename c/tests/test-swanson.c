@@ -46,14 +46,16 @@ entity_type(const char *str)
 
     node = s0_yaml_stream_parse_document(stream);
     if (s0_yaml_node_is_error(node)) {
-        fail(s0_yaml_stream_last_error(stream));
+        fail("Error loading YAML");
+        print_error_message(s0_yaml_stream_last_error(stream));
         s0_yaml_stream_free(stream);
         return NULL;
     }
 
     type = s0_yaml_document_parse_entity_type(node);
     if (type == NULL) {
-        fail(s0_yaml_stream_last_error(stream));
+        fail("Error loading YAML");
+        print_error_message(s0_yaml_stream_last_error(stream));
     }
     s0_yaml_stream_free(stream);
     return type;
@@ -73,14 +75,16 @@ environment_type(const char *str)
 
     node = s0_yaml_stream_parse_document(stream);
     if (s0_yaml_node_is_error(node)) {
-        fail(s0_yaml_stream_last_error(stream));
+        fail("Error loading YAML");
+        print_error_message(s0_yaml_stream_last_error(stream));
         s0_yaml_stream_free(stream);
         return NULL;
     }
 
     type = s0_yaml_document_parse_environment_type(node);
     if (type == NULL) {
-        fail(s0_yaml_stream_last_error(stream));
+        fail("Error loading YAML");
+        print_error_message(s0_yaml_stream_last_error(stream));
     }
     s0_yaml_stream_free(stream);
     return type;
@@ -103,14 +107,16 @@ load_block(const char *str)
 
     node = s0_yaml_stream_parse_document(stream);
     if (s0_yaml_node_is_error(node)) {
-        fail(s0_yaml_stream_last_error(stream));
+        fail("Error loading YAML");
+        print_error_message(s0_yaml_stream_last_error(stream));
         s0_yaml_stream_free(stream);
         return NULL;
     }
 
     closure = s0_yaml_document_parse_module(node);
     if (closure == NULL) {
-        fail(s0_yaml_stream_last_error(stream));
+        fail("Error loading YAML");
+        print_error_message(s0_yaml_stream_last_error(stream));
         s0_yaml_stream_free(stream);
         return NULL;
     }
@@ -1517,33 +1523,6 @@ TEST_CASE("{a:⋄,b:⋄}[a→b,b→a] == {a:⋄,b:⋄}") {
     s0_environment_free(env);
 }
 
-TEST_CASE("{a:⋄}[a→b,c→d] is invalid") {
-    struct s0_environment  *env;
-    struct s0_name  *name;
-    struct s0_entity  *atom;
-    struct s0_name_mapping  *mapping;
-    struct s0_name  *from;
-    struct s0_name  *to;
-    /* Construct {a:⋄} */
-    check_alloc(env, s0_environment_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(atom, s0_atom_new());
-    check0(s0_environment_add(env, name, atom));
-    /* Construct [a→b,c→d] */
-    check_alloc(mapping, s0_name_mapping_new());
-    check_alloc(from, s0_name_new_str("a"));
-    check_alloc(to, s0_name_new_str("b"));
-    check0(s0_name_mapping_add(mapping, from, to));
-    check_alloc(from, s0_name_new_str("c"));
-    check_alloc(to, s0_name_new_str("d"));
-    check0(s0_name_mapping_add(mapping, from, to));
-    /* Verify that we can't apply renaming */
-    check(s0_environment_rename(env, mapping) != 0);
-    /* Free everything */
-    s0_name_mapping_free(mapping);
-    s0_environment_free(env);
-}
-
 /*-----------------------------------------------------------------------------
  * S₀: Entity types: Any
  */
@@ -2863,34 +2842,6 @@ TEST_CASE("can extract entries from environment type") {
     s0_environment_type_free(dest);
 }
 
-TEST_CASE("cannot extract duplicate entries from environment type") {
-    struct s0_environment_type  *src;
-    struct s0_environment_type  *dest;
-    struct s0_name  *name;
-    struct s0_entity_type  *etype;
-    struct s0_name_set  *set;
-
-    /* Construct ⦃a:*⦄ */
-    check_alloc(src, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(src, name, etype));
-
-    /* Extract `a` into a separate type that already contains `a` */
-    check_alloc(dest, s0_environment_type_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check_alloc(etype, s0_any_entity_type_new());
-    check0(s0_environment_type_add(dest, name, etype));
-    check_alloc(set, s0_name_set_new());
-    check_alloc(name, s0_name_new_str("a"));
-    check0(s0_name_set_add(set, name));
-    check(s0_environment_type_extract(dest, src, set) == -1);
-    s0_name_set_free(set);
-
-    s0_environment_type_free(src);
-    s0_environment_type_free(dest);
-}
-
 TEST_CASE("cannot get deleted entries from environment type") {
     struct s0_environment_type  *type;
     struct s0_name  *name;
@@ -3563,7 +3514,7 @@ TEST_CASE("⦃a:*⦄[a→b,c→d] is invalid") {
     check_alloc(to, s0_name_new_str("d"));
     check0(s0_name_mapping_add(mapping, from, to));
     /* Verify that we can't apply renaming */
-    check(s0_environment_type_rename(type, mapping) != 0);
+    checkx0(s0_environment_type_rename(type, mapping));
     /* Free everything */
     s0_name_mapping_free(mapping);
     s0_environment_type_free(type);

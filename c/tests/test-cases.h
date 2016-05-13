@@ -101,6 +101,18 @@ shorten_filename(const char *filename)
 }
 
 static void
+print_error_message(const char *curr)
+{
+    const char  *nl = strchr(curr, '\n');
+    while (nl != NULL) {
+        printf("# %.*s\n", (int) (nl - curr), curr);
+        curr = nl + 1;
+        nl = strchr(curr, '\n');
+    }
+    printf("# %s\n", curr);
+}
+
+static void
 fail_at(const char *msg, const char *filename, unsigned int line)
 {
     if (!test_case_failed) {
@@ -175,6 +187,7 @@ exit_status(void)
         var = call; \
         if (unlikely(var == NULL)) { \
             fail_at(msg, __FILE__, __LINE__); \
+            print_error_message(s0_error_get_last_description()); \
             return; \
         } \
     } while (0)
@@ -196,11 +209,25 @@ exit_status(void)
     do { \
         if (unlikely((call) != 0)) { \
             fail_at(msg, __FILE__, __LINE__); \
+            print_error_message(s0_error_get_last_description()); \
             return; \
         } \
     } while (0)
 
 #define check0(call)  check0_with_msg(call, "Error occurred")
+
+#define checkx0_with_msg(call, msg) \
+    do { \
+        if (unlikely((call) == 0)) { \
+            fail_at(msg, __FILE__, __LINE__); \
+            return; \
+        } else { \
+            printf("# Expected error occurred:\n"); \
+            print_error_message(s0_error_get_last_description()); \
+        } \
+    } while (0)
+
+#define checkx0(call)  checkx0_with_msg(call, "Error should have occurred")
 
 #define check_nonnull_with_msg(call, msg) \
     do { \

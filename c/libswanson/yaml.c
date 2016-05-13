@@ -207,10 +207,10 @@ s0_yaml_node_is_sequence(const struct s0_yaml_node node)
     return s0_yaml_node_get_node(node)->type == YAML_SEQUENCE_NODE;
 }
 
-const void *
+const char *
 s0_yaml_node_scalar_content(const struct s0_yaml_node node)
 {
-    return s0_yaml_node_get_node(node)->data.scalar.value;
+    return (char *) s0_yaml_node_get_node(node)->data.scalar.value;
 }
 
 size_t
@@ -873,7 +873,8 @@ s0_load_statement_list(struct s0_yaml_node node,
 
         rc = s0_environment_type_add_statement(type, statement);
         if (unlikely(rc != 0)) {
-            fill_error(node.stream, "Statement has invalid type at %zu:%zu",
+            fill_error(node.stream, "%s\nat %zu:%zu",
+                       s0_error_get_last_description(),
                        s0_yaml_node_get_node(node)->start_mark.line,
                        s0_yaml_node_get_node(node)->start_mark.column);
             s0_statement_free(statement);
@@ -1043,7 +1044,8 @@ s0_load_invocation(struct s0_yaml_node node, struct s0_environment_type *type)
 
     rc = s0_environment_type_add_invocation(type, invocation);
     if (unlikely(rc != 0)) {
-        fill_error(node.stream, "Invocation has invalid type at %zu:%zu",
+        fill_error(node.stream, "%s\nat %zu:%zu",
+                   s0_error_get_last_description(),
                    s0_yaml_node_get_node(node)->start_mark.line,
                    s0_yaml_node_get_node(node)->start_mark.column);
         s0_invocation_free(invocation);
