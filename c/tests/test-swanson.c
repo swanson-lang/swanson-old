@@ -86,6 +86,49 @@ environment_type(const char *str)
     return type;
 }
 
+static struct s0_block *
+load_block(const char *str)
+{
+    struct s0_yaml_stream  *stream;
+    struct s0_yaml_node  node;
+    struct s0_entity  *closure;
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block;
+
+    stream = s0_yaml_stream_new_from_string(str);
+    if (unlikely(stream == NULL)) {
+        return NULL;
+    }
+
+    node = s0_yaml_stream_parse_document(stream);
+    if (s0_yaml_node_is_error(node)) {
+        fail(s0_yaml_stream_last_error(stream));
+        s0_yaml_stream_free(stream);
+        return NULL;
+    }
+
+    closure = s0_yaml_document_parse_module(node);
+    if (closure == NULL) {
+        fail(s0_yaml_stream_last_error(stream));
+        s0_yaml_stream_free(stream);
+        return NULL;
+    }
+    s0_yaml_stream_free(stream);
+
+    name = s0_name_new_str("module");
+    if (name == NULL) {
+        s0_entity_free(closure);
+        return NULL;
+    }
+
+    blocks = s0_closure_named_blocks(closure);
+    block = s0_named_blocks_delete(blocks, name);
+    s0_name_free(name);
+    s0_entity_free(closure);
+    return block;
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Names
  */
@@ -220,6 +263,21 @@ TEST_CASE("can check which names belong to set") {
     s0_name_set_free(set);
 }
 
+TEST_CASE("can create a copy of a name set") {
+    struct s0_name_set  *set;
+    struct s0_name_set  *copy;
+    struct s0_name  *name;
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(name, s0_name_new_str("b"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(copy, s0_name_set_new_copy(set));
+    check(s0_name_set_eq(set, copy));
+    s0_name_set_free(set);
+    s0_name_set_free(copy);
+}
+
 TEST_CASE("can iterate through names in set") {
     struct s0_name_set  *set;
     struct s0_name  *name;
@@ -334,6 +392,24 @@ TEST_CASE("can check which names belong to mapping") {
     s0_name_free(from);
 
     s0_name_mapping_free(mapping);
+}
+
+TEST_CASE("can create a copy of a name mapping") {
+    struct s0_name_mapping  *mapping;
+    struct s0_name_mapping  *copy;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(copy, s0_name_mapping_new_copy(mapping));
+    check(s0_name_mapping_eq(mapping, copy));
+    s0_name_mapping_free(mapping);
+    s0_name_mapping_free(copy);
 }
 
 TEST_CASE("can iterate through names in mapping") {
@@ -458,6 +534,52 @@ TEST_CASE("can check which names belong to blocks") {
     s0_named_blocks_free(blocks);
 }
 
+TEST_CASE("can create a copy of named blocks") {
+    struct s0_named_blocks  *blocks;
+    struct s0_named_blocks  *copy;
+    struct s0_name  *name;
+    struct s0_block  *block;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(block, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block));
+    check_alloc(copy, s0_named_blocks_new_copy(blocks));
+    check(s0_named_blocks_eq(blocks, copy));
+    s0_named_blocks_free(blocks);
+    s0_named_blocks_free(copy);
+}
+
+TEST_CASE("can delete block in named blocks") {
+    struct s0_named_blocks  *blocks;
+    struct s0_name  *name;
+    struct s0_block  *block1;
+    struct s0_block  *block2;
+    check_alloc(blocks, s0_named_blocks_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(block1, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(block2, create_empty_block());
+    check0(s0_named_blocks_add(blocks, name, block2));
+
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_named_blocks_delete(blocks, name) == block1);
+    check(s0_named_blocks_get(blocks, name) == NULL);
+    s0_block_free(block1);
+    s0_name_free(name);
+
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_named_blocks_delete(blocks, name) == block2);
+    check(s0_named_blocks_get(blocks, name) == NULL);
+    s0_block_free(block2);
+    s0_name_free(name);
+
+    s0_named_blocks_free(blocks);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Statements
  */
@@ -477,6 +599,18 @@ TEST_CASE("can create `create-atom` statement") {
     s0_name_free(dest);
 
     s0_statement_free(stmt);
+}
+
+TEST_CASE("can copy `create-atom` statement") {
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
 }
 
 TEST_CASE("can create `create-closure` statement") {
@@ -501,6 +635,22 @@ TEST_CASE("can create `create-closure` statement") {
     s0_statement_free(stmt);
 }
 
+TEST_CASE("can copy `create-closure` statement") {
+    struct s0_name  *dest;
+    struct s0_name_set  *closed_over;
+    struct s0_named_blocks  *branches;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(closed_over, s0_name_set_new());
+    check_alloc(branches, s0_named_blocks_new());
+    check_alloc(stmt, s0_create_closure_new(dest, closed_over, branches));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
+}
+
 TEST_CASE("can create `create-literal` statement") {
     struct s0_name  *dest;
     struct s0_statement  *stmt;
@@ -517,6 +667,18 @@ TEST_CASE("can create `create-literal` statement") {
     check(memcmp(s0_create_literal_content(stmt), "hello", 5) == 0);
 
     s0_statement_free(stmt);
+}
+
+TEST_CASE("can copy a `create-literal` statement") {
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_literal_new(dest, 5, "hello"));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
 }
 
 TEST_CASE("can create `create-method` statement") {
@@ -536,6 +698,20 @@ TEST_CASE("can create `create-method` statement") {
     check(s0_create_method_body(stmt) == body);
 
     s0_statement_free(stmt);
+}
+
+TEST_CASE("can copy a `create-method` statement") {
+    struct s0_name  *dest;
+    struct s0_block  *body;
+    struct s0_statement  *stmt;
+    struct s0_statement  *copy;
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(body, create_empty_block());
+    check_alloc(stmt, s0_create_method_new(dest, body));
+    check_alloc(copy, s0_statement_new_copy(stmt));
+    check(s0_statement_eq(stmt, copy));
+    s0_statement_free(stmt);
+    s0_statement_free(copy);
 }
 
 /*-----------------------------------------------------------------------------
@@ -585,6 +761,24 @@ TEST_CASE("non-empty statement list has accurate size") {
     check(s0_statement_list_size(list) == 2);
 
     s0_statement_list_free(list);
+}
+
+TEST_CASE("can create a copy of a statement list") {
+    struct s0_statement_list  *list;
+    struct s0_name  *dest;
+    struct s0_statement  *stmt;
+    struct s0_statement_list  *copy;
+    check_alloc(list, s0_statement_list_new());
+    check_alloc(dest, s0_name_new_str("a"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    check_alloc(dest, s0_name_new_str("b"));
+    check_alloc(stmt, s0_create_atom_new(dest));
+    check0(s0_statement_list_add(list, stmt));
+    check_alloc(copy, s0_statement_list_new_copy(list));
+    check(s0_statement_list_eq(list, copy));
+    s0_statement_list_free(list);
+    s0_statement_list_free(copy);
 }
 
 TEST_CASE("can iterate through statements in list") {
@@ -637,6 +831,22 @@ TEST_CASE("can create `invoke-closure` invocation") {
     s0_invocation_free(invocation);
 }
 
+TEST_CASE("can copy a `invoke-closure` invocation") {
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_name_mapping  *params;
+    struct s0_invocation  *invocation;
+    struct s0_invocation  *copy;
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
+    check_alloc(copy, s0_invocation_new_copy(invocation));
+    check(s0_invocation_eq(invocation, copy));
+    s0_invocation_free(invocation);
+    s0_invocation_free(copy);
+}
+
 TEST_CASE("can create `invoke-method` invocation") {
     struct s0_name  *src;
     struct s0_name  *method;
@@ -660,6 +870,22 @@ TEST_CASE("can create `invoke-method` invocation") {
     check(s0_invoke_method_params(invocation) == params);
 
     s0_invocation_free(invocation);
+}
+
+TEST_CASE("can copy a `invoke-method` invocation") {
+    struct s0_name  *src;
+    struct s0_name  *method;
+    struct s0_name_mapping  *params;
+    struct s0_invocation  *invocation;
+    struct s0_invocation  *copy;
+    check_alloc(src, s0_name_new_str("a"));
+    check_alloc(method, s0_name_new_str("run"));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_method_new(src, method, params));
+    check_alloc(copy, s0_invocation_new_copy(invocation));
+    check(s0_invocation_eq(invocation, copy));
+    s0_invocation_free(invocation);
+    s0_invocation_free(copy);
 }
 
 /*-----------------------------------------------------------------------------
@@ -687,6 +913,28 @@ TEST_CASE("can create block") {
     check(s0_block_statements(block) == statements);
     check(s0_block_invocation(block) == invocation);
     s0_block_free(block);
+}
+
+TEST_CASE("can copy a block") {
+    struct s0_name  *src;
+    struct s0_name  *branch;
+    struct s0_environment_type  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_name_mapping  *params;
+    struct s0_invocation  *invocation;
+    struct s0_block  *block;
+    struct s0_block  *copy;
+    check_alloc(inputs, s0_environment_type_new());
+    check_alloc(statements, s0_statement_list_new());
+    check_alloc(src, s0_name_new_str("x"));
+    check_alloc(branch, s0_name_new_str("body"));
+    check_alloc(params, s0_name_mapping_new());
+    check_alloc(invocation, s0_invoke_closure_new(src, branch, params));
+    check_alloc(block, s0_block_new(inputs, statements, invocation));
+    check_alloc(copy, s0_block_new_copy(block));
+    check(s0_block_eq(block, copy));
+    s0_block_free(block);
+    s0_block_free(copy);
 }
 
 /*-----------------------------------------------------------------------------
@@ -1040,6 +1288,259 @@ TEST_CASE("can delete entries from environment") {
     check(s0_environment_get(env, name) == NULL);
     s0_name_free(name);
 
+    s0_environment_free(env);
+}
+
+TEST_CASE("can extract entries from an environment") {
+    struct s0_environment  *src;
+    struct s0_environment  *dest;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_name_set  *set;
+    /* Construct {a:⋄,b:⋄} */
+    check_alloc(src, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(src, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(src, name, atom2));
+    /* Extract `a` into dest */
+    check_alloc(set, s0_name_set_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check0(s0_name_set_add(set, name));
+    check_alloc(dest, s0_environment_new());
+    check0(s0_environment_extract(dest, src, set));
+    s0_name_set_free(set);
+    /* Verify that src == {b:⋄} */
+    check(s0_environment_size(src) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(src, name) == atom2);
+    s0_name_free(name);
+    /* Verify that dest == {a:⋄} */
+    check(s0_environment_size(dest) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(dest, name) == atom1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(dest, name) == NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_environment_free(src);
+    s0_environment_free(dest);
+}
+
+TEST_CASE("can merge environments") {
+    struct s0_environment  *src;
+    struct s0_environment  *dest;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    /* Construct dest = {a:⋄} */
+    check_alloc(dest, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(dest, name, atom1));
+    /* Construct src = {b:⋄} */
+    check_alloc(src, s0_environment_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(src, name, atom2));
+    /* Merge environments together */
+    check0(s0_environment_merge(dest, src));
+    /* Verify that dest == {a:⋄,b:⋄} */
+    check(s0_environment_size(dest) == 2);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(dest, name) == atom1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(dest, name) == atom2);
+    s0_name_free(name);
+    /* Verify that src == {} */
+    check(s0_environment_size(src) == 0);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(src, name) == NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_environment_free(src);
+    s0_environment_free(dest);
+}
+
+TEST_CASE("{a:⋄}[a→b] == {b:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Construct [a→b] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {b:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == atom);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄}[a→a] == {a:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Construct [a→a] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {a:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == atom);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄,b:⋄}[a→c,b→d] == {c:⋄,d:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄,b:⋄⦄ */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(env, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(env, name, atom2));
+    /* Construct [a→c,b→d] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("c"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {c:⋄,d:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_get(env, name) == atom1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("d"));
+    check(s0_environment_get(env, name) == atom2);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄,b:⋄}[a→b,b→a] == {a:⋄,b:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄,b:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(env, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(env, name, atom2));
+    /* Construct [a→b,b→a] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {a:⋄,b:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == atom2);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == atom1);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄}[a→b,c→d] is invalid") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Construct [a→b,c→d] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Verify that we can't apply renaming */
+    check(s0_environment_rename(env, mapping) != 0);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
     s0_environment_free(env);
 }
 
@@ -3217,6 +3718,95 @@ TEST_CASE("can iterate through names in mapping") {
     s0_name_free(name);
 
     s0_environment_type_mapping_free(mapping);
+}
+
+/*-----------------------------------------------------------------------------
+ * S₀: Execution
+ */
+
+TEST_CASE_GROUP("S₀ execution");
+
+TEST_CASE("can execute empty block") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *finish;
+    struct s0_block  *block;
+    /* Create an environment with a `finish` method */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("finish"));
+    check_alloc(finish, s0_finish_new());
+    check0(s0_environment_add(env, name, finish));
+    /* Create a block */
+    check_alloc(block, load_block(
+                YAML
+                "inputs:\n"
+                "  finish: !s0!object\n"
+                "    finish: !s0!method\n"
+                "      inputs:\n"
+                "        self: !s0!object {}\n"
+                "statements: []\n"
+                "invocation:\n"
+                "  !s0!invoke-method\n"
+                "  src: finish\n"
+                "  method: finish\n"
+                "  parameters:\n"
+                "    finish: self\n"
+                ));
+    /* Execute the block */
+    check0(s0_block_execute(block, env));
+    /* Free everything */
+    s0_environment_free(env);
+    s0_block_free(block);
+}
+
+TEST_CASE("can execute a closure") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *finish;
+    struct s0_block  *block;
+    /* Create an environment with a `finish` method */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("finish"));
+    check_alloc(finish, s0_finish_new());
+    check0(s0_environment_add(env, name, finish));
+    /* Create a block */
+    check_alloc(block, load_block(
+                YAML
+                "inputs:\n"
+                "  finish: !s0!object\n"
+                "    finish: !s0!method\n"
+                "      inputs:\n"
+                "        self: !s0!object {}\n"
+                "statements:\n"
+                "  - !s0!create-closure\n"
+                "    dest: continue\n"
+                "    closed-over: []\n"
+                "    branches:\n"
+                "      body:\n"
+                "        inputs:\n"
+                "          finish: !s0!object\n"
+                "            finish: !s0!method\n"
+                "              inputs:\n"
+                "                self: !s0!object {}\n"
+                "        statements: []\n"
+                "        invocation:\n"
+                "          !s0!invoke-method\n"
+                "          src: finish\n"
+                "          method: finish\n"
+                "          parameters:\n"
+                "            finish: self\n"
+                "invocation:\n"
+                "  !s0!invoke-closure\n"
+                "  src: continue\n"
+                "  branch: body\n"
+                "  parameters:\n"
+                "    finish: finish\n"
+                ));
+    /* Execute the block */
+    check0(s0_block_execute(block, env));
+    /* Free everything */
+    s0_environment_free(env);
+    s0_block_free(block);
 }
 
 /*-----------------------------------------------------------------------------

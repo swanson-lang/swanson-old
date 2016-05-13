@@ -57,6 +57,9 @@ struct s0_name_set;
 struct s0_name_set *
 s0_name_set_new(void);
 
+struct s0_name_set *
+s0_name_set_new_copy(const struct s0_name_set *other);
+
 void
 s0_name_set_free(struct s0_name_set *);
 
@@ -76,6 +79,9 @@ s0_name_set_size(const struct s0_name_set *);
 struct s0_name *
 s0_name_set_at(const struct s0_name_set *, size_t index);
 
+bool
+s0_name_set_eq(const struct s0_name_set *, const struct s0_name_set *);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Name mappings
@@ -90,6 +96,9 @@ struct s0_name_mapping_entry {
 
 struct s0_name_mapping *
 s0_name_mapping_new(void);
+
+struct s0_name_mapping *
+s0_name_mapping_new_copy(const struct s0_name_mapping *other);
 
 void
 s0_name_mapping_free(struct s0_name_mapping *);
@@ -118,6 +127,10 @@ s0_name_mapping_get(const struct s0_name_mapping *, const struct s0_name *from);
 const struct s0_name *
 s0_name_mapping_get_from(const struct s0_name_mapping *,
                          const struct s0_name *to);
+
+bool
+s0_name_mapping_eq(const struct s0_name_mapping *,
+                   const struct s0_name_mapping *);
 
 
 /*-----------------------------------------------------------------------------
@@ -151,6 +164,38 @@ s0_environment_get(const struct s0_environment *, const struct s0_name *name);
 struct s0_entity *
 s0_environment_delete(struct s0_environment *, const struct s0_name *name);
 
+/* Extracts entries from `src`, moving them into `dest`.  The entries to extract
+ * are given by a name set.  This is used for closure sets when constructing a
+ * closure, since the entries being closed over are moved from the containing
+ * environment into the closure's environment.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error moving the entries. */
+int
+s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
+                       const struct s0_name_set *set);
+
+/* Extracts all entries from `src`, moving them into `dest`.  This is used to
+ * merge together the closure set and inputs of a closure when invoking it.  The
+ * set of names in `src` and `dest` MUST be disjoint.
+ *
+ * `src` will be empty if the merging is successful, but the caller retains
+ * ownership, and is responsible for freeing `src`.
+ *
+ * Returns 0 if all of the entries were created successfully; returns -1 if
+ * there is an error moving the entries. */
+int
+s0_environment_merge(struct s0_environment *dest, struct s0_environment *src);
+
+/* Applies a renaming (given by a name mapping) to an environment.  The mapping
+ * and the environment must be the same size, and there must be an entry in the
+ * mapping for every element of the environment.  Returns -1 if these conditions
+ * are not met.  Returns ENOMEM if there is an error allocating memory.  Returns
+ * 0 if the renaming was successful. */
+int
+s0_environment_rename(struct s0_environment *,
+                      const struct s0_name_mapping *mapping);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Named blocks
@@ -161,6 +206,9 @@ struct s0_named_blocks;
 
 struct s0_named_blocks *
 s0_named_blocks_new(void);
+
+struct s0_named_blocks *
+s0_named_blocks_new_copy(const struct s0_named_blocks *other);
 
 void
 s0_named_blocks_free(struct s0_named_blocks *);
@@ -179,6 +227,14 @@ s0_named_blocks_add(struct s0_named_blocks *,
 struct s0_block *
 s0_named_blocks_get(const struct s0_named_blocks *, const struct s0_name *name);
 
+/* Returns NULL if name is not in named_blocks. */
+struct s0_block *
+s0_named_blocks_delete(struct s0_named_blocks *, const struct s0_name *name);
+
+bool
+s0_named_blocks_eq(const struct s0_named_blocks *,
+                   const struct s0_named_blocks *);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Statements
@@ -191,13 +247,20 @@ enum s0_statement_kind {
     S0_STATEMENT_KIND_CREATE_CLOSURE,
     S0_STATEMENT_KIND_CREATE_LITERAL,
     S0_STATEMENT_KIND_CREATE_METHOD
+
 };
+
+struct s0_statement *
+s0_statement_new_copy(const struct s0_statement *other);
 
 void
 s0_statement_free(struct s0_statement *);
 
 enum s0_statement_kind
 s0_statement_kind(const struct s0_statement *);
+
+bool
+s0_statement_eq(const struct s0_statement *, const struct s0_statement *);
 
 
 /* Takes control of dest */
@@ -266,6 +329,9 @@ struct s0_statement_list;
 struct s0_statement_list *
 s0_statement_list_new(void);
 
+struct s0_statement_list *
+s0_statement_list_new_copy(const struct s0_statement_list *other);
+
 void
 s0_statement_list_free(struct s0_statement_list *);
 
@@ -282,6 +348,10 @@ s0_statement_list_size(const struct s0_statement_list *);
 struct s0_statement *
 s0_statement_list_at(const struct s0_statement_list *, size_t index);
 
+bool
+s0_statement_list_eq(const struct s0_statement_list *,
+                     const struct s0_statement_list *);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Invocations
@@ -294,11 +364,29 @@ enum s0_invocation_kind {
     S0_INVOCATION_KIND_INVOKE_METHOD
 };
 
+struct s0_invocation *
+s0_invocation_new_copy(const struct s0_invocation *other);
+
 void
 s0_invocation_free(struct s0_invocation *);
 
 enum s0_invocation_kind
 s0_invocation_kind(const struct s0_invocation *);
+
+bool
+s0_invocation_eq(const struct s0_invocation *, const struct s0_invocation *);
+
+/* Executes `invocation` within the context of `env`.  This includes finding the
+ * closure or method in `env`, and renaming parameters.  After this function
+ * returns, `env` will be ready to pass in to the closure or method being
+ * invoked.  The return value is a continuation that will pass control to the
+ * closure or method; it's your responsibility to call it with the same `env`.
+ * If there is an error executing the invocation, we'll return an error
+ * continuation (which is safe to call, and will result in aborting the current
+ * execution with an error code). */
+struct s0_continuation
+s0_invocation_execute(struct s0_invocation *invocation,
+                      struct s0_environment *env);
 
 
 /* Takes control of src and branch */
@@ -349,6 +437,9 @@ s0_block_new(struct s0_environment_type *inputs,
              struct s0_statement_list *statements,
              struct s0_invocation *invocation);
 
+struct s0_block *
+s0_block_new_copy(const struct s0_block *other);
+
 void
 s0_block_free(struct s0_block *);
 
@@ -361,6 +452,30 @@ s0_block_statements(const struct s0_block *);
 struct s0_invocation *
 s0_block_invocation(const struct s0_block *);
 
+bool
+s0_block_eq(const struct s0_block *, const struct s0_block *);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: Execution
+ */
+
+/* Executes `block` within `env`.  Returns 0 if the execution is successful, -1
+ * otherwise. */
+int
+s0_block_execute(struct s0_block *block, struct s0_environment *env);
+
+struct s0_continuation {
+    void  *ud;
+    struct s0_continuation (*invoke)(void *ud, struct s0_environment *env);
+};
+
+struct s0_continuation
+s0_error_continuation(void);
+
+struct s0_continuation
+s0_finish_continuation(void);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Entities
@@ -371,7 +486,8 @@ enum s0_entity_kind {
     S0_ENTITY_KIND_CLOSURE,
     S0_ENTITY_KIND_LITERAL,
     S0_ENTITY_KIND_METHOD,
-    S0_ENTITY_KIND_OBJECT
+    S0_ENTITY_KIND_OBJECT,
+    S0_ENTITY_KIND_PRIMITIVE_METHOD
 };
 
 void
@@ -455,6 +571,29 @@ s0_object_at(const struct s0_entity *, size_t index);
 /* Entity MUST be an object.  Returns NULL if name is not in object. */
 struct s0_entity *
 s0_object_get(const struct s0_entity *, const struct s0_name *name);
+
+
+typedef void
+s0_primitive_method_free_f(void *ud);
+
+/* Takes control of `inputs` and `cont.ud`.  When this method is invoked, we
+ * will call your continuation function (`cont.invoke`) with an opaque user data
+ * pointer of your choosing (`cont.ud`).  The S₀ inputs to the method will be
+ * provided in an environment.  We will guarantee that this environment will
+ * satisfy the requirements defined by `inputs`.  Your primitive method must
+ * finish by invoking some other closure or method (either one you create
+ * internally, or one that is giving to you as an input).  To do this, create an
+ * invocation (without adding it to a block), and then use s0_invocation_execute
+ * to construct your return value. */
+struct s0_entity *
+s0_primitive_method_new(struct s0_environment_type *inputs,
+                        struct s0_continuation cont,
+                        s0_primitive_method_free_f *free_ud);
+
+/* A predefined object, containing a single method, which ensures that the final
+ * environment is empty, and finishes the current computation. */
+struct s0_entity *
+s0_finish_new(void);
 
 
 /*-----------------------------------------------------------------------------
