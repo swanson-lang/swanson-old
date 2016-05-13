@@ -187,6 +187,15 @@ s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
 int
 s0_environment_merge(struct s0_environment *dest, struct s0_environment *src);
 
+/* Applies a renaming (given by a name mapping) to an environment.  The mapping
+ * and the environment must be the same size, and there must be an entry in the
+ * mapping for every element of the environment.  Returns -1 if these conditions
+ * are not met.  Returns ENOMEM if there is an error allocating memory.  Returns
+ * 0 if the renaming was successful. */
+int
+s0_environment_rename(struct s0_environment *,
+                      const struct s0_name_mapping *mapping);
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Named blocks

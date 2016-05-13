@@ -687,6 +687,38 @@ s0_environment_merge(struct s0_environment *dest, struct s0_environment *src)
     return 0;
 }
 
+int
+s0_environment_rename(struct s0_environment *env,
+                      const struct s0_name_mapping *mapping)
+{
+    struct s0_environment_entry  *curr;
+
+    if (unlikely(env->size != mapping->size)) {
+        return -1;
+    }
+
+    for (curr = env->head; curr != NULL; curr = curr->next){
+        const struct s0_name  *from = curr->name;
+        const struct s0_name  *to;
+        struct s0_name  *to_copy;
+
+        to = s0_name_mapping_get(mapping, from);
+        if (unlikely(to == NULL)) {
+            return -1;
+        }
+
+        to_copy = s0_name_new_copy(to);
+        if (unlikely(to_copy == NULL)) {
+            return ENOMEM;
+        }
+
+        s0_name_free(curr->name);
+        curr->name = to_copy;
+    }
+
+    return 0;
+}
+
 
 /*-----------------------------------------------------------------------------
  * S₀: Blocks

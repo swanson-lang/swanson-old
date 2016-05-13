@@ -1330,6 +1330,177 @@ TEST_CASE("can merge environments") {
     s0_environment_free(dest);
 }
 
+TEST_CASE("{a:⋄}[a→b] == {b:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Construct [a→b] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {b:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == atom);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄}[a→a] == {a:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Construct [a→a] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {a:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == atom);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄,b:⋄}[a→c,b→d] == {c:⋄,d:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄,b:⋄⦄ */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(env, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(env, name, atom2));
+    /* Construct [a→c,b→d] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("c"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {c:⋄,d:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("c"));
+    check(s0_environment_get(env, name) == atom1);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("d"));
+    check(s0_environment_get(env, name) == atom2);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄,b:⋄}[a→b,b→a] == {a:⋄,b:⋄}") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom1;
+    struct s0_entity  *atom2;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄,b:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom1, s0_atom_new());
+    check0(s0_environment_add(env, name, atom1));
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(atom2, s0_atom_new());
+    check0(s0_environment_add(env, name, atom2));
+    /* Construct [a→b,b→a] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("b"));
+    check_alloc(to, s0_name_new_str("a"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Apply renaming */
+    check0(s0_environment_rename(env, mapping));
+    /* Verify that result == {a:⋄,b:⋄} */
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_get(env, name) == atom2);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_get(env, name) == atom1);
+    s0_name_free(name);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
+TEST_CASE("{a:⋄}[a→b,c→d] is invalid") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *atom;
+    struct s0_name_mapping  *mapping;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    /* Construct {a:⋄} */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(atom, s0_atom_new());
+    check0(s0_environment_add(env, name, atom));
+    /* Construct [a→b,c→d] */
+    check_alloc(mapping, s0_name_mapping_new());
+    check_alloc(from, s0_name_new_str("a"));
+    check_alloc(to, s0_name_new_str("b"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    check_alloc(from, s0_name_new_str("c"));
+    check_alloc(to, s0_name_new_str("d"));
+    check0(s0_name_mapping_add(mapping, from, to));
+    /* Verify that we can't apply renaming */
+    check(s0_environment_rename(env, mapping) != 0);
+    /* Free everything */
+    s0_name_mapping_free(mapping);
+    s0_environment_free(env);
+}
+
 /*-----------------------------------------------------------------------------
  * S₀: Entity types: Any
  */
