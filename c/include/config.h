@@ -12,6 +12,7 @@ extern "C" {
 #define _GNU_SOURCE
 
 /* Just assume this for now */
+#define HAVE_ATTRIBUTE_PRINTF  1
 #define HAVE_BUILTIN_EXPECT  1
 
 #ifdef __cplusplus

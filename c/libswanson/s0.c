@@ -6,9 +6,10 @@
 #include "swanson.h"
 
 #include <assert.h>
-#include <errno.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ccan/compiler/compiler.h"
 #include "ccan/likely/likely.h"
 
 
@@ -162,6 +163,82 @@ struct s0_environment_type_mapping {
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Errors
+ */
+
+#define MAX_ERROR_DESCRIPTION_LENGTH  4096
+
+static struct {
+    enum s0_error_code  code;
+    char  description1[MAX_ERROR_DESCRIPTION_LENGTH];
+    char  description2[MAX_ERROR_DESCRIPTION_LENGTH];
+    char  *current_description;
+    char  *other_description;
+} last_error = {
+    S0_ERROR_NONE,
+    "",
+    "",
+    last_error.description1,
+    last_error.description2
+};
+
+static PRINTF_FMT(2,3) void
+s0_set_error(enum s0_error_code code, const char *fmt, ...)
+{
+    va_list  args;
+    last_error.code = code;
+    va_start(args, fmt);
+    vsnprintf(last_error.current_description, MAX_ERROR_DESCRIPTION_LENGTH,
+              fmt, args);
+    last_error.current_description[MAX_ERROR_DESCRIPTION_LENGTH - 1] = '\0';
+    va_end(args);
+}
+
+static PRINTF_FMT(1,2) void
+s0_prefix_error(const char *fmt, ...)
+{
+    va_list  args;
+    int  prefix_size;
+    char  *swap;
+
+    /* Write the prefix into the unused buffer. */
+    va_start(args, fmt);
+    prefix_size = vsnprintf
+        (last_error.other_description, MAX_ERROR_DESCRIPTION_LENGTH, fmt, args);
+    va_end(args);
+
+    /* The copy the existing buffer to the end of the unused buffer. */
+    if (prefix_size < MAX_ERROR_DESCRIPTION_LENGTH) {
+        strncpy(last_error.other_description + prefix_size,
+                last_error.current_description,
+                MAX_ERROR_DESCRIPTION_LENGTH - prefix_size);
+    }
+    last_error.other_description[MAX_ERROR_DESCRIPTION_LENGTH - 1] = '\0';
+
+    /* Then swap the two buffers so that the new error message is "current". */
+    swap = last_error.other_description;
+    last_error.other_description = last_error.current_description;
+    last_error.current_description = swap;
+}
+
+#define s0_set_memory_error_(func) \
+    s0_set_error(S0_ERROR_MEMORY_ERROR, "Error allocating memory in %s", func)
+#define s0_set_memory_error() s0_set_memory_error_(__func__)
+
+enum s0_error_code
+s0_error_get_last_code(void)
+{
+    return last_error.code;
+}
+
+const char *
+s0_error_get_last_description(void)
+{
+    return last_error.current_description;
+}
+
+
+/*-----------------------------------------------------------------------------
  * Names
  */
 
@@ -170,12 +247,14 @@ s0_name_new(size_t size, const void *content)
 {
     struct s0_name  *name = malloc(sizeof(struct s0_name));
     if (unlikely(name == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     name->size = size;
     name->content = malloc(size + 1);
     if (unlikely(name->content == NULL)) {
         free(name);
+        s0_set_memory_error();
         return NULL;
     }
     memcpy((void *) name->content, content, size);
@@ -240,6 +319,7 @@ s0_name_set_new(void)
 {
     struct s0_name_set  *set = malloc(sizeof(struct s0_name_set));
     if (unlikely(set == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     set->size = 0;
@@ -248,6 +328,7 @@ s0_name_set_new(void)
         malloc(DEFAULT_INITIAL_NAME_SET_SIZE * sizeof(struct s0_name *));
     if (unlikely(set->names == NULL)) {
         free(set);
+        s0_set_memory_error();
         return NULL;
     }
     return set;
@@ -311,6 +392,7 @@ s0_name_set_add(struct s0_name_set *set, struct s0_name *name)
             realloc(set->names, new_size * sizeof(struct s0_name *));
         if (unlikely(new_names == NULL)) {
             s0_name_free(name);
+            s0_set_memory_error();
             return -1;
         }
         set->names = new_names;
@@ -376,6 +458,7 @@ s0_name_mapping_new(void)
 {
     struct s0_name_mapping  *mapping = malloc(sizeof(struct s0_name_mapping));
     if (unlikely(mapping == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     mapping->size = 0;
@@ -385,6 +468,7 @@ s0_name_mapping_new(void)
                sizeof(struct s0_name_mapping_entry));
     if (unlikely(mapping->entries == NULL)) {
         free(mapping);
+        s0_set_memory_error();
         return NULL;
     }
     return mapping;
@@ -445,6 +529,16 @@ s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
 {
     struct s0_name_mapping_entry  *new_entry;
 
+#if !defined(NDEBUG)
+    {
+        size_t  i;
+        for (i = 0; i < mapping->size; i++) {
+            assert(!s0_name_eq(from, mapping->entries[i].from));
+            assert(!s0_name_eq(to, mapping->entries[i].to));
+        }
+    }
+#endif
+
     if (unlikely(mapping->size == mapping->allocated_size)) {
         size_t  new_size = mapping->allocated_size * 2;
         struct s0_name_mapping_entry  *new_entries =
@@ -453,6 +547,7 @@ s0_name_mapping_add(struct s0_name_mapping *mapping, struct s0_name *from,
         if (unlikely(new_entries == NULL)) {
             s0_name_free(from);
             s0_name_free(to);
+            s0_set_memory_error();
             return -1;
         }
         mapping->entries = new_entries;
@@ -535,6 +630,7 @@ s0_environment_new(void)
 {
     struct s0_environment  *env = malloc(sizeof(struct s0_environment));
     if (unlikely(env == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     env->head = NULL;
@@ -581,6 +677,7 @@ s0_environment_add(struct s0_environment *env,
     if (unlikely(entry == NULL)) {
         s0_name_free(name);
         s0_entity_free(entity);
+        s0_set_memory_error();
         return -1;
     }
 
@@ -635,13 +732,18 @@ s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
                        const struct s0_name_set *set)
 {
     size_t  i;
+
+#if !defined(NDEBUG)
+    for (i = 0; i < set->size; i++) {
+        const struct s0_name  *name = set->names[i];
+        assert(s0_environment_get(src, name) != NULL);
+        assert(s0_environment_get(dest, name) == NULL);
+    }
+#endif
+
     for (i = 0; i < set->size; i++) {
         const struct s0_name  *name = set->names[i];
         struct s0_entity  *entity;
-
-        if (unlikely(s0_environment_get(dest, name) != NULL)) {
-            return -1;
-        }
 
         entity = s0_environment_delete(src, name);
         if (entity == NULL) {
@@ -651,12 +753,12 @@ s0_environment_extract(struct s0_environment *dest, struct s0_environment *src,
             struct s0_name  *name_copy = s0_name_new_copy(name);
             if (unlikely(name_copy == NULL)) {
                 s0_entity_free(entity);
-                return ENOMEM;
+                return -1;
             }
 
             rc = s0_environment_add(dest, name_copy, entity);
             if (unlikely(rc != 0)) {
-                return ENOMEM;
+                return -1;
             }
         }
     }
@@ -698,9 +800,7 @@ s0_environment_rename(struct s0_environment *env,
 {
     struct s0_environment_entry  *curr;
 
-    if (unlikely(env->size != mapping->size)) {
-        return -1;
-    }
+    assert(env->size == mapping->size);
 
     for (curr = env->head; curr != NULL; curr = curr->next){
         const struct s0_name  *from = curr->name;
@@ -708,13 +808,11 @@ s0_environment_rename(struct s0_environment *env,
         struct s0_name  *to_copy;
 
         to = s0_name_mapping_get(mapping, from);
-        if (unlikely(to == NULL)) {
-            return -1;
-        }
+        assert(to != NULL);
 
         to_copy = s0_name_new_copy(to);
         if (unlikely(to_copy == NULL)) {
-            return ENOMEM;
+            return -1;
         }
 
         s0_name_free(curr->name);
@@ -739,6 +837,7 @@ s0_block_new(struct s0_environment_type *inputs,
         s0_environment_type_free(inputs);
         s0_statement_list_free(statements);
         s0_invocation_free(invocation);
+        s0_set_memory_error();
         return NULL;
     }
     block->inputs = inputs;
@@ -820,6 +919,7 @@ s0_named_blocks_new(void)
 {
     struct s0_named_blocks  *blocks = malloc(sizeof(struct s0_named_blocks));
     if (unlikely(blocks == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     blocks->head = NULL;
@@ -910,6 +1010,7 @@ s0_named_blocks_add(struct s0_named_blocks *blocks,
     if (unlikely(entry == NULL)) {
         s0_name_free(name);
         s0_block_free(block);
+        s0_set_memory_error();
         return -1;
     }
 
@@ -988,6 +1089,7 @@ s0_create_atom_new(struct s0_name *dest)
     struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
     if (unlikely(stmt == NULL)) {
         s0_name_free(dest);
+        s0_set_memory_error();
         return NULL;
     }
     stmt->kind = S0_STATEMENT_KIND_CREATE_ATOM;
@@ -1037,6 +1139,7 @@ s0_create_closure_new(struct s0_name *dest, struct s0_name_set *closed_over,
         s0_name_free(dest);
         s0_name_set_free(closed_over);
         s0_named_blocks_free(branches);
+        s0_set_memory_error();
         return NULL;
     }
     stmt->kind = S0_STATEMENT_KIND_CREATE_CLOSURE;
@@ -1121,6 +1224,7 @@ s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
     struct s0_statement  *stmt = malloc(sizeof(struct s0_statement));
     if (unlikely(stmt == NULL)) {
         s0_name_free(dest);
+        s0_set_memory_error();
         return NULL;
     }
     stmt->kind = S0_STATEMENT_KIND_CREATE_LITERAL;
@@ -1130,6 +1234,7 @@ s0_create_literal_new(struct s0_name *dest, size_t size, const void *content)
     if (unlikely(stmt->_.create_literal.content == NULL)) {
         s0_name_free(dest);
         free(stmt);
+        s0_set_memory_error();
         return NULL;
     }
     memcpy((void *) stmt->_.create_literal.content, content, size);
@@ -1196,6 +1301,7 @@ s0_create_method_new(struct s0_name *dest, struct s0_block *body)
     if (unlikely(stmt == NULL)) {
         s0_name_free(dest);
         s0_block_free(body);
+        s0_set_memory_error();
         return NULL;
     }
     stmt->kind = S0_STATEMENT_KIND_CREATE_METHOD;
@@ -1334,6 +1440,7 @@ s0_statement_list_new(void)
 {
     struct s0_statement_list  *list = malloc(sizeof(struct s0_statement_list));
     if (unlikely(list == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     list->size = 0;
@@ -1343,6 +1450,7 @@ s0_statement_list_new(void)
                sizeof(struct s0_statement *));
     if (unlikely(list->statements == NULL)) {
         free(list);
+        s0_set_memory_error();
         return NULL;
     }
     return list;
@@ -1397,6 +1505,7 @@ s0_statement_list_add(struct s0_statement_list *list, struct s0_statement *stmt)
             realloc(list->statements, new_size * sizeof(struct s0_statement *));
         if (unlikely(new_statements == NULL)) {
             s0_statement_free(stmt);
+            s0_set_memory_error();
             return -1;
         }
         list->statements = new_statements;
@@ -1453,6 +1562,7 @@ s0_invoke_closure_new(struct s0_name *src, struct s0_name *branch,
         s0_name_free(src);
         s0_name_free(branch);
         s0_name_mapping_free(params);
+        s0_set_memory_error();
         return NULL;
     }
     invocation->kind = S0_INVOCATION_KIND_INVOKE_CLOSURE;
@@ -1539,6 +1649,7 @@ s0_invoke_method_new(struct s0_name *src, struct s0_name *method,
         s0_name_free(src);
         s0_name_free(method);
         s0_name_mapping_free(params);
+        s0_set_memory_error();
         return NULL;
     }
     invocation->kind = S0_INVOCATION_KIND_INVOKE_METHOD;
@@ -1680,6 +1791,7 @@ s0_atom_new(void)
 {
     struct s0_entity  *atom = malloc(sizeof(struct s0_entity));
     if (unlikely(atom == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     atom->kind = S0_ENTITY_KIND_ATOM;
@@ -1708,6 +1820,7 @@ s0_closure_new(struct s0_environment *env, struct s0_named_blocks *blocks)
     if (unlikely(closure == NULL)) {
         s0_environment_free(env);
         s0_named_blocks_free(blocks);
+        s0_set_memory_error();
         return NULL;
     }
     closure->kind = S0_ENTITY_KIND_CLOSURE;
@@ -1743,6 +1856,7 @@ s0_literal_new(size_t size, const void *content)
 {
     struct s0_entity  *literal = malloc(sizeof(struct s0_entity));
     if (unlikely(literal == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     literal->kind = S0_ENTITY_KIND_LITERAL;
@@ -1750,6 +1864,7 @@ s0_literal_new(size_t size, const void *content)
     literal->_.literal.content = malloc(size);
     if (unlikely(literal->_.literal.content == NULL)) {
         free(literal);
+        s0_set_memory_error();
         return NULL;
     }
     memcpy((void *) literal->_.literal.content, content, size);
@@ -1789,6 +1904,7 @@ s0_method_new(struct s0_block *body)
     struct s0_entity  *method = malloc(sizeof(struct s0_entity));
     if (unlikely(method == NULL)) {
         s0_block_free(body);
+        s0_set_memory_error();
         return NULL;
     }
     method->kind = S0_ENTITY_KIND_METHOD;
@@ -1817,6 +1933,7 @@ s0_object_new(void)
 {
     struct s0_entity  *obj = malloc(sizeof(struct s0_entity));
     if (unlikely(obj == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     obj->kind = S0_ENTITY_KIND_OBJECT;
@@ -1826,6 +1943,7 @@ s0_object_new(void)
         malloc(DEFAULT_INITIAL_OBJECT_SIZE * sizeof(struct s0_object_entry));
     if (unlikely(obj->_.obj.entries == NULL)) {
         free(obj);
+        s0_set_memory_error();
         return NULL;
     }
     return obj;
@@ -1848,6 +1966,15 @@ s0_object_add(struct s0_entity *obj,
 {
     struct s0_object_entry  *new_entry;
 
+#if !defined(NDEBUG)
+    {
+        size_t  i;
+        for (i = 0; i < obj->_.obj.size; i++) {
+            assert(!s0_name_eq(name, obj->_.obj.entries[i].name));
+        }
+    }
+#endif
+
     if (unlikely(obj->_.obj.size == obj->_.obj.allocated_size)) {
         size_t  new_size = obj->_.obj.allocated_size * 2;
         struct s0_object_entry  *new_entries =
@@ -1856,6 +1983,7 @@ s0_object_add(struct s0_entity *obj,
         if (unlikely(new_entries == NULL)) {
             s0_name_free(name);
             s0_entity_free(entity);
+            s0_set_memory_error();
             return -1;
         }
         obj->_.obj.entries = new_entries;
@@ -1906,6 +2034,7 @@ s0_primitive_method_new(struct s0_environment_type *inputs,
     if (unlikely(method == NULL)) {
         s0_environment_type_free(inputs);
         free_ud(cont.ud);
+        s0_set_memory_error();
         return NULL;
     }
     method->kind = S0_ENTITY_KIND_PRIMITIVE_METHOD;
@@ -1968,6 +2097,7 @@ s0_any_entity_type_new(void)
 {
     struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
     if (unlikely(type == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     type->kind = S0_ENTITY_TYPE_KIND_ANY;
@@ -2007,6 +2137,7 @@ s0_closure_entity_type_new(struct s0_environment_type_mapping *branches)
     struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
     if (unlikely(type == NULL)) {
         s0_environment_type_mapping_free(branches);
+        s0_set_memory_error();
         return NULL;
     }
     type->kind = S0_ENTITY_TYPE_KIND_CLOSURE;
@@ -2095,6 +2226,7 @@ s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
     struct s0_named_blocks  *blocks;
 
     if (entity->kind != S0_ENTITY_KIND_CLOSURE) {
+        s0_set_error(S0_ERROR_TYPE_MISMATCH, "Entity is not a closure");
         return false;
     }
 
@@ -2102,6 +2234,10 @@ s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
     blocks = entity->_.closure.blocks;
 
     if (branches->size != blocks->size) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Closure has the wrong number of branches: has %zu, needs %zu",
+             blocks->size, branches->size);
         return false;
     }
 
@@ -2112,10 +2248,17 @@ s0_closure_entity_type_satisfied_by(const struct s0_entity_type *type,
 
         block = s0_named_blocks_get(blocks, name);
         if (block == NULL) {
+            s0_set_error
+                (S0_ERROR_TYPE_MISMATCH,
+                 "Closure doesn't have a branch named `%s`",
+                 s0_name_human_readable(name));
             return false;
         }
 
         if (!s0_environment_type_satisfied_by_type(type, block->inputs)) {
+            s0_prefix_error
+                ("In closure branch `%s`:\n",
+                 s0_name_human_readable(name));
             return false;
         }
     }
@@ -2132,6 +2275,7 @@ s0_closure_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
     struct s0_environment_type_mapping  *have_branches;
 
     if (have->kind != S0_ENTITY_TYPE_KIND_CLOSURE) {
+        s0_set_error(S0_ERROR_TYPE_MISMATCH, "Entity wouldn't be a closure");
         return false;
     }
 
@@ -2139,6 +2283,11 @@ s0_closure_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
     have_branches = have->_.closure.branches;
 
     if (requires_branches->size != have_branches->size) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Closure would have the wrong number of branches: "
+             "would have %zu, would need %zu",
+             have_branches->size, requires_branches->size);
         return false;
     }
 
@@ -2150,10 +2299,16 @@ s0_closure_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
 
         have_type = s0_environment_type_mapping_get(have_branches, name);
         if (have_type == NULL) {
+            s0_set_error
+                (S0_ERROR_TYPE_MISMATCH,
+                 "Closure wouldn't have a branch named `%s`",
+                 s0_name_human_readable(name));
             return false;
         }
 
         if (!s0_environment_type_satisfied_by_type(requires_type, have_type)) {
+            s0_prefix_error
+                ("In closure branch `%s`:\n", s0_name_human_readable(name));
             return false;
         }
     }
@@ -2168,6 +2323,7 @@ s0_method_entity_type_new(struct s0_environment_type *body)
     struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
     if (unlikely(type == NULL)) {
         s0_environment_type_free(body);
+        s0_set_memory_error();
         return NULL;
     }
     type->kind = S0_ENTITY_TYPE_KIND_METHOD;
@@ -2226,10 +2382,20 @@ s0_method_entity_type_satisfied_by(const struct s0_entity_type *type,
     body_type = type->_.method.body;
     if (entity->kind == S0_ENTITY_KIND_METHOD) {
         struct s0_block  *body = entity->_.method.body;
-        return s0_environment_type_satisfied_by_type(body_type, body->inputs);
+        bool  result =
+            s0_environment_type_satisfied_by_type(body_type, body->inputs);
+        if (!result) {
+            s0_prefix_error("In method body:\n");
+        }
+        return result;
     } else if (entity->kind == S0_ENTITY_KIND_PRIMITIVE_METHOD) {
         struct s0_environment_type  *inputs = entity->_.primitive_method.inputs;
-        return s0_environment_type_satisfied_by_type(body_type, inputs);
+        bool  result =
+            s0_environment_type_satisfied_by_type(body_type, inputs);
+        if (!result) {
+            s0_prefix_error("In primitive method body:\n");
+        }
+        return result;
     } else {
         return false;
     }
@@ -2241,12 +2407,17 @@ s0_method_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
 {
     struct s0_environment_type  *requires_body;
     struct s0_environment_type  *have_body;
+    bool  result;
     if (have->kind != S0_ENTITY_TYPE_KIND_METHOD) {
         return false;
     }
     requires_body = requires->_.method.body;
     have_body = have->_.method.body;
-    return s0_environment_type_satisfied_by_type(requires_body, have_body);
+    result = s0_environment_type_satisfied_by_type(requires_body, have_body);
+    if (!result) {
+        s0_prefix_error("In method body:\n");
+    }
+    return result;
 }
 
 
@@ -2256,6 +2427,7 @@ s0_object_entity_type_new(struct s0_environment_type *elements)
     struct s0_entity_type  *type = malloc(sizeof(struct s0_entity_type));
     if (unlikely(type == NULL)) {
         s0_environment_type_free(elements);
+        s0_set_memory_error();
         return NULL;
     }
     type->kind = S0_ENTITY_TYPE_KIND_OBJECT;
@@ -2340,6 +2512,7 @@ s0_object_entity_type_satisfied_by(const struct s0_entity_type *type,
     struct s0_environment_type  *elements;
 
     if (entity->kind != S0_ENTITY_KIND_OBJECT) {
+        s0_set_error(S0_ERROR_TYPE_MISMATCH, "Entity is not an object");
         return false;
     }
 
@@ -2348,7 +2521,16 @@ s0_object_entity_type_satisfied_by(const struct s0_entity_type *type,
         const struct s0_name  *name = elements->entries[i].name;
         const struct s0_entity_type  *etype = elements->entries[i].type;
         struct s0_entity  *element = s0_object_get(entity, name);
-        if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+        if (element == NULL) {
+            s0_set_error
+                (S0_ERROR_TYPE_MISMATCH,
+                 "Object doesn't have an element named `%s`",
+                 s0_name_human_readable(name));
+            return false;
+        }
+        if (!s0_entity_type_satisfied_by(etype, element)) {
+            s0_prefix_error
+                ("In object element `%s`:\n", s0_name_human_readable(name));
             return false;
         }
     }
@@ -2369,6 +2551,7 @@ s0_object_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
     struct s0_environment_type  *have_elements;
 
     if (have->kind != S0_ENTITY_TYPE_KIND_OBJECT) {
+        s0_set_error(S0_ERROR_TYPE_MISMATCH, "Entity wouldn't be an object");
         return false;
     }
 
@@ -2380,8 +2563,16 @@ s0_object_entity_type_satisfied_by_type(const struct s0_entity_type *requires,
             requires_elements->entries[i].type;
         const struct s0_entity_type  *have_type =
             s0_environment_type_get(have_elements, name);
-        if (have_type == NULL ||
-            !s0_entity_type_satisfied_by_type(requires_type, have_type)) {
+        if (have_type == NULL) {
+            s0_set_error
+                (S0_ERROR_TYPE_MISMATCH,
+                 "Object would't have an element named `%s`",
+                 s0_name_human_readable(name));
+            return false;
+        }
+        if (!s0_entity_type_satisfied_by_type(requires_type, have_type)) {
+            s0_prefix_error
+                ("In object element `%s`:\n", s0_name_human_readable(name));
             return false;
         }
     }
@@ -2528,6 +2719,7 @@ s0_environment_type_new(void)
     struct s0_environment_type  *type =
         malloc(sizeof(struct s0_environment_type));
     if (unlikely(type == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     type->size = 0;
@@ -2537,6 +2729,7 @@ s0_environment_type_new(void)
                sizeof(struct s0_environment_type_entry));
     if (unlikely(type->entries == NULL)) {
         free(type);
+        s0_set_memory_error();
         return NULL;
     }
     return type;
@@ -2596,6 +2789,15 @@ s0_environment_type_add(struct s0_environment_type *type,
 {
     struct s0_environment_type_entry  *new_entry;
 
+#if !defined(NDEBUG)
+    {
+        size_t  i;
+        for (i = 0; i < type->size; i++) {
+            assert(!s0_name_eq(name, type->entries[i].name));
+        }
+    }
+#endif
+
     if (unlikely(type->size == type->allocated_size)) {
         size_t  new_size = type->allocated_size * 2;
         struct s0_environment_type_entry  *new_entries =
@@ -2604,6 +2806,7 @@ s0_environment_type_add(struct s0_environment_type *type,
         if (unlikely(new_entries == NULL)) {
             s0_name_free(name);
             s0_entity_type_free(etype);
+            s0_set_memory_error();
             return -1;
         }
         type->entries = new_entries;
@@ -2666,28 +2869,37 @@ s0_environment_type_extract(struct s0_environment_type *dest,
                             const struct s0_name_set *set)
 {
     size_t  i;
+
+#if !defined(NDEBUG)
+    for (i = 0; i < set->size; i++) {
+        const struct s0_name  *name = set->names[i];
+        assert(s0_environment_type_get(src, name) != NULL);
+        assert(s0_environment_type_get(dest, name) == NULL);
+    }
+#endif
+
     for (i = 0; i < set->size; i++) {
         const struct s0_name  *name = set->names[i];
         struct s0_entity_type  *etype;
 
-        if (unlikely(s0_environment_type_get(dest, name) != NULL)) {
-            return -1;
-        }
-
         etype = s0_environment_type_delete(src, name);
         if (etype == NULL) {
+            s0_set_error
+                (S0_ERROR_UNDEFINED,
+                 "Environment wouldn't have an entry named `%s`",
+                 s0_name_human_readable(name));
             return -1;
         } else {
             int  rc;
             struct s0_name  *name_copy = s0_name_new_copy(name);
             if (unlikely(name_copy == NULL)) {
                 s0_entity_type_free(etype);
-                return ENOMEM;
+                return -1;
             }
 
             rc = s0_environment_type_add(dest, name_copy, etype);
             if (unlikely(rc != 0)) {
-                return ENOMEM;
+                return -1;
             }
         }
     }
@@ -2701,6 +2913,10 @@ s0_environment_type_rename(struct s0_environment_type *type,
     size_t  i;
 
     if (unlikely(type->size != mapping->size)) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Parameter count (%zu) doesn't match size of environment (%zu)",
+             mapping->size, type->size);
         return -1;
     }
 
@@ -2711,12 +2927,16 @@ s0_environment_type_rename(struct s0_environment_type *type,
 
         to = s0_name_mapping_get(mapping, from);
         if (unlikely(to == NULL)) {
+            s0_set_error
+                (S0_ERROR_UNDEFINED,
+                 "Don't have a parameter for environment entry `%s`",
+                 s0_name_human_readable(from));
             return -1;
         }
 
         to_copy = s0_name_new_copy(to);
         if (unlikely(to_copy == NULL)) {
-            return ENOMEM;
+            return -1;
         }
 
         s0_name_free(type->entries[i].name);
@@ -2735,6 +2955,10 @@ s0_environment_type_add_create_atom(struct s0_environment_type *type,
 
     dest_type = s0_environment_type_get(type, stmt->_.create_atom.dest);
     if (unlikely(dest_type != NULL)) {
+        s0_set_error
+            (S0_ERROR_REDEFINED,
+             "Environment would already have an entry named `%s`",
+             s0_name_human_readable(stmt->_.create_atom.dest));
         return -1;
     }
 
@@ -2761,6 +2985,10 @@ s0_environment_type_add_create_closure(struct s0_environment_type *type,
 
     dest_type = s0_environment_type_get(type, stmt->_.create_closure.dest);
     if (unlikely(dest_type != NULL)) {
+        s0_set_error
+            (S0_ERROR_REDEFINED,
+             "Environment would already have an entry named `%s`",
+             s0_name_human_readable(stmt->_.create_closure.dest));
         return -1;
     }
 
@@ -2788,6 +3016,10 @@ s0_environment_type_add_create_literal(struct s0_environment_type *type,
 
     dest_type = s0_environment_type_get(type, stmt->_.create_literal.dest);
     if (unlikely(dest_type != NULL)) {
+        s0_set_error
+            (S0_ERROR_REDEFINED,
+             "Environment would already have an entry named `%s`",
+             s0_name_human_readable(stmt->_.create_literal.dest));
         return -1;
     }
 
@@ -2814,6 +3046,10 @@ s0_environment_type_add_create_method(struct s0_environment_type *type,
 
     dest_type = s0_environment_type_get(type, stmt->_.create_method.dest);
     if (unlikely(dest_type != NULL)) {
+        s0_set_error
+            (S0_ERROR_REDEFINED,
+             "Environment would already have an entry named `%s`",
+             s0_name_human_readable(stmt->_.create_method.dest));
         return -1;
     }
 
@@ -2862,10 +3098,18 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
     src_type = s0_environment_type_delete
         (type, invocation->_.invoke_closure.src);
     if (unlikely(src_type == NULL)) {
+        s0_set_error
+            (S0_ERROR_UNDEFINED,
+             "Environment wouldn't have an entry named `%s`",
+             s0_name_human_readable(invocation->_.invoke_closure.src));
         return -1;
     }
     if (unlikely(src_type->kind != S0_ENTITY_TYPE_KIND_CLOSURE)) {
         s0_entity_type_free(src_type);
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Entry `%s` wouldn't be a closure",
+             s0_name_human_readable(invocation->_.invoke_closure.src));
         return -1;
     }
 
@@ -2873,6 +3117,11 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
         (src_type->_.closure.branches, invocation->_.invoke_closure.branch);
     if (unlikely(branch_inputs == NULL)) {
         s0_entity_type_free(src_type);
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Closure `%s` wouldn't have a branch named `%s`",
+             s0_name_human_readable(invocation->_.invoke_closure.src),
+             s0_name_human_readable(invocation->_.invoke_closure.branch));
         return -1;
     }
 
@@ -2886,6 +3135,9 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
     if (unlikely(s0_environment_type_rename(renamed_type, params) != 0)) {
         s0_entity_type_free(src_type);
         s0_environment_type_free(renamed_type);
+        s0_prefix_error
+            ("When invoking closure `%s`:\n",
+             s0_name_human_readable(invocation->_.invoke_closure.src));
         return -1;
     }
 
@@ -2893,6 +3145,9 @@ s0_environment_type_add_invoke_closure(struct s0_environment_type *type,
                     branch_inputs, renamed_type))) {
         s0_entity_type_free(src_type);
         s0_environment_type_free(renamed_type);
+        s0_prefix_error
+            ("When invoking closure `%s`:\n",
+             s0_name_human_readable(invocation->_.invoke_closure.src));
         return -1;
     }
 
@@ -2914,9 +3169,17 @@ s0_environment_type_add_invoke_method(struct s0_environment_type *type,
 
     src_type = s0_environment_type_get(type, invocation->_.invoke_method.src);
     if (unlikely(src_type == NULL)) {
+        s0_set_error
+            (S0_ERROR_UNDEFINED,
+             "Environment wouldn't have an entry named `%s`",
+             s0_name_human_readable(invocation->_.invoke_method.src));
         return -1;
     }
     if (unlikely(src_type->kind != S0_ENTITY_TYPE_KIND_OBJECT)) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Entry `%s` wouldn't be an object",
+             s0_name_human_readable(invocation->_.invoke_method.src));
         return -1;
     }
 
@@ -2924,9 +3187,19 @@ s0_environment_type_add_invoke_method(struct s0_environment_type *type,
     method_type = s0_environment_type_get
         (src_elements, invocation->_.invoke_method.method);
     if (unlikely(method_type == NULL)) {
+        s0_set_error
+            (S0_ERROR_UNDEFINED,
+             "Object `%s` wouldn't have an element named `%s`",
+             s0_name_human_readable(invocation->_.invoke_method.src),
+             s0_name_human_readable(invocation->_.invoke_method.method));
         return -1;
     }
     if (method_type->kind != S0_ENTITY_TYPE_KIND_METHOD) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Element `%s` in object `%s` wouldn't be an object",
+             s0_name_human_readable(invocation->_.invoke_method.method),
+             s0_name_human_readable(invocation->_.invoke_method.src));
         return -1;
     }
 
@@ -2938,6 +3211,10 @@ s0_environment_type_add_invoke_method(struct s0_environment_type *type,
     params = invocation->_.invoke_method.params;
     if (unlikely(s0_environment_type_rename(renamed_type, params) != 0)) {
         s0_environment_type_free(renamed_type);
+        s0_prefix_error
+            ("When invoking method `%s::%s`:\n",
+             s0_name_human_readable(invocation->_.invoke_method.src),
+             s0_name_human_readable(invocation->_.invoke_method.method));
         return -1;
     }
 
@@ -2945,6 +3222,10 @@ s0_environment_type_add_invoke_method(struct s0_environment_type *type,
     if (unlikely(!s0_environment_type_satisfied_by_type(
                     method_inputs, renamed_type))) {
         s0_environment_type_free(renamed_type);
+        s0_prefix_error
+            ("When invoking method `%s::%s`:\n",
+             s0_name_human_readable(invocation->_.invoke_method.src),
+             s0_name_human_readable(invocation->_.invoke_method.method));
         return -1;
     }
 
@@ -2974,6 +3255,10 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *type,
     size_t  i;
 
     if (type->size != env->size) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Environment has the wrong number of entries: has %zu, needs %zu",
+             env->size, type->size);
         return false;
     }
 
@@ -2981,7 +3266,17 @@ s0_environment_type_satisfied_by(const struct s0_environment_type *type,
         const struct s0_name  *name = type->entries[i].name;
         const struct s0_entity_type  *etype = type->entries[i].type;
         struct s0_entity  *element = s0_environment_get(env, name);
-        if (element == NULL || !s0_entity_type_satisfied_by(etype, element)) {
+        if (element == NULL) {
+            s0_set_error
+                (S0_ERROR_TYPE_MISMATCH,
+                 "Environment doesn't have an entry named `%s`",
+                 s0_name_human_readable(name));
+            return false;
+        }
+        if (!s0_entity_type_satisfied_by(etype, element)) {
+            s0_prefix_error
+                ("In environment entry `%s`:\n",
+                 s0_name_human_readable(name));
             return false;
         }
     }
@@ -2997,6 +3292,11 @@ s0_environment_type_satisfied_by_type(
     size_t  i;
 
     if (requires->size != have->size) {
+        s0_set_error
+            (S0_ERROR_TYPE_MISMATCH,
+             "Environment would have the wrong number of entries: "
+             "would have %zu, would need %zu",
+             have->size, requires->size);
         return false;
     }
 
@@ -3005,7 +3305,17 @@ s0_environment_type_satisfied_by_type(
         const struct s0_entity_type  *rtype = requires->entries[i].type;
         const struct s0_entity_type  *htype =
             s0_environment_type_get(have, name);
-        if (htype == NULL || !s0_entity_type_satisfied_by_type(rtype, htype)) {
+        if (htype == NULL) {
+            s0_set_error
+                (S0_ERROR_TYPE_MISMATCH,
+                 "Environment wouldn't have an entry named `%s`",
+                 s0_name_human_readable(name));
+            return false;
+        }
+        if (!s0_entity_type_satisfied_by_type(rtype, htype)) {
+            s0_prefix_error
+                ("In environment entry `%s`:\n",
+                 s0_name_human_readable(name));
             return false;
         }
     }
@@ -3034,6 +3344,7 @@ s0_environment_type_mapping_new(void)
     struct s0_environment_type_mapping  *mapping =
         malloc(sizeof(struct s0_environment_type_mapping));
     if (unlikely(mapping == NULL)) {
+        s0_set_memory_error();
         return NULL;
     }
     mapping->size = 0;
@@ -3043,6 +3354,7 @@ s0_environment_type_mapping_new(void)
                sizeof(struct s0_environment_type_mapping_entry));
     if (unlikely(mapping->entries == NULL)) {
         free(mapping);
+        s0_set_memory_error();
         return NULL;
     }
     return mapping;
@@ -3113,6 +3425,7 @@ s0_environment_type_mapping_add(struct s0_environment_type_mapping *mapping,
         if (unlikely(new_entries == NULL)) {
             s0_name_free(name);
             s0_environment_type_free(type);
+            s0_set_memory_error();
             return -1;
         }
         mapping->entries = new_entries;
@@ -3208,13 +3521,13 @@ s0_create_atom_execute(struct s0_statement *stmt, struct s0_environment *env)
 
     dest = s0_name_new_copy(stmt->_.create_atom.dest);
     if (unlikely(dest == NULL)) {
-        return ENOMEM;
+        return -1;
     }
 
     atom = s0_atom_new();
     if (unlikely(atom == NULL)) {
         s0_name_free(dest);
-        return ENOMEM;
+        return -1;
     }
 
     return s0_environment_add(env, dest, atom);
@@ -3233,13 +3546,13 @@ s0_create_closure_execute(struct s0_statement *stmt, struct s0_environment *env)
 
     dest = s0_name_new_copy(stmt->_.create_atom.dest);
     if (unlikely(dest == NULL)) {
-        return ENOMEM;
+        return -1;
     }
 
     closure_set = s0_environment_new();
     if (unlikely(closure_set == NULL)) {
         s0_name_free(dest);
-        return ENOMEM;
+        return -1;
     }
 
     rc = s0_environment_extract
@@ -3254,13 +3567,13 @@ s0_create_closure_execute(struct s0_statement *stmt, struct s0_environment *env)
     if (unlikely(blocks == NULL)) {
         s0_name_free(dest);
         s0_environment_free(closure_set);
-        return ENOMEM;
+        return -1;
     }
 
     closure = s0_closure_new(closure_set, blocks);
     if (unlikely(closure == NULL)) {
         s0_name_free(dest);
-        return ENOMEM;
+        return -1;
     }
 
     return s0_environment_add(env, dest, closure);
@@ -3276,14 +3589,14 @@ s0_create_literal_execute(struct s0_statement *stmt, struct s0_environment *env)
 
     dest = s0_name_new_copy(stmt->_.create_literal.dest);
     if (unlikely(dest == NULL)) {
-        return ENOMEM;
+        return -1;
     }
 
     literal = s0_literal_new
         (stmt->_.create_literal.size, stmt->_.create_literal.content);
     if (unlikely(literal == NULL)) {
         s0_name_free(dest);
-        return ENOMEM;
+        return -1;
     }
 
     return s0_environment_add(env, dest, literal);
@@ -3300,19 +3613,19 @@ s0_create_method_execute(struct s0_statement *stmt, struct s0_environment *env)
 
     dest = s0_name_new_copy(stmt->_.create_atom.dest);
     if (unlikely(dest == NULL)) {
-        return ENOMEM;
+        return -1;
     }
 
     body = s0_block_new_copy(stmt->_.create_method.body);
     if (unlikely(body == NULL)) {
         s0_name_free(dest);
-        return ENOMEM;
+        return -1;
     }
 
     method = s0_method_new(body);
     if (unlikely(method == NULL)) {
         s0_name_free(dest);
-        return ENOMEM;
+        return -1;
     }
 
     return s0_environment_add(env, dest, method);

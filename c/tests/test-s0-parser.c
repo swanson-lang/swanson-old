@@ -12,6 +12,19 @@
 #include "yaml.h"
 
 
+static void
+print_error_message(const char *prefix, const char *curr)
+{
+    const char  *nl = strchr(curr, '\n');
+    while (nl != NULL) {
+        diag("%s%.*s", prefix, (int) (nl - curr), curr);
+        curr = nl + 1;
+        nl = strchr(curr, '\n');
+    }
+    diag("%s%s", prefix, curr);
+}
+
+
 /* First we walk through the requested directory, looking for YAML files.  We
  * create a "test case file" descriptor for each one. */
 
@@ -107,7 +120,7 @@ run_test_cases(void)
         struct s0_yaml_stream  *stream;
         struct s0_yaml_node  node;
 
-        diag(curr->rel_path);
+        diag("%s", curr->rel_path);
         stream = s0_yaml_stream_new_from_filename(curr->full_path);
         assert(stream != NULL);
 
@@ -147,8 +160,9 @@ run_test_cases(void)
                         fail("%.*s",
                              (int) s0_yaml_node_scalar_size(name),
                              s0_yaml_node_scalar_content(name));
-                        diag("    Unexpected error: %s",
-                             s0_yaml_stream_last_error(stream));
+                        diag("    Unxpected error:");
+                        print_error_message
+                            ("      ", s0_yaml_stream_last_error(stream));
                     } else {
                         pass("%.*s",
                              (int) s0_yaml_node_scalar_size(name),
@@ -162,6 +176,9 @@ run_test_cases(void)
                         pass("%.*s",
                              (int) s0_yaml_node_scalar_size(name),
                              s0_yaml_node_scalar_content(name));
+                        diag("    Expected error:");
+                        print_error_message
+                            ("      ", s0_yaml_stream_last_error(stream));
                     } else {
                         fail("%.*s",
                              (int) s0_yaml_node_scalar_size(name),
@@ -190,8 +207,8 @@ run_test_cases(void)
         }
 
         if (unlikely(s0_yaml_node_is_error(node))) {
-            diag("Error reading from %s: %s", curr->rel_path,
-                 s0_yaml_stream_last_error(stream));
+            diag("Error reading from %s:", curr->rel_path);
+            print_error_message("  ", s0_yaml_stream_last_error(stream));
             exit(EXIT_FAILURE);
         }
 

@@ -16,6 +16,38 @@ extern "C" {
 
 
 /*-----------------------------------------------------------------------------
+ * S₀: Errors
+ */
+
+enum s0_error_code {
+    /* Success! */
+    S0_ERROR_NONE = 0,
+    /* Error allocating memory */
+    S0_ERROR_MEMORY_ERROR,
+    /* Cannot overwrite an existing name */
+    S0_ERROR_REDEFINED,
+    /* Something doesn't satisfy a type */
+    S0_ERROR_TYPE_MISMATCH,
+    /* Looking for something that doesn't exist */
+    S0_ERROR_UNDEFINED,
+    /* Something truly weird happened */
+    S0_ERROR_UNKNOWN
+};
+
+/* If any function below returns NULL or -1 to signify an error, you can then
+ * call this function to find outwhat kind of error it was. */
+enum s0_error_code
+s0_error_get_last_code(void);
+
+/* If any function below returns NULL or -1 to signify an error, you can then
+ * call this function to get a human-readable description of the error.  We
+ * retain ownership of the resulting string; you should not try to free the
+ * result. */
+const char *
+s0_error_get_last_description(void);
+
+
+/*-----------------------------------------------------------------------------
  * S₀: Names
  */
 
@@ -169,6 +201,8 @@ s0_environment_delete(struct s0_environment *, const struct s0_name *name);
  * closure, since the entries being closed over are moved from the containing
  * environment into the closure's environment.
  *
+ * All of the names in `set` MUST exist in `src`, and MUST NOT exist in `dest`.
+ *
  * Returns 0 if all of the entries were created successfully; returns -1 if
  * there is an error moving the entries. */
 int
@@ -188,10 +222,9 @@ int
 s0_environment_merge(struct s0_environment *dest, struct s0_environment *src);
 
 /* Applies a renaming (given by a name mapping) to an environment.  The mapping
- * and the environment must be the same size, and there must be an entry in the
- * mapping for every element of the environment.  Returns -1 if these conditions
- * are not met.  Returns ENOMEM if there is an error allocating memory.  Returns
- * 0 if the renaming was successful. */
+ * and the environment MUST be the same size, and there MUST be an entry in the
+ * mapping for every element of the environment.  Returns -1 if there is an
+ * error applying the renaming.  Returns 0 if the renaming was successful. */
 int
 s0_environment_rename(struct s0_environment *,
                       const struct s0_name_mapping *mapping);
@@ -731,8 +764,8 @@ s0_environment_type_extract(struct s0_environment_type *dest,
 /* Applies a renaming (given by a name mapping) to an environment type.  The
  * mapping and the type must be the same size, and there must be an entry in the
  * mapping for every element of the environment type.  Returns -1 if these
- * conditions are not met.  Returns ENOMEM if there is an error allocating
- * memory.  Returns 0 if the renaming was successful. */
+ * conditions are not met, or if there is an error allocating memory.  Returns 0
+ * if the renaming was successful. */
 int
 s0_environment_type_rename(struct s0_environment_type *,
                            const struct s0_name_mapping *mapping);
@@ -866,7 +899,7 @@ s0_yaml_node_is_scalar(const struct s0_yaml_node);
 bool
 s0_yaml_node_is_sequence(const struct s0_yaml_node);
 
-const void *
+const char *
 s0_yaml_node_scalar_content(const struct s0_yaml_node);
 
 size_t

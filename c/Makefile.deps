@@ -1,8 +1,9 @@
 $(BUILD_ROOT)/objs/libswanson/s0.o: \
  $(SOURCE_ROOT)/libswanson/s0.c \
  $(SOURCE_ROOT)/include/swanson.h \
- $(SOURCE_ROOT)/ccan/likely/likely.h \
- $(SOURCE_ROOT)/include/config.h
+ $(SOURCE_ROOT)/ccan/compiler/compiler.h \
+ $(SOURCE_ROOT)/include/config.h \
+ $(SOURCE_ROOT)/ccan/likely/likely.h
 $(BUILD_ROOT)/objs/libswanson/yaml.o: \
  $(SOURCE_ROOT)/libswanson/yaml.c \
  $(SOURCE_ROOT)/include/swanson.h \
