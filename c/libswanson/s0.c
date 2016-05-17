@@ -2864,6 +2864,43 @@ s0_environment_type_delete(struct s0_environment_type *type,
 }
 
 int
+s0_environment_type_extend(struct s0_environment_type *dest,
+                           const struct s0_environment_type *src)
+{
+    size_t  i;
+
+#if !defined(NDEBUG)
+    for (i = 0; i < src->size; i++) {
+        const struct s0_name  *name = src->entries[i].name;
+        assert(s0_environment_type_get(dest, name) == NULL);
+    }
+#endif
+
+    for (i = 0; i < src->size; i++) {
+        int  rc;
+        struct s0_name  *name_copy;
+        struct s0_entity_type  *etype_copy;
+
+        name_copy = s0_name_new_copy(src->entries[i].name);
+        if (unlikely(name_copy == NULL)) {
+            return -1;
+        }
+
+        etype_copy = s0_entity_type_new_copy(src->entries[i].type);
+        if (unlikely(etype_copy == NULL)) {
+            s0_name_free(name_copy);
+            return -1;
+        }
+
+        rc = s0_environment_type_add(dest, name_copy, etype_copy);
+        if (unlikely(rc != 0)) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+int
 s0_environment_type_extract(struct s0_environment_type *dest,
                             struct s0_environment_type *src,
                             const struct s0_name_set *set)

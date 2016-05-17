@@ -33,6 +33,50 @@ module:
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
+!s0!successful-parse
+name: create-closure can close over an environment entry
+module:
+  inputs:
+    exit: !s0!closure
+      branches:
+        return:
+          x: !s0!any {}
+    y: !s0!any {}
+  statements:
+    - !s0!create-closure
+      dest: x
+      # We close over `y`, removing it from the containing environment.
+      closed-over: [y]
+      branches:
+        body:
+          inputs:
+            exit: !s0!closure
+              branches:
+                return:
+                  # We need to make sure our `exit` continuation can discharge
+                  # the `y` that we've closed over.
+                  y: !s0!any {}
+          statements: []
+          invocation:
+            !s0!invoke-closure
+            src: exit
+            branch: return
+            parameters:
+              # Inside of the closure, `y` is available, so we need to hand it
+              # off to `exit` to discharge it.
+              y: y
+  invocation:
+    !s0!invoke-closure
+    src: exit
+    branch: return
+    parameters:
+      # Since we closed over `y` above, it should not be part of the parameter
+      # list here, since it's been moved from our environment into the closure's
+      # internal closed-over environment.
+      x: x
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
 !s0!invalid-parse
 name: create-closure needs a destination
 module:
@@ -268,8 +312,7 @@ module:
   statements:
     - !s0!create-closure
       dest: x
-      closed-over:
-        - x
+      closed-over: []
       branches:
         body:
           inputs:

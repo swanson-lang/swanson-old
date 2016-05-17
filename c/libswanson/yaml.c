@@ -591,10 +591,12 @@ s0_load_name_mapping(struct s0_yaml_node node)
 }
 
 static struct s0_block *
-s0_load_block(struct s0_yaml_node node);
+s0_load_block(struct s0_yaml_node node,
+              struct s0_environment_type *closed_over);
 
 static struct s0_named_blocks *
-s0_load_named_blocks(struct s0_yaml_node node)
+s0_load_named_blocks(struct s0_yaml_node node,
+                     struct s0_environment_type *closed_over)
 {
     struct s0_named_blocks  *blocks;
     size_t  i;
@@ -626,7 +628,7 @@ s0_load_named_blocks(struct s0_yaml_node node)
         }
 
         item = s0_yaml_node_mapping_value_at(node, i);
-        block = s0_load_block(item);
+        block = s0_load_block(item, closed_over);
         if (unlikely(block == NULL)) {
             s0_name_free(name);
             s0_named_blocks_free(blocks);
@@ -643,7 +645,7 @@ s0_load_named_blocks(struct s0_yaml_node node)
 }
 
 static struct s0_statement *
-s0_load_create_atom(struct s0_yaml_node node)
+s0_load_create_atom(struct s0_yaml_node node, struct s0_environment_type *type)
 {
     /* We've already verified that this is a !s0!create-atom mapping node. */
     struct s0_yaml_node  item;
@@ -668,12 +670,15 @@ s0_load_create_atom(struct s0_yaml_node node)
 }
 
 static struct s0_statement *
-s0_load_create_closure(struct s0_yaml_node node)
+s0_load_create_closure(struct s0_yaml_node node,
+                       struct s0_environment_type *type)
 {
     /* We've already verified that this is a !s0!create-closure mapping node. */
+    int  rc;
     struct s0_yaml_node  item;
     struct s0_name  *dest;
     struct s0_name_set  *closed_over;
+    struct s0_environment_type  *closed_over_type;
     struct s0_named_blocks  *branches;
 
     /* dest */
@@ -709,6 +714,21 @@ s0_load_create_closure(struct s0_yaml_node node)
         return NULL;
     }
 
+    closed_over_type = s0_environment_type_new();
+    if (unlikely(closed_over_type == NULL)) {
+        s0_name_free(dest);
+        s0_name_set_free(closed_over);
+        return NULL;
+    }
+
+    rc = s0_environment_type_extract(closed_over_type, type, closed_over);
+    if (unlikely(rc != 0)) {
+        s0_name_free(dest);
+        s0_name_set_free(closed_over);
+        s0_environment_type_free(closed_over_type);
+        return NULL;
+    }
+
     /* branches */
 
     item = s0_yaml_node_mapping_get(node, "branches");
@@ -718,13 +738,15 @@ s0_load_create_closure(struct s0_yaml_node node)
                    s0_yaml_node_get_node(node)->start_mark.column);
         s0_name_free(dest);
         s0_name_set_free(closed_over);
+        s0_environment_type_free(closed_over_type);
         return NULL;
     }
 
-    branches = s0_load_named_blocks(item);
+    branches = s0_load_named_blocks(item, closed_over_type);
     if (unlikely(branches == NULL)) {
         s0_name_free(dest);
         s0_name_set_free(closed_over);
+        s0_environment_type_free(closed_over_type);
         return NULL;
     }
     if (unlikely(s0_named_blocks_size(branches) == 0)) {
@@ -735,14 +757,17 @@ s0_load_create_closure(struct s0_yaml_node node)
         s0_name_free(dest);
         s0_named_blocks_free(branches);
         s0_name_set_free(closed_over);
+        s0_environment_type_free(closed_over_type);
         return NULL;
     }
 
+    s0_environment_type_free(closed_over_type);
     return s0_create_closure_new(dest, closed_over, branches);
 }
 
 static struct s0_statement *
-s0_load_create_literal(struct s0_yaml_node node)
+s0_load_create_literal(struct s0_yaml_node node,
+                       struct s0_environment_type *type)
 {
     /* We've already verified that this is a !s0!create-literal mapping node. */
     struct s0_yaml_node  item;
@@ -789,7 +814,8 @@ s0_load_create_literal(struct s0_yaml_node node)
 }
 
 static struct s0_statement *
-s0_load_create_method(struct s0_yaml_node node)
+s0_load_create_method(struct s0_yaml_node node,
+                      struct s0_environment_type *type)
 {
     /* We've already verified that this is a !s0!create-method mapping node. */
     struct s0_yaml_node  item;
@@ -822,7 +848,7 @@ s0_load_create_method(struct s0_yaml_node node)
         return NULL;
     }
 
-    body = s0_load_block(item);
+    body = s0_load_block(item, NULL);
     if (unlikely(body == NULL)) {
         s0_name_free(dest);
         return NULL;
@@ -832,17 +858,17 @@ s0_load_create_method(struct s0_yaml_node node)
 }
 
 static struct s0_statement *
-s0_load_statement(struct s0_yaml_node node)
+s0_load_statement(struct s0_yaml_node node, struct s0_environment_type *type)
 {
     ensure_mapping(node, "statement");
     if (s0_yaml_node_has_tag(node, S0_CREATE_ATOM_TAG)) {
-        return s0_load_create_atom(node);
+        return s0_load_create_atom(node, type);
     } else if (s0_yaml_node_has_tag(node, S0_CREATE_CLOSURE_TAG)) {
-        return s0_load_create_closure(node);
+        return s0_load_create_closure(node, type);
     } else if (s0_yaml_node_has_tag(node, S0_CREATE_LITERAL_TAG)) {
-        return s0_load_create_literal(node);
+        return s0_load_create_literal(node, type);
     } else if (s0_yaml_node_has_tag(node, S0_CREATE_METHOD_TAG)) {
-        return s0_load_create_method(node);
+        return s0_load_create_method(node, type);
     } else {
         fill_error(node.stream, "Unknown statement type at %zu:%zu",
                    s0_yaml_node_get_node(node)->start_mark.line,
@@ -865,7 +891,7 @@ s0_load_statement_list(struct s0_yaml_node node,
     for (i = 0; i < count; i++) {
         int  rc;
         struct s0_yaml_node  item = s0_yaml_node_sequence_at(node, i);
-        struct s0_statement  *statement = s0_load_statement(item);
+        struct s0_statement  *statement = s0_load_statement(item, type);
         if (unlikely(statement == NULL)) {
             s0_statement_list_free(list);
             return NULL;
@@ -1056,8 +1082,9 @@ s0_load_invocation(struct s0_yaml_node node, struct s0_environment_type *type)
 }
 
 static struct s0_block *
-s0_load_block(struct s0_yaml_node node)
+s0_load_block(struct s0_yaml_node node, struct s0_environment_type *closed_over)
 {
+    int  rc;
     struct s0_yaml_node  item;
     struct s0_environment_type  *inputs;
     struct s0_environment_type  *type;
@@ -1089,6 +1116,15 @@ s0_load_block(struct s0_yaml_node node)
     if (unlikely(type == NULL)) {
         s0_environment_type_free(inputs);
         return NULL;
+    }
+
+    if (closed_over != NULL) {
+        rc = s0_environment_type_extend(type, closed_over);
+        if (unlikely(rc != 0)) {
+            s0_environment_type_free(inputs);
+            s0_environment_type_free(type);
+            return NULL;
+        }
     }
 
     /* statements */
@@ -1143,7 +1179,7 @@ s0_load_module(struct s0_yaml_node root)
     struct s0_named_blocks  *blocks;
     struct s0_name  *name;
 
-    block = s0_load_block(root);
+    block = s0_load_block(root, NULL);
     if (unlikely(block == NULL)) {
         return NULL;
     }

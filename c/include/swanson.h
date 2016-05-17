@@ -749,6 +749,15 @@ struct s0_entity_type *
 s0_environment_type_delete(struct s0_environment_type *,
                            const struct s0_name *name);
 
+/* Creates copies of each entry in `src`, adding them to `dest`.  There MUST NOT
+ * be any entries in `src` that are already in `dest`.
+ *
+ * Returns 0 if all of the entries were copied successfully; returns -1 if there
+ * is an error moving the entries. */
+int
+s0_environment_type_extend(struct s0_environment_type *dest,
+                           const struct s0_environment_type *src);
+
 /* Extracts entries from `src`, moving them into `dest`.  The entries to extract
  * are given by a name set.  This is used for closure sets when constructing a
  * closure, since the entries described by the type are moved from the
