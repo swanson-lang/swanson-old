@@ -18,6 +18,36 @@ module:
 
 %TAG !s0! tag:swanson-lang.org,2016:
 ---
+!s0!successful-parse
+name: invoke-method can call a method in a closed-over set
+module:
+  inputs:
+    second: !s0!object
+      id: !s0!method
+        inputs:
+          self: !s0!any {}
+  statements:
+    - !s0!create-closure
+      dest: first
+      closed-over: [second]
+      branches:
+        body:
+          inputs: {}
+          statements: []
+          invocation:
+            !s0!invoke-method
+            src: second
+            method: id
+            parameters:
+              second: self
+  invocation:
+    !s0!invoke-closure
+    src: first
+    branch: body
+    parameters: {}
+
+%TAG !s0! tag:swanson-lang.org,2016:
+---
 !s0!invalid-parse
 name: invoke-method needs a source
 module:
