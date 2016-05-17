@@ -623,11 +623,6 @@ s0_primitive_method_new(struct s0_environment_type *inputs,
                         struct s0_continuation cont,
                         s0_primitive_method_free_f *free_ud);
 
-/* A predefined object, containing a single method, which ensures that the final
- * environment is empty, and finishes the current computation. */
-struct s0_entity *
-s0_finish_new(void);
-
 
 /*-----------------------------------------------------------------------------
  * S₀: Entity types
@@ -861,9 +856,27 @@ s0_environment_type_mapping_get(const struct s0_environment_type_mapping *,
 
 
 /*-----------------------------------------------------------------------------
- * S₀: YAML
+ * S₀: Common primitives
  */
 
+/* An extractor closure, with a single block named `body`, which gets called
+ * with a single input.  The closure stores whatever entity is passed to this
+ * input into `dest`.
+ *
+ * Takes control of `input_name` and `result_type`. */
+struct s0_entity *
+s0_extractor_new(struct s0_name *input_name, struct s0_entity_type *result_type,
+                 struct s0_entity **dest);
+
+/* An object, containing a single method, which ensures that the final
+ * environment is empty, and finishes the current computation. */
+struct s0_entity *
+s0_finish_new(void);
+
+
+/*-----------------------------------------------------------------------------
+ * S₀: YAML
+ */
 
 #define SWANSON_TAG_PREFIX  "tag:swanson-lang.org,2016:"
 #define S0_ANY_TAG             SWANSON_TAG_PREFIX "any"

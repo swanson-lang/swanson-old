@@ -3869,6 +3869,336 @@ s0_block_execute(struct s0_block *block, struct s0_environment *env)
     return s0_continuation_execute(s0_execute_block_continuation(block), env);
 }
 
+
+/*-----------------------------------------------------------------------------
+ * S₀: Common primitives
+ */
+
+struct s0_extractor {
+    struct s0_name  *input_name;
+    struct s0_entity  **dest;
+};
+
+static struct s0_continuation
+s0_extractor_method_execute(void *ud, struct s0_environment *env)
+{
+    struct s0_extractor  *extractor = ud;
+    struct s0_entity  *result;
+    result = s0_environment_delete(env, extractor->input_name);
+    assert(result != NULL);
+    *extractor->dest = result;
+    return s0_finish_continuation_;
+}
+
+static void
+s0_extractor_method_free_ud(void *ud)
+{
+    struct s0_extractor  *extractor = ud;
+    s0_name_free(extractor->input_name);
+    free(extractor);
+}
+
+static struct s0_entity *
+s0_extractor_method_new(struct s0_name *input_name,
+                        struct s0_entity_type *result_type,
+                        struct s0_entity **dest)
+{
+    int  rc;
+    struct s0_extractor  *extractor;
+    struct s0_environment_type  *inputs;
+    struct s0_name  *self_name;
+    struct s0_environment_type  *self_elements;
+    struct s0_entity_type  *self_type;
+    struct s0_continuation  cont;
+
+    extractor = malloc(sizeof(struct s0_extractor));
+    if (unlikely(extractor == NULL)) {
+        s0_set_memory_error();
+        return NULL;
+    }
+
+    extractor->input_name = s0_name_new_copy(input_name);
+    if (unlikely(extractor->input_name == NULL)) {
+        free(extractor);
+        return NULL;
+    }
+
+    extractor->dest = dest;
+
+    inputs = s0_environment_type_new();
+    if (unlikely(inputs == NULL)) {
+        free(extractor);
+        return NULL;
+    }
+
+    rc = s0_environment_type_add(inputs, input_name, result_type);
+    if (unlikely(rc != 0)) {
+        s0_environment_type_free(inputs);
+        free(extractor);
+        return NULL;
+    }
+
+    self_name = s0_name_new_str("self");
+    if (unlikely(inputs == NULL)) {
+        s0_environment_type_free(inputs);
+        free(extractor);
+        return NULL;
+    }
+
+    self_elements = s0_environment_type_new();
+    if (unlikely(self_elements == NULL)) {
+        s0_environment_type_free(inputs);
+        s0_name_free(self_name);
+        free(extractor);
+        return NULL;
+    }
+
+    self_type = s0_object_entity_type_new(self_elements);
+    if (unlikely(self_type == NULL)) {
+        s0_environment_type_free(inputs);
+        s0_name_free(self_name);
+        free(extractor);
+        return NULL;
+    }
+
+    rc = s0_environment_type_add(inputs, self_name, self_type);
+    if (unlikely(rc != 0)) {
+        s0_environment_type_free(inputs);
+        free(extractor);
+        return NULL;
+    }
+
+    cont.ud = extractor;
+    cont.invoke = s0_extractor_method_execute;
+    return s0_primitive_method_new(inputs, cont, s0_extractor_method_free_ud);
+}
+
+struct s0_entity *
+s0_extractor_new(struct s0_name *input_name, struct s0_entity_type *result_type,
+                 struct s0_entity **dest)
+{
+    int  rc;
+    struct s0_environment  *closed_over;
+    struct s0_entity  *object;
+    struct s0_name  *name;
+    struct s0_name  *input_name_copy;
+    struct s0_entity_type  *result_type_copy;
+    struct s0_entity  *method;
+    struct s0_named_blocks  *blocks;
+    struct s0_environment_type  *inputs;
+    struct s0_statement_list  *statements;
+    struct s0_name  *src;
+    struct s0_name  *method_name;
+    struct s0_name_mapping  *params;
+    struct s0_name  *from;
+    struct s0_name  *to;
+    struct s0_invocation  *invocation;
+    struct s0_block  *body;
+
+    object = s0_object_new();
+    if (unlikely(object == NULL)) {
+        return NULL;
+    }
+
+    input_name_copy = s0_name_new_copy(input_name);
+    if (unlikely(input_name_copy == NULL)) {
+        s0_entity_free(object);
+        return NULL;
+    }
+
+    result_type_copy = s0_entity_type_new_copy(result_type);
+    if (unlikely(result_type_copy == NULL)) {
+        s0_entity_free(object);
+        s0_name_free(input_name_copy);
+        return NULL;
+    }
+
+    method = s0_extractor_method_new(input_name_copy, result_type_copy, dest);
+    if (unlikely(method == NULL)) {
+        s0_entity_free(object);
+        return NULL;
+    }
+
+    name = s0_name_new_str("extractor");
+    if (unlikely(name == NULL)) {
+        s0_entity_free(object);
+        s0_entity_free(method);
+        return NULL;
+    }
+
+    rc = s0_object_add(object, name, method);
+    if (unlikely(rc != 0)) {
+        s0_entity_free(object);
+        return NULL;
+    }
+
+    closed_over = s0_environment_new();
+    if (unlikely(closed_over == NULL)) {
+        s0_entity_free(object);
+        return NULL;
+    }
+
+    name = s0_name_new_str("object");
+    if (unlikely(name == NULL)) {
+        s0_entity_free(object);
+        s0_environment_free(closed_over);
+        return NULL;
+    }
+
+    rc = s0_environment_add(closed_over, name, object);
+    if (unlikely(rc != 0)) {
+        s0_environment_free(closed_over);
+        return NULL;
+    }
+
+    statements = s0_statement_list_new();
+    if (unlikely(statements == NULL)) {
+        s0_environment_free(closed_over);
+        return NULL;
+    }
+
+    src = s0_name_new_str("object");
+    if (unlikely(src == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        return NULL;
+    }
+
+    method_name = s0_name_new_str("extractor");
+    if (unlikely(method == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        return NULL;
+    }
+
+    params = s0_name_mapping_new();
+    if (unlikely(method == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        return NULL;
+    }
+
+    from = s0_name_new_copy(input_name);
+    if (unlikely(from == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        s0_name_mapping_free(params);
+        return NULL;
+    }
+
+    to = s0_name_new_copy(input_name);
+    if (unlikely(to == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        s0_name_mapping_free(params);
+        s0_name_free(from);
+        return NULL;
+    }
+
+    rc = s0_name_mapping_add(params, from, to);
+    if (unlikely(rc != 0)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        s0_name_mapping_free(params);
+        return NULL;
+    }
+
+    from = s0_name_new_str("object");
+    if (unlikely(from == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        s0_name_mapping_free(params);
+        return NULL;
+    }
+
+    to = s0_name_new_str("self");
+    if (unlikely(to == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        s0_name_mapping_free(params);
+        s0_name_free(from);
+        return NULL;
+    }
+
+    rc = s0_name_mapping_add(params, from, to);
+    if (unlikely(rc != 0)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_name_free(src);
+        s0_name_free(method_name);
+        s0_name_mapping_free(params);
+        return NULL;
+    }
+
+    invocation = s0_invoke_method_new(src, method_name, params);
+    if (unlikely(invocation == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        return NULL;
+    }
+
+    inputs = s0_environment_type_new();
+    if (unlikely(inputs == NULL)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_invocation_free(invocation);
+        return NULL;
+    }
+
+    rc = s0_environment_type_add(inputs, input_name, result_type);
+    if (unlikely(rc != 0)) {
+        s0_environment_free(closed_over);
+        s0_statement_list_free(statements);
+        s0_invocation_free(invocation);
+        s0_environment_type_free(inputs);
+        return NULL;
+    }
+
+    body = s0_block_new(inputs, statements, invocation);
+    if (unlikely(body == NULL)) {
+        s0_environment_free(closed_over);
+        return NULL;
+    }
+
+    blocks = s0_named_blocks_new();
+    if (unlikely(blocks == NULL)) {
+        s0_environment_free(closed_over);
+        s0_block_free(body);
+        return NULL;
+    }
+
+    name = s0_name_new_str("body");
+    if (unlikely(name == NULL)) {
+        s0_environment_free(closed_over);
+        s0_block_free(body);
+        s0_named_blocks_free(blocks);
+        return NULL;
+    }
+
+    rc = s0_named_blocks_add(blocks, name, body);
+    if (unlikely(rc != 0)) {
+        s0_environment_free(closed_over);
+        s0_named_blocks_free(blocks);
+        return NULL;
+    }
+
+    return s0_closure_new(closed_over, blocks);
+}
+
+
 static struct s0_continuation
 s0_finish_method_execute(void *ud, struct s0_environment *env)
 {

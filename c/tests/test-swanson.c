@@ -3798,6 +3798,49 @@ TEST_CASE("can execute a closure") {
     s0_block_free(block);
 }
 
+TEST_CASE("can extract an entity from an S₀ execution") {
+    struct s0_environment  *env;
+    struct s0_name  *name;
+    struct s0_entity  *extractor;
+    struct s0_entity_type  *result_type;
+    struct s0_entity  *result = NULL;
+    struct s0_block  *block;
+    /* Create an environment with an extractor closure */
+    check_alloc(env, s0_environment_new());
+    check_alloc(name, s0_name_new_str("result"));
+    check_alloc(result_type, s0_any_entity_type_new());
+    check_alloc(extractor, s0_extractor_new(name, result_type, &result));
+    check_alloc(name, s0_name_new_str("finish"));
+    check0(s0_environment_add(env, name, extractor));
+    /* Create a block */
+    check_alloc(block, load_block(
+                YAML
+                "inputs:\n"
+                "  finish: !s0!closure\n"
+                "    branches:\n"
+                "      body:\n"
+                "        result: !s0!any {}\n"
+                "statements:\n"
+                "  - !s0!create-atom\n"
+                "    dest: result\n"
+                "invocation:\n"
+                "  !s0!invoke-closure\n"
+                "  src: finish\n"
+                "  branch: body\n"
+                "  parameters:\n"
+                "    result: result\n"
+                ));
+    /* Execute the block */
+    check0(s0_block_execute(block, env));
+    /* Verify that we got an atom */
+    check_nonnull(result);
+    check(s0_entity_kind(result) == S0_ENTITY_KIND_ATOM);
+    /* Free everything */
+    s0_environment_free(env);
+    s0_entity_free(result);
+    s0_block_free(block);
+}
+
 /*-----------------------------------------------------------------------------
  * Harness
  */
