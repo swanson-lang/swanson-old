@@ -2795,6 +2795,44 @@ TEST_CASE("can delete entries from environment type") {
     s0_environment_type_free(type);
 }
 
+TEST_CASE("can extend an environment type with a copy of another") {
+    struct s0_environment_type  *src;
+    struct s0_environment_type  *dest;
+    struct s0_name  *name;
+    struct s0_entity_type  *etype;
+    /* Construct dest = ⦃a:*⦄ */
+    check_alloc(dest, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("a"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(dest, name, etype));
+    /* Construct src = ⦃b:*⦄ */
+    check_alloc(src, s0_environment_type_new());
+    check_alloc(name, s0_name_new_str("b"));
+    check_alloc(etype, s0_any_entity_type_new());
+    check0(s0_environment_type_add(src, name, etype));
+    /* Extend dest with src */
+    check0(s0_environment_type_extend(dest, src));
+    /* Verify that dest == ⦃a:*,b:*⦄ */
+    check(s0_environment_type_size(dest) == 2);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(dest, name) != NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(dest, name) != NULL);
+    s0_name_free(name);
+    /* Verify that src == ⦃b:*⦄ */
+    check(s0_environment_type_size(src) == 1);
+    check_alloc(name, s0_name_new_str("a"));
+    check(s0_environment_type_get(src, name) == NULL);
+    s0_name_free(name);
+    check_alloc(name, s0_name_new_str("b"));
+    check(s0_environment_type_get(src, name) != NULL);
+    s0_name_free(name);
+    /* Free everything */
+    s0_environment_type_free(src);
+    s0_environment_type_free(dest);
+}
+
 TEST_CASE("can extract entries from environment type") {
     struct s0_environment_type  *src;
     struct s0_environment_type  *dest;
